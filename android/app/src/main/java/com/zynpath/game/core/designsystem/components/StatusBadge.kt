@@ -50,3 +50,24 @@ fun StatusBadge(
         }
     }
 }
+
+/** Standard alias */
+@Composable
+fun ZynpathStatusBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = ForestMint
+) = StatusBadge(text, modifier, color)
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF0B132B)
+@Composable
+private fun StatusBadgePreview() {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier.padding(16.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+    ) {
+        StatusBadge("OFFLINE", color = ForestMint)
+        StatusBadge("UNLOCKED", color = com.zynpath.game.core.designsystem.theme.AccentGold)
+        StatusBadge("LOCKED", color = com.zynpath.game.core.designsystem.theme.TextMuted)
+    }
+}

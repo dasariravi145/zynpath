@@ -1,6 +1,7 @@
 package com.zynpath.game.feature.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import com.zynpath.game.core.designsystem.theme.TextPrimary
 fun HomeScreen(
     onNavigateToSoloPlay: () -> Unit,
     onNavigateToLevels: () -> Unit,
+    onNavigateToTutorial: () -> Unit,
     onNavigateToQuickDuel: () -> Unit,
     onNavigateToFriendDuel: () -> Unit,
     onNavigateToMiniLeague: () -> Unit,
@@ -263,24 +265,28 @@ fun HomeScreen(
         // Quick Navigation Grid
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(BackgroundCard)
-                    .padding(14.dp)
+                    .clickable { onNavigateToTutorial() }
+                    .padding(12.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = onNavigateToLevels) {
-                        Icon(
-                            imageVector = Icons.Outlined.List,
-                            contentDescription = "Levels",
-                            tint = ForestMint
-                        )
-                    }
-                    Text("Levels", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "How to Play",
+                        tint = ForestMint,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Tutorial", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 }
             }
 
@@ -289,17 +295,44 @@ fun HomeScreen(
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(BackgroundCard)
-                    .padding(14.dp)
+                    .clickable { onNavigateToLevels() }
+                    .padding(12.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = onNavigateToPremium) {
-                        Icon(
-                            imageVector = Icons.Default.WorkspacePremium,
-                            contentDescription = "Premium",
-                            tint = AccentGold
-                        )
-                    }
-                    Text("Premium", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.List,
+                        contentDescription = "Levels",
+                        tint = ForestMint,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Worlds", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(BackgroundCard)
+                    .clickable { onNavigateToPremium() }
+                    .padding(12.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WorkspacePremium,
+                        contentDescription = "Premium",
+                        tint = AccentGold,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Premium", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 }
             }
         }

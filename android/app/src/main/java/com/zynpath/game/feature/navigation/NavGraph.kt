@@ -3,14 +3,21 @@ package com.zynpath.game.feature.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.zynpath.game.feature.gameplay.GameplayShellScreen
 import com.zynpath.game.feature.home.HomeScreen
+import com.zynpath.game.feature.level.LevelSelectionScreen
 import com.zynpath.game.feature.onboarding.OnboardingScreen
 import com.zynpath.game.feature.placeholder.DevStateScreen
+import com.zynpath.game.feature.premium.PremiumScreen
 import com.zynpath.game.feature.settings.SettingsScreen
 import com.zynpath.game.feature.splash.SplashScreen
+import com.zynpath.game.feature.tutorial.TutorialScreen
+import com.zynpath.game.feature.world.WorldSelectionScreen
 
 @Composable
 fun ZynpathNavGraph(
@@ -47,10 +54,18 @@ fun ZynpathNavGraph(
             )
         }
 
+        composable(Screen.Tutorial.route) {
+            TutorialScreen(
+                onFinishTutorial = { navController.popBackStack() },
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
         composable(Screen.Home.route) {
             HomeScreen(
-                onNavigateToSoloPlay = { navController.navigate(Screen.Gameplay.route) },
-                onNavigateToLevels = { navController.navigate(Screen.LevelSelection.route) },
+                onNavigateToSoloPlay = { navController.navigate(Screen.WorldSelection.route) },
+                onNavigateToLevels = { navController.navigate(Screen.WorldSelection.route) },
+                onNavigateToTutorial = { navController.navigate(Screen.Tutorial.route) },
                 onNavigateToQuickDuel = { navController.navigate(Screen.QuickDuel.route) },
                 onNavigateToFriendDuel = { navController.navigate(Screen.FriendDuel.route) },
                 onNavigateToMiniLeague = { navController.navigate(Screen.MiniLeague.route) },
@@ -61,26 +76,63 @@ fun ZynpathNavGraph(
             )
         }
 
+        composable(Screen.WorldSelection.route) {
+            WorldSelectionScreen(
+                onBackClick = { navController.popBackStack() },
+                onSelectWorld = { worldId ->
+                    navController.navigate(Screen.LevelSelection.createRoute(worldId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.LevelSelection.route,
+            arguments = listOf(
+                navArgument("worldId") {
+                    type = NavType.IntType
+                    defaultValue = 1
+                }
+            )
+        ) { backStackEntry ->
+            val worldId = backStackEntry.arguments?.getInt("worldId") ?: 1
+            LevelSelectionScreen(
+                onBackClick = { navController.popBackStack() },
+                onSelectLevel = { wId, levelNum ->
+                    navController.navigate(Screen.Gameplay.createRoute(wId, levelNum))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Gameplay.route,
+            arguments = listOf(
+                navArgument("worldId") {
+                    type = NavType.IntType
+                    defaultValue = 1
+                },
+                navArgument("levelId") {
+                    type = NavType.IntType
+                    defaultValue = 1
+                }
+            )
+        ) { backStackEntry ->
+            val worldId = backStackEntry.arguments?.getInt("worldId") ?: 1
+            val levelId = backStackEntry.arguments?.getInt("levelId") ?: 1
+            GameplayShellScreen(
+                worldId = worldId,
+                levelId = levelId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
 
-        composable(Screen.Gameplay.route) {
-            DevStateScreen(
-                featureTitle = "Solo Gameplay",
-                scheduledPhase = "PHASE 2 • PROMPTS 06–12",
-                description = "The pure Kotlin continuous-path puzzle engine, movement validators, and hardware-accelerated drag Canvas will be implemented in Phase 2.",
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.LevelSelection.route) {
-            DevStateScreen(
-                featureTitle = "Level Select",
-                scheduledPhase = "PHASE 4 • PROMPTS 19–23",
-                description = "Worlds 1 to 6 progression maps, 300 base levels, star ratings, and unlock gates will be implemented in Phase 4.",
+        composable(Screen.Premium.route) {
+            PremiumScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
@@ -121,20 +173,20 @@ fun ZynpathNavGraph(
             )
         }
 
+        composable(Screen.Friends.route) {
+            DevStateScreen(
+                featureTitle = "Friends & Invites",
+                scheduledPhase = "PHASE 7 • PROMPTS 33–40",
+                description = "Manage puzzle friends, send room duel invites, and view asynchronous rival solve times.",
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
         composable(Screen.Profile.route) {
             DevStateScreen(
                 featureTitle = "Player Profile",
                 scheduledPhase = "PHASE 5 • PROMPTS 24–27",
                 description = "Guest-first profile management, Zynpath Tag customization, and optional account linking (Google/Facebook).",
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.Premium.route) {
-            DevStateScreen(
-                featureTitle = "Zynpath Premium",
-                scheduledPhase = "PHASE 8 • PROMPTS 41–44",
-                description = "Google Play Billing integration for Monthly (₹99) and 6-Month (₹499) ad-free subscriptions and bonus puzzle packs.",
                 onBackClick = { navController.popBackStack() }
             )
         }

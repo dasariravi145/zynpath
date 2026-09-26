@@ -73,3 +73,47 @@ fun PlayerAvatarBadge(
         }
     }
 }
+
+/**
+ * Standalone avatar circle with customizable size and guest/online indicator.
+ */
+@Composable
+fun ZynpathPlayerAvatar(
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 40.dp,
+    isGuest: Boolean = true,
+    avatarBackgroundColor: androidx.compose.ui.graphics.Color = ForestMint,
+    onClick: (() -> Unit)? = null
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(avatarBackgroundColor)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Person,
+            contentDescription = if (isGuest) "Guest Avatar" else "Player Avatar",
+            tint = com.zynpath.game.core.designsystem.theme.BackgroundDark,
+            modifier = Modifier.size(size * 0.6f)
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF0B132B)
+@Composable
+private fun PlayerAvatarBadgePreview() {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier.padding(16.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PlayerAvatarBadge(
+            displayName = "Guest Solver",
+            playerTag = "#9204"
+        )
+        ZynpathPlayerAvatar(size = 48.dp)
+    }
+}

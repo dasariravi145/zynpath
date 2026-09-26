@@ -27,7 +27,7 @@ import com.zynpath.game.core.designsystem.theme.TextMuted
 import com.zynpath.game.core.designsystem.theme.TextPrimary
 
 @Composable
-fun ScreenHeader(
+fun ZynpathScreenHeader(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
@@ -79,4 +79,24 @@ fun ScreenHeader(
             }
         }
     }
+}
+
+/** Backward-compatible alias for previous prompt */
+@Composable
+fun ScreenHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    onBackClick: (() -> Unit)? = null,
+    actionSlot: (@Composable () -> Unit)? = null
+) = ZynpathScreenHeader(title, modifier, subtitle, onBackClick, actionSlot)
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF0B132B)
+@Composable
+private fun ZynpathScreenHeaderPreview() {
+    ZynpathScreenHeader(
+        title = "Settings",
+        subtitle = "Audio, feedback and preferences",
+        onBackClick = {}
+    )
 }

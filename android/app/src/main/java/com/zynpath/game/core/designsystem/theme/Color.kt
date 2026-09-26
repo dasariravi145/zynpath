@@ -30,6 +30,16 @@ val AccentGold = Color(0xFFFFB703)
 val AccentPurple = Color(0xFF7209B7)
 val AccentBlue = Color(0xFF4361EE)
 
+// Feedback & Alert Tokens
+val SuccessGreen = Color(0xFF10B981)
+val WarningAmber = Color(0xFFF59E0B)
+val ErrorRed = Color(0xFFEF4444)
+
+// Puzzle Path & Cell Covered Overlays
+val CellCoveredTint = Color(0x3300F5D4)
+val CellStartHalo = Color(0x5552B788)
+val WallGlow = Color(0x66E63946)
+
 // Typography & Text Tokens
 val TextPrimary = Color(0xFFFFFFFF)
 val TextSecondary = Color(0xFF94A3B8)

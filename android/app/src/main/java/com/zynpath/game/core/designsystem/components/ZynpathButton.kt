@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -89,5 +90,17 @@ fun ZynpathSecondaryButton(
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold
         )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF0B132B)
+@Composable
+private fun ZynpathButtonPreview() {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+    ) {
+        ZynpathPrimaryButton(text = "Play Solo (Primary)", onClick = {})
+        ZynpathSecondaryButton(text = "World Select (Secondary)", onClick = {})
     }
 }

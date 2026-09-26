@@ -21,6 +21,9 @@ interface LevelProgressDao {
     @Query("SELECT SUM(stars) FROM level_progress")
     fun getTotalStarsEarned(): Flow<Int?>
 
+    @Query("SELECT * FROM level_progress")
+    suspend fun getAllProgressList(): List<LevelProgressEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertLevelProgress(progress: LevelProgressEntity)
 }

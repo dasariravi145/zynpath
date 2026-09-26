@@ -116,8 +116,8 @@ Zynpath/
 |---|---|---|---|
 | **01** | Phase 1 | Project Foundation, Workspace Setup, Authoritative Specifications | **COMPLETED** |
 | **02** | Phase 1 | Native Android Kotlin + Jetpack Compose Setup, Testing & Debug APK | **COMPLETED** |
-| **03** | Phase 1 | Java 17+ Spring Boot 3 Backend Foundation, WebSocket Infrastructure | Pending |
-| **04** | Phase 1 | Design System Tokenization, Material 3 Dark Navy Palette | Pending |
+| **03** | Phase 1 | Design System, Navigation Refinement, and Application Structure | **COMPLETED** |
+| **04** | Phase 1 | Local Data Architecture, Settings, and Offline Progress Foundation | Pending |
 | **05** | Phase 1 | Continuous Integration, Automated Linting, Git Pre-Commit Hooks | Pending |
 | **06–12** | Phase 2 | Continuous-Path Puzzle Engine (Pure Kotlin, Solvers, Generators, Validators) | Pending |
 | **13–18** | Phase 3 | Game UI, Custom Canvas Touch Controls, Path Rendering, Micro-Animations | Pending |
