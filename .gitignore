@@ -1,0 +1,68 @@
+# Built application files
+*.apk
+*.aar
+*.aab
+*.jar
+*.war
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+target/
+build/
+*/build/
+
+# Gradle files
+.gradle/
+buildOutput/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# Android Studio cache & logs
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystores & Signing secrets
+*.jks
+*.keystore
+*.key
+signing.properties
+
+# Google Services / Firebase credentials
+google-services.json
+firebase-adminsdk*.json
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Log files
+*.log
+logs/
