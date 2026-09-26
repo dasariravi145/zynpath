@@ -112,18 +112,22 @@ Zynpath/
 
 ## 5. Development Roadmap Summary (50-Prompt Plan)
 
-| Prompts | Phase | Focus Area |
-|---|---|---|
-| **01–05** | Phase 1 | Project Foundation, Workspace Setup, Android & Backend Init, Testing Setup |
-| **06–12** | Phase 2 | Continuous-Path Puzzle Engine (Pure Kotlin, Solvers, Generators, Validators) |
-| **13–18** | Phase 3 | Game UI, Custom Canvas Touch Controls, Path Rendering, Micro-Animations |
-| **19–23** | Phase 4 | Level Progression, Worlds 1–6, Daily Challenges, Procedural Level Packs |
-| **24–27** | Phase 5 | Guest-First Auth, Account Linking (Google/Facebook), Player Profiles |
-| **28–32** | Phase 6 | Friends System, Invite Links, In-Memory Preset Reactions |
-| **33–40** | Phase 7 | Real-Time Multiplayer: Quick Duel, Friend Duel, 2–5 Player Mini Leagues |
-| **41–44** | Phase 8 | Monetization: AdMob Banners/Interstitials/Rewarded, Play Billing Premium |
-| **45–48** | Phase 9 | Security Hardening, Input Validation, Performance Profiling, QA Matrix |
-| **49–50** | Phase 10 | Release Preparation, Play Store Assets, CI/CD, Production Deployment |
+| Prompts | Phase | Focus Area | Status |
+|---|---|---|---|
+| **01** | Phase 1 | Project Foundation, Workspace Setup, Authoritative Specifications | **COMPLETED** |
+| **02** | Phase 1 | Native Android Kotlin + Jetpack Compose Setup, Testing & Debug APK | **COMPLETED** |
+| **03** | Phase 1 | Java 17+ Spring Boot 3 Backend Foundation, WebSocket Infrastructure | Pending |
+| **04** | Phase 1 | Design System Tokenization, Material 3 Dark Navy Palette | Pending |
+| **05** | Phase 1 | Continuous Integration, Automated Linting, Git Pre-Commit Hooks | Pending |
+| **06–12** | Phase 2 | Continuous-Path Puzzle Engine (Pure Kotlin, Solvers, Generators, Validators) | Pending |
+| **13–18** | Phase 3 | Game UI, Custom Canvas Touch Controls, Path Rendering, Micro-Animations | Pending |
+| **19–23** | Phase 4 | Level Progression, Worlds 1–6, Daily Challenges, Procedural Level Packs | Pending |
+| **24–27** | Phase 5 | Guest-First Auth, Account Linking (Google/Facebook), Player Profiles | Pending |
+| **28–32** | Phase 6 | Friends System, Invite Links, In-Memory Preset Reactions | Pending |
+| **33–40** | Phase 7 | Real-Time Multiplayer: Quick Duel, Friend Duel, 2–5 Player Mini Leagues | Pending |
+| **41–44** | Phase 8 | Monetization: AdMob Banners/Interstitials/Rewarded, Play Billing Premium | Pending |
+| **45–48** | Phase 9 | Security Hardening, Input Validation, Performance Profiling, QA Matrix | Pending |
+| **49–50** | Phase 10 | Release Preparation, Play Store Assets, CI/CD, Production Deployment | Pending |
 
 ---
 
@@ -131,12 +135,24 @@ Zynpath/
 
 1. **Verify Prerequisites**:
    - Java 17+ LTS installed (`java -version`).
-   - Android SDK installed (`android-35` or higher).
-   - Android device with USB Debugging enabled or an active Android Virtual Device (AVD).
-2. **Review Documentation**:
-   - Read [`docs/LOCAL_MOBILE_TESTING.md`](file:///d:/Zynpath/docs/LOCAL_MOBILE_TESTING.md) for step-by-step device deployment instructions.
-   - Review [`docs/GAME_RULES.md`](file:///d:/Zynpath/docs/GAME_RULES.md) for game mechanic specifications.
-   - Consult [`docs/PROGRESS.md`](file:///d:/Zynpath/docs/PROGRESS.md) for current phase status.
+   - Android SDK installed (`android-36` compile SDK).
+2. **Build the Android Application**:
+   ```powershell
+   cd d:\Zynpath\android
+   .\gradlew.bat testDebugUnitTest
+   .\gradlew.bat assembleDebug
+   ```
+   *Generated Debug APK:* `android/app/build/outputs/apk/debug/app-debug.apk`
+3. **Install on Physical Android Device via ADB**:
+   ```powershell
+   & "C:\Users\ADMIN\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r d:\Zynpath\android\app\build\outputs\apk\debug\app-debug.apk
+   ```
+4. **Documentation Links**:
+   - [docs/ANDROID_MODULES.md](file:///d:/Zynpath/docs/ANDROID_MODULES.md): Android package layout and dependency matrix.
+   - [docs/DESIGN_SYSTEM.md](file:///d:/Zynpath/docs/DESIGN_SYSTEM.md): Design tokens, theme, and reusable components.
+   - [docs/LOCAL_STORAGE.md](file:///d:/Zynpath/docs/LOCAL_STORAGE.md): Room entities, DAOs, and DataStore schema.
+   - [docs/LOCAL_MOBILE_TESTING.md](file:///d:/Zynpath/docs/LOCAL_MOBILE_TESTING.md): Detailed device testing guide.
+   - [docs/PROGRESS.md](file:///d:/Zynpath/docs/PROGRESS.md): Current engineering progress tracker.
 
 ---
 

@@ -62,17 +62,19 @@ For Android 11 (API 30) and newer:
 ### 4.1 Assemble Debug APK
 From the `android/` directory:
 ```powershell
-./gradlew assembleDebug
+cd d:\Zynpath\android
+.\gradlew.bat assembleDebug
 ```
 *Generated APK location:* `android/app/build/outputs/apk/debug/app-debug.apk`
 
 ### 4.2 One-Command Build & Install
 ```powershell
-./gradlew installDebug
+cd d:\Zynpath\android
+.\gradlew.bat installDebug
 ```
 Or directly using ADB:
 ```powershell
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+& "C:\Users\ADMIN\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r d:\Zynpath\android\app\build\outputs\apk\debug\app-debug.apk
 ```
 
 ---

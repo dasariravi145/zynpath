@@ -1,0 +1,24 @@
+<resources>
+    <!-- Midnight Navy Background Palette -->
+    <color name="bg_midnight_dark">#0B132B</color>
+    <color name="bg_midnight_surface">#1C2541</color>
+    <color name="bg_midnight_card">#223055</color>
+
+    <!-- Forest Depth Accents -->
+    <color name="forest_primary">#2E5D4B</color>
+    <color name="forest_accent">#40916C</color>
+    <color name="forest_mint">#52B788</color>
+    <color name="path_glow_cyan">#00F5D4</color>
+
+    <!-- Grid Board & Badges -->
+    <color name="board_grid_light">#F4F7F6</color>
+    <color name="board_cell_border">#E2E8F0</color>
+    <color name="checkpoint_dark">#0B132B</color>
+    <color name="checkpoint_text_white">#FFFFFF</color>
+    <color name="wall_crimson">#E63946</color>
+
+    <!-- Neutral & Text -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_muted">#64748B</color>
+</resources>

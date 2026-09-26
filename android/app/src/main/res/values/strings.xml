@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Zynpath</string>
+    <string name="app_full_title">Zynpath: Number Path Puzzle</string>
+    <string name="app_tagline">One path. Every number.</string>
+
+    <!-- Navigation Titles -->
+    <string name="title_home">Home</string>
+    <string name="title_solo_play">Solo Play</string>
+    <string name="title_quick_duel">Quick Duel</string>
+    <string name="title_friend_duel">Friend Duel</string>
+    <string name="title_mini_league">Mini League</string>
+    <string name="title_daily_challenge">Daily Challenge</string>
+    <string name="title_levels">Levels</string>
+    <string name="title_profile">Player Profile</string>
+    <string name="title_premium">Zynpath Premium</string>
+    <string name="title_settings">Settings</string>
+
+    <!-- Guest Identity -->
+    <string name="guest_player_label">Guest Player</string>
+    <string name="guest_status_offline">Offline Solo Ready</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_get_started">Get Started</string>
+
+    <!-- Settings -->
+    <string name="settings_sound_effects">Sound Effects</string>
+    <string name="settings_music">Background Music</string>
+    <string name="settings_haptics">Haptic Feedback</string>
+    <string name="settings_theme">Board Theme</string>
+    <string name="settings_reduced_motion">Reduced Motion</string>
+    <string name="settings_version_label">Version</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+</resources>
