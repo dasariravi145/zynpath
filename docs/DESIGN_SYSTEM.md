@@ -127,3 +127,51 @@ The puzzle board is a hardware-accelerated, pure Canvas-based Jetpack Compose co
 6. **Numbered Checkpoints:** Circular dark discs (`CheckpointDark`) with crisp white numbers measured via `TextMeasurer`. Checkpoint 1 highlighted in `ForestMint`.
 7. **Wall Obstacles:** Impassable thick barrier lines ($5\text{ dp}$, `WallCrimson`) drawn strictly along the shared border between adjacent cells.
 8. **Path Head Indicator:** Bright cyan circular endpoint marker at current path head.
+
+---
+
+## 6. Dynamic Themes, Path Effects & Avatar Frames (Prompt 28)
+
+### 6.1 Theme Palettes (`ZynpathColorPalette`)
+The design system dynamically supports 4 cohesive visual themes providing high contrast and comfortable puzzle solving:
+- **Classic Midnight (Free)**: Midnight Navy background (`#0B132B`), Off-White Slate board (`#F4F7F6`), Cyan path glow (`#00F5D4`), Crimson walls (`#E63946`).
+- **Dark Minimal (Free)**: Pitch Dark background (`#121212`), Graphite board (`#1E1E1E`), Bright Lime path (`#A6E22E`), Coral walls (`#FF5370`).
+- **Solar Sunset (Premium)**: Deep Plum background (`#1A0B2E`), Warm Sandstone board (`#FFF3E0`), Amber Gold path (`#FFB703`), Ruby walls (`#D90429`).
+- **Cyber Neon (Premium)**: Obsidian Black background (`#05050A`), Electric Slate board (`#0F172A`), Hot Magenta path (`#FF007F`), Vivid Amber walls (`#FFB800`).
+
+### 6.2 Path Visual Effects
+- **Solid Glow (`path_solid_glow` - Free)**: Dual-layer cyan ribbon with smooth anti-aliased geometry.
+- **Gentle Pulse (`path_gentle_pulse` - Premium)**: Subtle sine-wave breathing opacity on the outer glow stroke.
+- **Gradient Trail (`path_gradient_trail` - Premium)**: Dynamic gradient shifting from start cell to path head.
+- **Particle Accents (`path_particle_accent` - Premium)**: Subtle ambient accent particles along the active path segments.
+- *Reduced-Motion Enforcement*: If `isReducedMotion` is true, all pulsing and particle generation are suppressed, instantly falling back to a clean, high-contrast static path ribbon.
+
+### 6.3 Avatar Frames (`AvatarWithFrame.kt`)
+Enriches player profile avatars across all screens without altering identity:
+- **Default Slate (`frame_default_slate` - Free)**: Clean 2 dp slate border.
+- **Silver Outline (`frame_silver_outline` - Premium)**: Polished metallic silver ring.
+- **Gold Accent (`frame_gold_accent` - Premium)**: Radiant dual-layer golden champion halo.
+- **Neon Ring (`frame_neon_ring` - Premium)**: Vibrantly glowing cyan/magenta cyber ring.
+
+---
+
+## 7. Brand Identity, Production Icons & Store Visual Tokens (Prompt 42)
+
+### 7.1 Production Launcher & Adaptive Icon System
+- **Layer Architecture (`res/mipmap-anydpi-v26/ic_launcher.xml`)**:
+  - `ic_launcher_background.xml`: Midnight Navy `#0B132B` field with subtle grid lines (`#1C2541`).
+  - `ic_launcher_foreground.xml`: Continuous glowing cyan ribbon (`#00F5D4`) connecting numbered circular checkpoints `#1`, `#2`, and `#3`.
+  - `ic_launcher_monochrome.xml`: Material You themed icon using high-contrast white vector geometry and inverted black digits for dynamic Android 13+ wallpaper tinting.
+- **Adaptive Safe Zone Guarantee**: All visual marks, path bends, and numeric checkpoint discs are strictly bounded inside the central $72\text{ dp}$ circular safe zone on the $108\text{ dp}$ adaptive canvas, preventing clipping across squircle, circle, or rounded rectangle OEM masks.
+- **Legacy Fallbacks**: Dedicated vector `ic_launcher.xml` and `ic_launcher_round.xml` layer-lists provide crisp rendering on pre-Oreo Android versions without oversized raster bitmaps.
+
+### 7.2 Native Splash Screen Theme Alignment
+- **Theme (`Theme.Zynpath.Splash`)**:
+  - API 31+ Native Splash: `windowSplashScreenBackground` set to `@color/bg_midnight_dark` (`#0B132B`) and `windowSplashScreenAnimatedIcon` set to `@drawable/ic_splash_logo`.
+  - Pre-API 31 Fallback: Centered vector layer-list (`splash_background.xml`) on `android:windowBackground`.
+  - **Zero Startup Delay**: Seamlessly shifts to `@style/Theme_Zynpath` inside `MainActivity.onCreate()` prior to `super.onCreate()` with zero artificial sleep delays.
+
+### 7.3 Canonical Vector Assets
+- Standalone vector master assets preserved under `assets/branding/` (`logo_mark.svg`, `wordmark.svg`, `brand_tokens.json`).
+- High-fidelity Google Play Store feature graphic source at `assets/store/feature-graphic/feature_graphic_1024x500.svg` with $15\%$ edge safety margins and solver-valid path geometry.
+

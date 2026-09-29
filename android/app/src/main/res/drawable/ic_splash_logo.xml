@@ -1,0 +1,60 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+
+    <!-- Path Glow Halo -->
+    <path
+        android:strokeColor="#3300F5D4"
+        android:strokeWidth="18"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 40,40 L 120,40 L 120,80 L 40,80 L 40,120 L 120,120" />
+
+    <!-- Core Orthogonal Path Ribbon -->
+    <path
+        android:strokeColor="#00F5D4"
+        android:strokeWidth="10"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 40,40 L 120,40 L 120,80 L 40,80 L 40,120 L 120,120" />
+
+    <!-- Checkpoint 1 (Start - Forest Mint) -->
+    <path
+        android:fillColor="#52B788"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M 40,40 m -16,0 a 16,16 0 1,0 32,0 a 16,16 0 1,0 -32,0" />
+    <path
+        android:strokeColor="#0B132B"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M 37,35 L 40,32 L 40,47 M 36,47 L 44,47" />
+
+    <!-- Checkpoint 2 (Middle - Forest Accent) -->
+    <path
+        android:fillColor="#40916C"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M 40,80 m -16,0 a 16,16 0 1,0 32,0 a 16,16 0 1,0 -32,0" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 35,76 C 35,73 45,73 45,77 C 45,81 35,82 35,86 L 45,86" />
+
+    <!-- Checkpoint 3 (Final - Accent Gold) -->
+    <path
+        android:fillColor="#F59E0B"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M 120,120 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <path
+        android:strokeColor="#0B132B"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 115,114 C 117.5,112.5 124,112.5 124,116.5 C 124,119 120,120 118,120 C 120.5,120 124,121 124,124.5 C 124,128 117.5,128 115,126.5" />
+</vector>

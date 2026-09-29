@@ -28,7 +28,7 @@ World 4 (6×6)   ──>  World 5 (7×7)   ──>  World 6 (8×8)
 - **Levels:** 1–20
 - **Grid Size:** $4 \times 4$ (16 total cells)
 - **Walls:** None (0 walls)
-- **Checkpoints:** 3 to 5 checkpoints
+- **Checkpoints:** 4 to 6 checkpoints
 - **Objective:** Teach the dual win condition: players must realize that connecting checkpoints directly without weaving through remaining empty cells will fail. Promotes understanding of corners, edges, and full-cell coverage.
 
 ### World 2 — Longer Connections
@@ -41,30 +41,31 @@ World 4 (6×6)   ──>  World 5 (7×7)   ──>  World 6 (8×8)
 ### World 3 — Wall Challenge
 - **Levels:** 51–100
 - **Grid Size:** $5 \times 5$ (25 total cells)
-- **Walls:** 2 to 6 wall segments placed on interior cell edges
-- **Checkpoints:** 4 to 8 checkpoints
+- **Walls:** 1 to 5 wall segments placed on interior cell edges (Levels 51–60 gently introduced with 1–2 walls)
+- **Checkpoints:** 4 to 7 checkpoints
 - **Objective:** Introduce impassable barriers. Forces players to route around cul-de-sacs, creating mandatory detour corridors and dead-end traps.
 
 ### World 4 — Complex Routes
 - **Levels:** 101–150
 - **Grid Size:** $6 \times 6$ (36 total cells)
-- **Walls:** 4 to 10 wall segments
-- **Checkpoints:** 5 to 10 checkpoints
+- **Walls:** 2 to 8 wall segments
+- **Checkpoints:** 4 to 8 checkpoints
 - **Objective:** Demands spatial planning. Increased surface area requires careful management of parity, corner pockets, and perimeter looping.
 
 ### World 5 — Advanced Logic
 - **Levels:** 151–200
 - **Grid Size:** $7 \times 7$ (49 total cells)
-- **Walls:** 6 to 14 wall segments
-- **Checkpoints:** 6 to 12 checkpoints
+- **Walls:** 4 to 12 wall segments
+- **Checkpoints:** 4 to 10 checkpoints
 - **Objective:** Severe constraint satisfaction. High checkpoint count combined with strategic walls dramatically limits viable path alternatives, punishing premature path closure.
 
 ### World 6 — Expert Path
 - **Levels:** 201–300
 - **Grid Size:** $8 \times 8$ (64 total cells)
-- **Walls:** 8 to 20 wall segments
-- **Checkpoints:** 8 to 16 checkpoints
+- **Walls:** 6 to 18 wall segments
+- **Checkpoints:** 4 to 12 checkpoints
 - **Objective:** Grandmaster logic challenges. Demands full visual forward projection, advanced topological deduction, and disciplined spatial routing.
+
 
 ---
 
@@ -87,13 +88,53 @@ $$D = w_g \cdot G + w_t \cdot T + w_s \cdot S + w_w \cdot W + w_b \cdot B + w_u 
 
 ## 4. Unlock Mechanics & Star Rating
 
-1. **World Unlocking**:
-   - World 1 is unlocked immediately upon install.
-   - Subsequent Worlds unlock upon completing 75% of levels in the immediately preceding World (e.g., World 2 unlocks after completing 15 levels of World 1).
-2. **Level Stars (1–3 Stars)**:
-   - ⭐ **1 Star (Completion)**: Solve the puzzle meeting all rules.
-   - ⭐⭐ **2 Stars (Efficiency)**: Solve without resetting the board and within $\le 3$ manual undo steps.
-   - ⭐⭐⭐ **3 Stars (Mastery)**: Solve without any hints, without resetting, and in under the target par time (e.g., 45 seconds on 5×5).
-3. **Replayability**:
-   - Players can replay any solved level at any time to upgrade their star score or beat their personal best time.
-   - Star totals are displayed on World select screens and player profile cards.
+1. **Authoritative Configuration (`WorldConfiguration.kt`)**:
+   - `WorldConfiguration.kt` is the single source of truth for all 6 worlds, grid dimensions, level ranges, and unlock rules across the Android codebase.
+   - World 1 (Levels 1–20) is unlocked immediately upon install for guest players.
+   - Completing the final level of a World (or meeting the world unlock threshold) unlocks the subsequent World.
+   - Sequential progression: Completing level $L$ deterministically unlocks level $L+1$.
+   - Any previously unlocked or completed level remains permanently replayable.
+
+2. **Level Stars (1–3 Stars Policy)**:
+   - ⭐ **1 Star (Completion)**: Solve the puzzle meeting all rules (used 2+ hints).
+   - ⭐⭐ **2 Stars (Efficiency)**: Solve the puzzle meeting all rules with only 1 hint used.
+   - ⭐⭐⭐ **3 Stars (Mastery)**: Solve the puzzle meeting all rules without using any hints (0 hints).
+
+3. **Replayability & Personal Best Records**:
+   - Replaying a level never overwrites a superior record with a worse result.
+   - Faster completion times, fewer moves, and higher star ratings update personal bests.
+   - Slower replays still increment total `completionCount` and update `lastCompletedAt` while safely preserving `bestTimeMs`, `movesCount`, and `firstCompletedAt`.
+
+---
+
+---
+
+## 6. Offline Level Catalog & Availability (Prompt 11)
+
+The campaign level catalog binds progression to pre-verified offline puzzle assets:
+
+1. **`LevelAvailability` Enum**:
+   - `LOCKED`: Level is locked behind prerequisite progression.
+   - `UNLOCKED_AND_AVAILABLE`: Unlocked and verified puzzle asset is packaged locally and ready to play.
+   - `COMPLETED`: Solved and verified by the player; permanently replayable.
+   - `ASSET_UNAVAILABLE`: Unlocked by progression, but content is pending in the catalog manifest (`hasPackagedAsset = false`).
+   - `ASSET_INVALID`: Asset file exists but failed runtime schema or SHA-256 fingerprint verification.
+
+2. **Integrity Guarantees**:
+   - Tapping an `ASSET_UNAVAILABLE` or `ASSET_INVALID` card is non-destructive and prevents launching broken boards.
+   - Level assignments ($L \leftrightarrow \text{puzzleId}$) remain permanent across app versions.
+
+---
+
+## 7. Progression Milestone Achievements (Prompt 17)
+
+Validated campaign completions trigger local achievement unlocks via `AchievementRegistry`:
+- **`solo_first_step`**: Unlocks upon completing level 1.
+- **`solo_apprentice`**: Unlocks upon completing 5 distinct levels.
+- **`solo_journeyman`**: Unlocks upon completing 15 distinct levels.
+- **`world_one_pioneer`**: Unlocks upon completing all levels in World 1 (levels 1–5).
+- **`pure_intellect`**: Unlocks upon achieving a 3-star hint-free solve (`bestHintCount == 0`).
+- **`speed_demon`**: Unlocks upon completing any level in under 30 seconds (`bestTimeMs <= 30000`).
+
+
+

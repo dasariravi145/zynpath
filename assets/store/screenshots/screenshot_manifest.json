@@ -1,0 +1,95 @@
+{
+  "targetPlatforms": ["Phone (1080x2400)", "7-inch Tablet (1200x1920)", "10-inch Tablet (1600x2560)"],
+  "format": "PNG (Lossless 24-bit)",
+  "aspectRatios": ["9:16", "16:10"],
+  "screenshots": [
+    {
+      "order": 1,
+      "id": "screen_01_home",
+      "title": "One Path. Every Number.",
+      "subtitle": "Instant session resume, mode discovery, and next objective tracking",
+      "targetScreen": "HomeScreen",
+      "deviceResolution": "1080x2400",
+      "isImplemented": true,
+      "mockupBlocked": false,
+      "privacySensitive": false
+    },
+    {
+      "order": 2,
+      "id": "screen_02_solo_gameplay",
+      "title": "Connect Checkpoints in Sequence",
+      "subtitle": "Draw continuous orthogonal paths covering 100% of the grid",
+      "targetScreen": "GameplayShellScreen",
+      "deviceResolution": "1080x2400",
+      "isImplemented": true,
+      "mockupBlocked": false,
+      "privacySensitive": false
+    },
+    {
+      "order": 3,
+      "id": "screen_03_world_progression",
+      "title": "6 Worlds • 300 Offline Levels",
+      "subtitle": "Explore handcrafted progression from 4x4 boards to 8x8 labyrinths",
+      "targetScreen": "WorldSelectionScreen",
+      "deviceResolution": "1080x2400",
+      "isImplemented": true,
+      "mockupBlocked": false,
+      "privacySensitive": false
+    },
+    {
+      "order": 4,
+      "id": "screen_04_daily_challenge",
+      "title": "Global Daily Challenge",
+      "subtitle": "A fresh synchronized puzzle every 24 hours at 00:00 UTC",
+      "targetScreen": "DailyChallengeScreen",
+      "deviceResolution": "1080x2400",
+      "isImplemented": true,
+      "mockupBlocked": false,
+      "privacySensitive": false
+    },
+    {
+      "order": 5,
+      "id": "screen_05_quick_duel",
+      "title": "Real-Time 1v1 Quick Duels",
+      "subtitle": "Race opponents live on identical solver-verified puzzles",
+      "targetScreen": "QuickDuelScreen",
+      "deviceResolution": "1080x2400",
+      "isImplemented": true,
+      "mockupBlocked": false,
+      "privacySensitive": false
+    },
+    {
+      "order": 6,
+      "id": "screen_06_friend_duel",
+      "title": "Private Friend Matches",
+      "subtitle": "Share 6-character room codes and enjoy instant rematches",
+      "targetScreen": "FriendDuelScreen",
+      "deviceResolution": "1080x2400",
+      "isImplemented": true,
+      "mockupBlocked": false,
+      "privacySensitive": false
+    },
+    {
+      "order": 7,
+      "id": "screen_07_mini_league",
+      "title": "2–5 Player Mini Leagues",
+      "subtitle": "Compete with friend groups in private party racing rooms",
+      "targetScreen": "MiniLeagueScreen",
+      "deviceResolution": "1080x2400",
+      "isImplemented": true,
+      "mockupBlocked": false,
+      "privacySensitive": false
+    },
+    {
+      "order": 8,
+      "id": "screen_08_achievements_profile",
+      "title": "Mastery Milestones & Personal Stats",
+      "subtitle": "Unlock 25 verified achievements and track personal solve records",
+      "targetScreen": "AchievementsScreen",
+      "deviceResolution": "1080x2400",
+      "isImplemented": true,
+      "mockupBlocked": false,
+      "privacySensitive": false
+    }
+  ]
+}

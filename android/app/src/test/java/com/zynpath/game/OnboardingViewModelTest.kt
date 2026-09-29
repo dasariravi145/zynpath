@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -33,51 +34,53 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun onboarding_advancesSlidesCorrectly() = runTest {
-        val fakeRepo = FakePreferencesRepository()
+    fun onboarding_onPlayClicked_navigatesToTutorial_whenTutorialNotCompleted() = runTest(testDispatcher) {
+        val fakeRepo = FakePreferencesRepository(UserPreferences(isOnboardingCompleted = false, isTutorialCompleted = false, isTutorialSkipped = false))
         val viewModel = OnboardingViewModel(fakeRepo)
 
-        assertEquals(0, viewModel.currentSlideIndex.value)
-        assertEquals("1 / 5", viewModel.slides[0].stepIndicator)
+        var navTutorial = false
+        var navHome = false
+        viewModel.onPlayClicked(
+            onNavigateToTutorial = { navTutorial = true },
+            onNavigateToHome = { navHome = true }
+        )
+        advanceUntilIdle()
 
-        var completed = false
-        viewModel.nextSlide { completed = true }
-        assertEquals(1, viewModel.currentSlideIndex.value)
-
-        viewModel.previousSlide()
-        assertEquals(0, viewModel.currentSlideIndex.value)
+        assertTrue(navTutorial)
+        assertFalse(navHome)
+        assertTrue(fakeRepo.userPreferencesFlow.first().isOnboardingCompleted)
     }
 
     @Test
-    fun onboarding_completesAndPersistsToDataStore_onFinalSlide() = runTest {
-        val fakeRepo = FakePreferencesRepository(UserPreferences(isOnboardingCompleted = false))
+    fun onboarding_onPlayClicked_navigatesToHome_whenTutorialCompleted() = runTest(testDispatcher) {
+        val fakeRepo = FakePreferencesRepository(UserPreferences(isOnboardingCompleted = false, isTutorialCompleted = true))
         val viewModel = OnboardingViewModel(fakeRepo)
 
-        var completionInvoked = false
-        // Advance through all 5 slides
-        repeat(viewModel.slides.size) {
-            viewModel.nextSlide { completionInvoked = true }
-        }
-
+        var navTutorial = false
+        var navHome = false
+        viewModel.onPlayClicked(
+            onNavigateToTutorial = { navTutorial = true },
+            onNavigateToHome = { navHome = true }
+        )
         advanceUntilIdle()
 
-        assertTrue(completionInvoked)
-        val savedPreferences = fakeRepo.userPreferencesFlow.first()
-        assertTrue(savedPreferences.isOnboardingCompleted)
+        assertFalse(navTutorial)
+        assertTrue(navHome)
+        assertTrue(fakeRepo.userPreferencesFlow.first().isOnboardingCompleted)
     }
 
     @Test
-    fun onboarding_skipImmediatelyMarksCompleted() = runTest {
+    fun onboarding_onSkipClicked_marksCompletedAndTutorialSkipped() = runTest(testDispatcher) {
         val fakeRepo = FakePreferencesRepository(UserPreferences(isOnboardingCompleted = false))
         val viewModel = OnboardingViewModel(fakeRepo)
 
-        var completionInvoked = false
-        viewModel.skipOnboarding { completionInvoked = true }
-
+        var navHome = false
+        viewModel.onSkipClicked { navHome = true }
         advanceUntilIdle()
 
-        assertTrue(completionInvoked)
-        val savedPreferences = fakeRepo.userPreferencesFlow.first()
-        assertTrue(savedPreferences.isOnboardingCompleted)
+        assertTrue(navHome)
+        val saved = fakeRepo.userPreferencesFlow.first()
+        assertTrue(saved.isOnboardingCompleted)
+        assertTrue(saved.isTutorialSkipped)
     }
 }

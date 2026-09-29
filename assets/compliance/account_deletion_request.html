@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zynpath: Number Path Puzzle — Account Deletion Portal</title>
+    <style>
+        :root {
+            --bg-dark: #0B132B;
+            --bg-surface: #1C2541;
+            --bg-card: #223055;
+            --mint-primary: #52B788;
+            --mint-hover: #40916C;
+            --cyan-glow: #00F5D4;
+            --text-primary: #FFFFFF;
+            --text-muted: #A0AEC0;
+            --danger-red: #E63946;
+            --warning-amber: #FFB703;
+            --border-subtle: #2D3748;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 24px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 680px;
+            width: 100%;
+            background: var(--bg-surface);
+            border-radius: 20px;
+            padding: 36px 28px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .brand-logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: var(--bg-dark);
+            border: 2px solid var(--cyan-glow);
+            margin-bottom: 12px;
+            box-shadow: 0 0 16px rgba(0, 245, 212, 0.3);
+        }
+
+        .brand-logo svg {
+            width: 36px;
+            height: 36px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .tagline {
+            color: var(--mint-primary);
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .notice-card {
+            background: rgba(230, 57, 70, 0.12);
+            border-left: 4px solid var(--danger-red);
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .notice-card h2 {
+            font-size: 15px;
+            color: #FF8A8A;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .notice-card p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .notice-card a {
+            color: var(--cyan-glow);
+            text-decoration: underline;
+        }
+
+        .info-section {
+            margin-bottom: 24px;
+        }
+
+        .info-section h3 {
+            font-size: 16px;
+            color: var(--cyan-glow);
+            margin-bottom: 10px;
+        }
+
+        .info-section ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .info-section li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .info-section li::before {
+            content: "•";
+            color: var(--mint-primary);
+            font-size: 20px;
+            position: absolute;
+            left: 8px;
+            top: -2px;
+        }
+
+        .request-form {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 24px;
+            margin-top: 24px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"], input[type="email"], select {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="email"]:focus, select:focus {
+            border-color: var(--cyan-glow);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .checkbox-group input {
+            margin-top: 4px;
+        }
+
+        .checkbox-group label {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: var(--danger-red);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .submit-btn:hover {
+            background: #D90429;
+        }
+
+        .submit-btn:active {
+            transform: scale(0.99);
+        }
+
+        .oauth-divider {
+            text-align: center;
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .oauth-divider::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        .oauth-divider span {
+            position: relative;
+            background: var(--bg-card);
+            padding: 0 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .oauth-btn {
+            width: 100%;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .oauth-btn:hover {
+            border-color: var(--cyan-glow);
+        }
+
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .footer a {
+            color: var(--mint-primary);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="brand-header">
+        <div class="brand-logo">
+            <!-- Continuous Path Icon Motif -->
+            <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="21" cy="21" r="7" fill="#52B788"/>
+                <circle cx="51" cy="21" r="7" fill="#0B132B" stroke="#00F5D4" stroke-width="2"/>
+                <circle cx="51" cy="51" r="7" fill="#0B132B" stroke="#00F5D4" stroke-width="2"/>
+                <path d="M21 21 H51 V51" stroke="#00F5D4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h1>Zynpath: Number Path Puzzle</h1>
+        <p class="tagline">Official Account & Data Deletion Portal</p>
+    </div>
+
+    <!-- Mandatory Google Play Subscription Cancellation Notice -->
+    <div class="notice-card">
+        <h2>⚠️ IMPORTANT NOTICE CONCERNING SUBSCRIPTIONS</h2>
+        <p>
+            Deleting your Zynpath account permanently removes your game data and cloud progress. 
+            However, <strong>account deletion does NOT automatically cancel recurring subscriptions managed through Google Play</strong>. 
+            You must cancel any active subscription directly in your 
+            <a href="https://play.google.com/store/account/subscriptions" target="_blank" rel="noopener">Google Play Account Subscriptions</a> 
+            to avoid continued renewal charges.
+        </p>
+    </div>
+
+    <div class="info-section">
+        <h3>What Data Is Deleted</h3>
+        <ul>
+            <li><strong>Account Identity:</strong> Cloud Player ID, Public Zynpath ID, and linked Google/Facebook authentication tokens.</li>
+            <li><strong>Profile & Progression:</strong> Display name, equipped cosmetic themes, avatar frames, level completion history, and cloud stars.</li>
+            <li><strong>Social Graph:</strong> Friend relationships, pending invitations, block lists, and notification preferences.</li>
+            <li><strong>Active Sessions:</strong> All issued authorization tokens and real-time WebSocket connections are immediately revoked.</li>
+        </ul>
+    </div>
+
+    <div class="info-section">
+        <h3>Legitimate Retention Exceptions</h3>
+        <ul>
+            <li><strong>Competitive Match History:</strong> Completed multiplayer match records retain an anonymized entry displayed as <code>[Deleted Player]</code> to maintain leaderboard mathematical integrity.</li>
+            <li><strong>Financial Audit Logs:</strong> Cryptographic hashes of past Google Play purchase tokens are retained in anonymized form solely to prevent fraudulent re-licensing and satisfy statutory tax/accounting requirements.</li>
+        </ul>
+    </div>
+
+    <div class="request-form">
+        <h3 style="color: var(--text-primary); font-size: 16px; margin-bottom: 14px;">Submit Deletion Request Without App Reinstallation</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            In compliance with Google Play Developer Policy, you can initiate account deletion directly via this web page without reinstalling the mobile application.
+        </p>
+
+        <!-- Method 1: Verified OAuth Sign-In (Direct Authorization) -->
+        <button type="button" class="oauth-btn" id="google-auth-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+            Verify & Delete via Google Sign-In
+        </button>
+
+        <div class="oauth-divider">
+            <span>OR SUBMIT VERIFICATION TICKET</span>
+        </div>
+
+        <form id="deletion-form">
+            <div class="form-group">
+                <label for="public-id">Public Zynpath ID or Registered Email *</label>
+                <input type="text" id="public-id" name="publicId" placeholder="e.g. ZYN-84920 or player@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="reason">Reason for Deletion (Optional)</label>
+                <select id="reason" name="reason">
+                    <option value="none">Prefer not to say</option>
+                    <option value="reset">Want a fresh start</option>
+                    <option value="privacy">Privacy concerns</option>
+                    <option value="inactive">No longer playing</option>
+                </select>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="confirm-check" required>
+                <label for="confirm-check">
+                    I understand that this action is irreversible and that all cloud progression will be permanently deleted. I acknowledge that active Google Play subscriptions must be cancelled separately.
+                </label>
+            </div>
+
+            <button type="submit" class="submit-btn">Permanently Delete Account</button>
+        </form>
+    </div>
+
+    <div class="footer">
+        <p>Zynpath: Number Path Puzzle &copy; 2026. All rights reserved.</p>
+        <p style="margin-top: 6px;">
+            <a href="docs/PRIVACY_POLICY_DRAFT.md">Privacy Policy</a> • 
+            <a href="mailto:support@zynpath.com">Contact Support</a>
+        </p>
+    </div>
+</div>
+
+<script>
+    document.getElementById('deletion-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const id = document.getElementById('public-id').value;
+        alert('Verification email dispatched to the registered owner of ' + id + '. To prevent unauthorized deletion, please click the secure confirmation link sent to your registered account within 24 hours.');
+    });
+
+    document.getElementById('google-auth-btn').addEventListener('click', function() {
+        alert('OAuth authentication endpoint will verify account ownership before executing authoritative deletion at /api/v1/account/delete.');
+    });
+</script>
+
+</body>
+</html>

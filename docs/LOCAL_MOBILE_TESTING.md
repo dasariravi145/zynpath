@@ -109,7 +109,14 @@ This makes `http://localhost:8080` and `ws://localhost:8080` on your physical ph
 ```powershell
 adb reverse tcp:8080 tcp:8080
 ```
-*Now the mobile app can reach the local Spring Boot backend using `http://localhost:8080/api`!*
+*Now the mobile app can reach the local Spring Boot backend using `http://localhost:8080/api/v1` or through forwarded port!*
+
+To remove port forwarding when finished:
+```powershell
+adb reverse --remove tcp:8080
+# Or remove all active forwards:
+adb reverse --remove-all
+```
 
 ### Method B: Local Network IP (For Wireless Testing)
 1. Find your PC's local IP address:
@@ -117,26 +124,44 @@ adb reverse tcp:8080 tcp:8080
    Get-NetIPAddress -AddressFamily IPv4 | Where-Object InterfaceAlias -NotLike "*Loopback*"
    ```
    *(e.g., `192.168.1.150`)*
-2. Point your app's debug configuration to `http://192.168.1.150:8080`.
+2. Point your app's debug configuration to `http://192.168.1.150:8080/api/v1`.
+3. Ensure backend is bound to `0.0.0.0` in `application.yml` and Windows Firewall allows port 8080 on private networks.
 
 ### Method C: Android Emulator Loopback
 If using an Android Virtual Device (AVD), the special host loopback alias is:
-- **`http://10.0.2.2:8080`**
+- **`http://10.0.2.2:8080/api/v1`** (configured as default in `debug` build variant).
 
 ---
 
-## 7. Network Security & Build Variant Segregation
+## 7. In-App Connectivity Diagnostics (Debug Mode)
 
-### 7.1 Cleartext Traffic Control
+Zynpath includes a built-in local diagnostic tool on debug builds:
+1. Launch Zynpath on your emulator or physical phone.
+2. Navigate to **Settings** (gear icon on Home screen).
+3. Scroll down to **BACKEND CONNECTIVITY (DEBUG)**.
+4. Inspect:
+   - **Configured Base URL** (e.g. `http://10.0.2.2:8080/api/v1`).
+   - **Status Badge**: `CONNECTED` (green), `OFFLINE` (red), `CHECKING` (amber).
+   - **Latency**: Round-trip time in milliseconds to `/api/v1/health`.
+   - **Last Error Category**: Specific cause (e.g., `Connection Refused`, `Timeout > 5000ms`).
+5. Tap **Test Connection** to trigger an immediate live health probe.
+
+---
+
+## 8. Network Security & Build Variant Segregation
+
+### 8.1 Cleartext Traffic Control
 In `android/app/src/main/res/xml/network_security_config.xml`:
-- **Debug Builds**: Cleartext HTTP allowed exclusively for `localhost`, `10.0.2.2`, and local subnet `192.168.*.*`.
+- **Debug Builds**: Cleartext HTTP allowed exclusively for `localhost`, `10.0.2.2`, and local subnets.
 - **Release Builds**: Cleartext traffic strictly disabled; all network communication mandates TLS 1.3 (`https://` and `wss://`).
 
-### 7.2 Solo Mode Autonomy Verification
+### 8.2 Solo Mode Autonomy Verification
 To verify that Solo Play is 100% offline:
-1. Install debug APK on your phone.
-2. Turn on **Airplane Mode** (disable Wi-Fi and Cellular data).
+1. Install debug APK on your phone or emulator.
+2. Turn on **Airplane Mode** (disable Wi-Fi and Cellular data) or stop the Spring Boot backend.
 3. Launch Zynpath.
-4. Play and solve levels in World 1.
-5. Exit app, kill from Recents, and relaunch.
-6. Verify all stars, completion times, and settings remain perfectly intact.
+4. Verify the app opens smoothly without blocking, infinite spinners, or login screens.
+5. Play and solve levels in World 1.
+6. Exit app, kill from Recents, and relaunch.
+7. Verify all stars, completion times, and settings remain perfectly intact.
+

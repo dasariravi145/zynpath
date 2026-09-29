@@ -1,13 +1,12 @@
 package com.zynpath.game.feature.world
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zynpath.game.core.database.dao.LevelProgressDao
+import com.zynpath.game.core.database.repository.ProgressRepository
+import com.zynpath.game.core.datastore.PreferencesRepository
 import com.zynpath.game.core.designsystem.components.WorldCardData
-import com.zynpath.game.core.designsystem.theme.AccentBlue
-import com.zynpath.game.core.designsystem.theme.AccentGold
-import com.zynpath.game.core.designsystem.theme.AccentPurple
-import com.zynpath.game.core.designsystem.theme.ForestMint
+import com.zynpath.game.core.puzzle.model.WorldConfiguration
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,134 +17,108 @@ import javax.inject.Inject
 data class WorldSelectionUiState(
     val worlds: List<WorldCardData> = emptyList(),
     val totalStarsEarned: Int = 0,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val nextPlayableWorldId: Int = 1,
+    val nextPlayableLevelId: Int = 1,
+    val isReducedMotion: Boolean = false
 )
 
 @HiltViewModel
 class WorldSelectionViewModel @Inject constructor(
-    private val levelProgressDao: LevelProgressDao
+    private val progressRepository: ProgressRepository,
+    private val preferencesRepository: PreferencesRepository,
+    private val catalogRepository: com.zynpath.game.core.puzzle.catalog.LevelCatalogRepository? = null
 ) : ViewModel() {
+
+    constructor(
+        progressRepository: ProgressRepository,
+        preferencesRepository: PreferencesRepository
+    ) : this(progressRepository, preferencesRepository, null)
 
     private val _uiState = MutableStateFlow(WorldSelectionUiState(worlds = getDefaultWorlds()))
     val uiState: StateFlow<WorldSelectionUiState> = _uiState.asStateFlow()
 
     init {
-        loadWorldProgress()
+        observeProgress()
     }
 
-    private fun loadWorldProgress() {
+    private fun observeProgress() {
         viewModelScope.launch {
-            try {
-                val allProgress = levelProgressDao.getAllProgressList()
+            kotlinx.coroutines.flow.combine(
+                progressRepository.observeAllProgress(),
+                preferencesRepository.userPreferencesFlow
+            ) { allProgress, prefs ->
+                val completedLevelIds = allProgress.filter { it.isCompleted }.map { it.levelId }.toSet()
                 val totalStars = allProgress.sumOf { it.stars }
-                val completedLevelIds: Set<Int> = allProgress.filter { it.isCompleted }.map { it.levelId }.toSet()
 
-                val updatedWorlds = getDefaultWorlds().map { world ->
-                    val range: IntRange = when (world.worldId) {
-                        1 -> 1..20
-                        2 -> 21..50
-                        3 -> 51..100
-                        4 -> 101..150
-                        5 -> 151..200
-                        6 -> 201..300
-                        else -> 1..20
-                    }
-                    val completedInWorld = completedLevelIds.count { id -> id in range }
-                    // World 1 unlocked by default; World N unlocked if previous world threshold reached
-                    val isLocked = when (world.worldId) {
-                        1 -> false
-                        2 -> completedLevelIds.count { id -> id in 1..20 } < 10
-                        3 -> completedLevelIds.count { id -> id in 21..50 } < 15
-                        4 -> completedLevelIds.count { id -> id in 51..100 } < 25
-                        5 -> completedLevelIds.count { id -> id in 101..150 } < 25
-                        6 -> completedLevelIds.count { id -> id in 151..200 } < 25
-                        else -> true
-                    }
-                    world.copy(
+                val nextPlayableLevelId = WorldConfiguration.getNextPlayableLevel(completedLevelIds)
+                val nextPlayableWorld = WorldConfiguration.getWorldForLevel(nextPlayableLevelId)
+
+                val updatedWorlds = WorldConfiguration.WORLDS.map { def ->
+                    val completedInWorld = completedLevelIds.count { it in def.levelRange }
+                    val isLocked = !WorldConfiguration.isWorldUnlocked(def.worldId, completedLevelIds)
+
+                    val unlockRequirementText = if (isLocked && def.worldId > 1) {
+                        val prevWorld = WorldConfiguration.getWorld(def.worldId - 1)
+                        val completedInPrev = completedLevelIds.count { it in prevWorld.levelRange }
+                        val req = def.minPreviousWorldCompletedToUnlock
+                        "Requires $req levels solved in World ${def.worldId - 1} ($completedInPrev/$req)"
+                    } else null
+
+                    WorldCardData(
+                        worldId = def.worldId,
+                        name = def.name,
+                        gridSizeDescription = def.gridSizeDescription,
+                        levelRangeDescription = def.levelRangeDescription,
+                        totalLevels = def.totalLevels,
                         completedLevels = completedInWorld,
-                        isLocked = isLocked
+                        isLocked = isLocked,
+                        hasWalls = def.hasWalls,
+                        accentColor = Color(def.accentColorHex),
+                        unlockRequirementText = unlockRequirementText
                     )
                 }
 
-                _uiState.value = WorldSelectionUiState(
+                WorldSelectionUiState(
                     worlds = updatedWorlds,
                     totalStarsEarned = totalStars,
-                    isLoading = false
+                    isLoading = false,
+                    nextPlayableWorldId = nextPlayableWorld.worldId,
+                    nextPlayableLevelId = nextPlayableLevelId,
+                    isReducedMotion = prefs.isReducedMotion
                 )
-            } catch (_: Exception) {
-                // Keep default state on error
+            }.collect { state ->
+                _uiState.value = state
             }
         }
     }
 
+    fun onWorldSelected(worldId: Int) {
+        viewModelScope.launch {
+            preferencesRepository.setLastSelectedWorld(worldId)
+        }
+    }
+
     companion object {
-        fun getDefaultWorlds(): List<WorldCardData> = listOf(
-            WorldCardData(
-                worldId = 1,
-                name = "Learn the Path",
-                gridSizeDescription = "4×4",
-                levelRangeDescription = "Levels 1–20",
-                totalLevels = 20,
-                completedLevels = 0,
-                isLocked = false,
-                hasWalls = false,
-                accentColor = ForestMint
-            ),
-            WorldCardData(
-                worldId = 2,
-                name = "Longer Connections",
-                gridSizeDescription = "5×5",
-                levelRangeDescription = "Levels 21–50",
-                totalLevels = 30,
-                completedLevels = 0,
-                isLocked = true,
-                hasWalls = false,
-                accentColor = AccentBlue
-            ),
-            WorldCardData(
-                worldId = 3,
-                name = "Wall Challenge",
-                gridSizeDescription = "5×5 with walls",
-                levelRangeDescription = "Levels 51–100",
-                totalLevels = 50,
-                completedLevels = 0,
-                isLocked = true,
-                hasWalls = true,
-                accentColor = com.zynpath.game.core.designsystem.theme.WallCrimson
-            ),
-            WorldCardData(
-                worldId = 4,
-                name = "Complex Routes",
-                gridSizeDescription = "6×6",
-                levelRangeDescription = "Levels 101–150",
-                totalLevels = 50,
-                completedLevels = 0,
-                isLocked = true,
-                hasWalls = false,
-                accentColor = AccentPurple
-            ),
-            WorldCardData(
-                worldId = 5,
-                name = "Advanced Logic",
-                gridSizeDescription = "7×7",
-                levelRangeDescription = "Levels 151–200",
-                totalLevels = 50,
-                completedLevels = 0,
-                isLocked = true,
-                hasWalls = true,
-                accentColor = AccentGold
-            ),
-            WorldCardData(
-                worldId = 6,
-                name = "Expert Path",
-                gridSizeDescription = "8×8",
-                levelRangeDescription = "Levels 201–300",
-                totalLevels = 100,
-                completedLevels = 0,
-                isLocked = true,
-                hasWalls = true,
-                accentColor = ForestMint
-            )
-        )
+        fun getDefaultWorlds(): List<WorldCardData> {
+            return WorldConfiguration.WORLDS.map { def ->
+                val unlockRequirementText = if (def.worldId > 1) {
+                    "Requires ${def.minPreviousWorldCompletedToUnlock} levels solved in World ${def.worldId - 1}"
+                } else null
+
+                WorldCardData(
+                    worldId = def.worldId,
+                    name = def.name,
+                    gridSizeDescription = def.gridSizeDescription,
+                    levelRangeDescription = def.levelRangeDescription,
+                    totalLevels = def.totalLevels,
+                    completedLevels = 0,
+                    isLocked = def.worldId != 1,
+                    hasWalls = def.hasWalls,
+                    accentColor = Color(def.accentColorHex),
+                    unlockRequirementText = unlockRequirementText
+                )
+            }
+        }
     }
 }

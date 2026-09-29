@@ -1,0 +1,56 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <!-- Crossed Swords matching Reference Panel 03 Quick Duel -->
+    <!-- Sword 1: Top-Left to Bottom-Right -->
+    <!-- Blade -->
+    <path
+        android:pathData="M8,6 L10,4 L28,22 L26,24 Z"
+        android:fillColor="#E2E8F0" />
+    <path
+        android:pathData="M9,5 L27,23"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1" />
+    <!-- Tip -->
+    <path
+        android:pathData="M8,6 L7,5 L10,4 Z"
+        android:fillColor="#FFFFFF" />
+    <!-- Crossguard -->
+    <path
+        android:pathData="M24,20 L30,26 L28,28 L22,22 Z"
+        android:fillColor="#FFA000" />
+    <!-- Hilt & Pommel -->
+    <path
+        android:pathData="M27,25 L31,29 L30,30 L26,26 Z"
+        android:fillColor="#795548" />
+    <path
+        android:pathData="M31.5,29.5 L33,31 L31.5,32.5 L30,31 Z"
+        android:fillColor="#FFD54F" />
+
+    <!-- Sword 2: Top-Right to Bottom-Left -->
+    <!-- Blade -->
+    <path
+        android:pathData="M28,6 L26,4 L8,22 L10,24 Z"
+        android:fillColor="#CBD5E1" />
+    <path
+        android:pathData="M27,5 L9,23"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1" />
+    <!-- Tip -->
+    <path
+        android:pathData="M28,6 L29,5 L26,4 Z"
+        android:fillColor="#FFFFFF" />
+    <!-- Crossguard -->
+    <path
+        android:pathData="M12,20 L6,26 L8,28 L14,22 Z"
+        android:fillColor="#FFB300" />
+    <!-- Hilt & Pommel -->
+    <path
+        android:pathData="M9,25 L5,29 L6,30 L10,26 Z"
+        android:fillColor="#8D6E63" />
+    <path
+        android:pathData="M4.5,29.5 L3,31 L4.5,32.5 L6,31 Z"
+        android:fillColor="#FFE082" />
+</vector>

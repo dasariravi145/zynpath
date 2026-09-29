@@ -1,0 +1,40 @@
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  jackson:
+    serialization:
+      indent-output: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+zynpath:
+  environment: production
+  api:
+    base-url: "https://api.zynpath.com/api/v1"
+    ws-url: "wss://api.zynpath.com/ws"
+  cors:
+    allowed-origins:
+      - "https://zynpath.com"
+      - "https://api.zynpath.com"
+  websocket:
+    allowed-origins: "https://zynpath.com,https://api.zynpath.com"
+  logging:
+    level:
+      root: INFO
+      com.zynpath.backend: INFO
+      org.springframework.web: WARN
+      org.springframework.security: WARN

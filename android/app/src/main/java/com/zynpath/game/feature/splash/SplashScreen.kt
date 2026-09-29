@@ -1,124 +1,161 @@
 package com.zynpath.game.feature.splash
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.zynpath.game.core.designsystem.theme.BackgroundDark
-import com.zynpath.game.core.designsystem.theme.ForestMint
-import com.zynpath.game.core.designsystem.theme.PathCyanGlow
-import com.zynpath.game.core.designsystem.theme.TextMuted
-import com.zynpath.game.core.designsystem.theme.TextPrimary
+import com.zynpath.game.R
 import kotlinx.coroutines.delay
 
+/**
+ * Exact reference Zynpath splash screen matching 01_splash_1080x1920.png.
+ *
+ * Visual hierarchy:
+ * - Exactly ONE ZYNPATH logo (authoritative 3D artwork from clean background).
+ * - Exactly ONE NUMBER PATH PUZZLE subtitle.
+ * - Exactly ONE Connect the Numbers / Conquer the Path tagline.
+ * - Exactly ONE live loading progress bar (monotonic forward-only, never reverses).
+ * - Exactly ONE Loading... label.
+ *
+ * Fixes physical device bugs:
+ * - Zero duplicate branding or taglines overlayed on background.
+ * - Zero backward-oscillating loading bar.
+ * - Removed from backstack on completion so Back from Home never returns here.
+ */
 @Composable
 fun SplashScreen(
-    onNavigateToOnboarding: () -> Unit,
+    onNavigateToLogin: () -> Unit,
     onNavigateToHome: () -> Unit,
+    onNavigateToOnboarding: (() -> Unit)? = null,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
     val navTarget by viewModel.navigationTarget.collectAsStateWithLifecycle()
+    val progress by viewModel.loadingProgress.collectAsStateWithLifecycle()
+    val isReducedMotion by viewModel.isReducedMotion.collectAsStateWithLifecycle()
 
-    val scale = remember { Animatable(0.85f) }
-    val alpha = remember { Animatable(0f) }
+    var hasNavigated by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        alpha.animateTo(1f, animationSpec = tween(500, easing = FastOutSlowInEasing))
-        scale.animateTo(1f, animationSpec = tween(500, easing = FastOutSlowInEasing))
-        delay(600) // Brief subtle transition for brand recognition
-        when (navTarget) {
-            SplashNavigationTarget.Home -> onNavigateToHome()
-            SplashNavigationTarget.Onboarding -> onNavigateToOnboarding()
-            SplashNavigationTarget.Loading -> {
-                // If still resolving, delay a frame
-                delay(100)
-                if (navTarget == SplashNavigationTarget.Home) onNavigateToHome() else onNavigateToOnboarding()
+    // Smooth forward-only progress animation (never reverses)
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = if (isReducedMotion) 0 else 300),
+        label = "splashProgressFill"
+    )
+
+    // Startup navigation guard: execute once and pop Splash from backstack
+    LaunchedEffect(navTarget) {
+        if (navTarget != SplashNavigationTarget.Loading && !hasNavigated) {
+            val minDisplayDelay = if (isReducedMotion) 300L else 900L
+            delay(minDisplayDelay)
+            if (!hasNavigated) {
+                hasNavigated = true
+                when (navTarget) {
+                    SplashNavigationTarget.Home -> onNavigateToHome()
+                    SplashNavigationTarget.Login -> onNavigateToLogin()
+                    SplashNavigationTarget.Onboarding -> (onNavigateToOnboarding ?: onNavigateToLogin)()
+                    SplashNavigationTarget.Loading -> {}
+                }
             }
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundDark),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Reference Clean Artwork Background (Contains the single official 3D logo, subtitle, and tagline)
+        Image(
+            painter = painterResource(id = R.drawable.bg_splash_clean),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Lower Section: Single Live Progress Bar and Single "Loading..." Text
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
             modifier = Modifier
-                .padding(24.dp)
-                .scale(scale.value)
-                .alpha(alpha.value)
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .padding(bottom = 60.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Bottom
         ) {
-            // Visual Logo Motif: Connected number nodes
+            // Reference-Exact Capsule Progress Bar (Electric Cyan border, deep navy track, cyan fill)
             Box(
                 modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(com.zynpath.game.core.designsystem.theme.BackgroundCard),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth(0.52f)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(Color(0xFF001736))
+                    .border(1.5.dp, Color(0xFF0077D4), RoundedCornerShape(7.dp))
             ) {
-                Text(
-                    text = "1 → N",
-                    color = PathCyanGlow,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animatedProgress.coerceIn(0.02f, 1f))
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF0091EA),
+                                    Color(0xFF00B0FF),
+                                    Color(0xFF00E5FF)
+                                )
+                            )
+                        )
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
+            // Single "Loading..." label matching reference typography
             Text(
-                text = "Zynpath",
-                fontSize = 40.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = TextPrimary,
-                letterSpacing = 1.sp
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "Number Path Puzzle",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = ForestMint,
-                letterSpacing = 0.5.sp
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "One path. Every number.",
-                fontSize = 14.sp,
-                color = TextMuted,
-                textAlign = TextAlign.Center
+                text = "Loading...",
+                style = TextStyle(
+                    fontFamily = FontFamily.Default,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    letterSpacing = 0.5.sp,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(0f, 1.5f),
+                        blurRadius = 4f
+                    )
+                )
             )
         }
     }

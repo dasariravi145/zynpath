@@ -3,7 +3,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Midnight Dark Background -->
     <path
         android:fillColor="#0B132B"
         android:pathData="M0,0h108v108h-108z" />
+
+    <!-- Subtle Grid Architecture Lines (Safe Area Background Accent) -->
+    <path
+        android:strokeColor="#172244"
+        android:strokeWidth="1"
+        android:pathData="M 32,18 L 32,90 M 54,18 L 54,90 M 76,18 L 76,90 M 18,32 L 90,32 M 18,54 L 90,54 M 18,76 L 90,76" />
 </vector>

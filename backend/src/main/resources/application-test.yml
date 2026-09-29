@@ -1,0 +1,20 @@
+server:
+  port: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+zynpath:
+  environment: test
+  cors:
+    allowed-origins:
+      - "http://localhost:*"
+  websocket:
+    allowed-origins: "*"
+  logging:
+    level:
+      root: WARN
+      com.zynpath.backend: INFO

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy Backup Rules for Android versions prior to API 31 -->
+<full-backup-content>
+    <!-- Include local Solo level progression and preferences -->
+    <include domain="database" path="zynpath_database" />
+    <include domain="sharedpref" path="." />
+    <!-- Exclude hardware Keystore encrypted session files -->
+    <exclude domain="file" path="zyn_secure_session.enc" />
+</full-backup-content>

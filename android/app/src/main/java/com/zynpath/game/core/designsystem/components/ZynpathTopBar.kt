@@ -1,6 +1,7 @@
 package com.zynpath.game.core.designsystem.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
@@ -22,6 +23,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zynpath.game.core.designsystem.theme.BackgroundCard
 import com.zynpath.game.core.designsystem.theme.BackgroundDark
+import com.zynpath.game.core.designsystem.theme.GameRoyalBlue
+import com.zynpath.game.core.designsystem.theme.GameTypography
+import com.zynpath.game.core.designsystem.theme.TextMuted
 import com.zynpath.game.core.designsystem.theme.TextPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,14 +42,13 @@ fun ZynpathTopBar(
             androidx.compose.foundation.layout.Column {
                 Text(
                     text = title,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = com.zynpath.game.core.designsystem.theme.GameTypography.screenHeading.copy(fontSize = 18.sp),
                     color = TextPrimary
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
-                        fontSize = 12.sp,
+                        style = com.zynpath.game.core.designsystem.theme.GameTypography.secondaryInfo,
                         color = com.zynpath.game.core.designsystem.theme.TextMuted
                     )
                 }
@@ -60,6 +63,7 @@ fun ZynpathTopBar(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(BackgroundCard)
+                        .border(1.dp, GameRoyalBlue.copy(alpha = 0.5f), CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,

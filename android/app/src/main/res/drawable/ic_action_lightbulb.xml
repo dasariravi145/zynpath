@@ -1,0 +1,33 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+    <!-- Glowing lightbulb matching Reference Panel 05 Hint -->
+    <!-- Bulb Glass (Warm golden yellow) -->
+    <path
+        android:pathData="M14,3 C9.6,3 6,6.6 6,11 C6,13.8 7.4,16.2 9.5,17.7 L9.5,20 C9.5,20.6 9.9,21 10.5,21 L17.5,21 C18.1,21 18.5,20.6 18.5,20 L18.5,17.7 C20.6,16.2 22,13.8 22,11 C22,6.6 18.4,3 14,3 Z"
+        android:fillColor="#FFD54F" />
+    <!-- Inner warm highlight -->
+    <path
+        android:pathData="M14,5 C10.7,5 8,7.7 8,11 C8,12.8 8.8,14.5 10.1,15.6"
+        android:strokeColor="#FFF9C4"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round" />
+    <!-- Base Screw Threads -->
+    <path
+        android:pathData="M10,22 L18,22"
+        android:strokeColor="#CFD8DC"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M11,24 L17,24"
+        android:strokeColor="#B0BEC5"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M12.5,25.5 L15.5,25.5"
+        android:strokeColor="#78909C"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+</vector>

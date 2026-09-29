@@ -1,0 +1,22 @@
+{
+  "title": "Zynpath: Number Path Puzzle",
+  "shortDescription": "One path. Every number. Connect checkpoints and cover the whole board!",
+  "fullDescription": "Welcome to Zynpath: Number Path Puzzle — the ultimate logic challenge where every cell matters!\n\nOne path. Every number.\nCan you draw a single, uninterrupted line that connects every checkpoint in ascending order and fills every required cell on the grid?\n\n■ HOW TO PLAY\n1. Start at Checkpoint 1: Every puzzle begins from number 1.\n2. Ascending Checkpoints: Connect checkpoints in strictly sequential order (1 → 2 → 3 → ... → N). No skipping numbers!\n3. Strictly Orthogonal: Move horizontally or vertically into adjacent cells. Diagonal shortcuts are never allowed.\n4. Full Grid Coverage: 100% of required board cells must be covered. Reaching the final number is NOT enough if empty cells remain.\n5. Navigate Walls: Crimson wall barriers block specific cell edges. Route through corridors around them!\n6. Free Undo & Reset: Made a wrong turn? Undo individual steps or reset the board at any time without penalty.\n\n■ 6 CANONICAL WORLDS • 300 OFFLINE LEVELS\nEmbark on a crafted campaign across 6 distinct worlds:\n• World 1: The Awakening (4x4 grids, gentle introduction)\n• World 2: Binary Drift (5x5 grids, longer connections)\n• World 3: Labyrinth of Walls (5x5 grids, interior barrier corridors)\n• World 4: Quantum Portal (6x6 grids, intricate labyrinths)\n• World 5: Temporal Flux (7x7 grids, complex multi-checkpoint paths)\n• World 6: The Singularity (8x8 grids, 100 expert mastery challenges)\n\nEvery level is 100% offline-ready. Play anytime, anywhere—on planes, subways, or offline retreats.\n\n■ DAILY CHALLENGE\nParticipate in a brand-new, globally synchronized puzzle every 24 hours at 00:00 UTC!\n• Build and protect your daily streak across consecutive UTC dates.\n• Compete on the official Daily Leaderboard with server-verified solve times.\n• Complete offline and sync your participation when you reconnect.\n\n■ REAL-TIME MULTIPLAYER MODES\nPut your pathfinding skills to the test with real-time puzzle racing:\n• Quick Duel: Instant 1v1 matchmaking on identical solver-verified puzzles. First player to complete dual-win coverage wins!\n• Friend Duel: Challenge friends directly with private 6-character room codes and interactive rematches.\n• Mini League: Host or join private 2–5 player party rooms with live progress tracking and podium finishes.\n\n■ GUEST-FIRST & PRIVACY-AWARE\n• Start playing immediately upon install—zero mandatory sign-in or account creation.\n• Optional account linking with Google or Facebook preserves all local progress.\n• Your puzzle trajectories, touch coordinates, and solve paths remain 100% private on your device.\n\n■ OPTIONAL PREMIUM & FAIR PLAY\nEnhance your aesthetic experience with Zynpath Premium:\n• Exclusive cosmetic themes (Midnight Glass, Neon Cyber, Papercraft).\n• Custom path particle trails and avatar frames.\n• Advanced personal solve-speed distributions and backtracking analytics.\n• 100% Fair Play Guarantee: Premium NEVER alters puzzle difficulty, hint allowances in competitive duels, or timer conditions. Skill and logic determine every victory.\n\nDownload Zynpath today and experience pure continuous-path logic puzzle mastery!",
+  "category": "GAME_PUZZLE",
+  "defaultLanguage": "en-US",
+  "tags": [
+    "puzzle",
+    "logic",
+    "brain games",
+    "number puzzle",
+    "path puzzle",
+    "offline game",
+    "multiplayer puzzle",
+    "daily challenge"
+  ],
+  "contact": {
+    "supportEmail": "support@zynpath.com",
+    "privacyPolicyUrl": "https://zynpath.com/privacy",
+    "termsOfServiceUrl": "https://zynpath.com/terms"
+  }
+}

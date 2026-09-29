@@ -1,0 +1,33 @@
+package com.zynpath.backend.security.audit;
+
+/**
+ * Categorized security and audit events for privacy-conscious security observability.
+ *
+ * Implements Prompt 36 Section 59, 60, 73.
+ */
+public enum SecurityEventType {
+    AUTH_SUCCESS,
+    AUTH_FAILURE,
+    LOGIN_SUCCESS,
+    ACCOUNT_LINKED,
+    LOGOUT,
+    SESSION_REVOKED,
+    AUTHORIZATION_DENIED,
+    RATE_LIMIT_EXCEEDED,
+    INVALID_COMPLETION_CLAIM,
+    SUSPICIOUS_REWARD_ATTEMPT,
+    INVITATION_SPAM_BLOCKED,
+    WEBSOCKET_UNAUTHORIZED,
+    ACCOUNT_DELETED,
+    DATA_EXPORTED,
+    PUZZLE_INTEGRITY_VIOLATION,
+    ENTITLEMENT_VERIFIED,
+    REWARD_GRANTED,
+    PUZZLE_SOLVE_SUBMITTED,
+    FRIEND_REQUEST_SENT,
+    FRIEND_REQUEST_ACCEPTED,
+    PLAYER_BLOCKED,
+    INVITATION_SENT,
+    PUSH_TOKEN_REGISTERED,
+    ABUSE_SUSPECTED
+}

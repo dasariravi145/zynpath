@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "puzzleId": "w1_lvl9",
+  "puzzleVersion": 1,
+  "gridDimensions": {"rows": 4, "columns": 4},
+  "requiredCells": [
+    {"row": 0, "column": 0},
+    {"row": 0, "column": 1},
+    {"row": 0, "column": 2},
+    {"row": 0, "column": 3},
+    {"row": 1, "column": 0},
+    {"row": 1, "column": 1},
+    {"row": 1, "column": 2},
+    {"row": 1, "column": 3},
+    {"row": 2, "column": 0},
+    {"row": 2, "column": 1},
+    {"row": 2, "column": 2},
+    {"row": 2, "column": 3},
+    {"row": 3, "column": 0},
+    {"row": 3, "column": 1},
+    {"row": 3, "column": 2},
+    {"row": 3, "column": 3}
+  ],
+  "checkpoints": [
+    {"number": 1, "row": 0, "column": 0},
+    {"number": 2, "row": 1, "column": 3},
+    {"number": 3, "row": 2, "column": 3},
+    {"number": 4, "row": 3, "column": 0},
+    {"number": 5, "row": 1, "column": 0}
+  ],
+  "blockedEdges": [
+  ],
+  "metadata": {
+    "generatorVersion": "1.0.0",
+    "generationSeed": 1009,
+    "difficultyEstimate": 0.18,
+    "difficultyBand": "BEGINNER",
+    "uniquenessStatus": "UNIQUE",
+    "fingerprint": "1abf071231f312457d90277bb34a3a18b577fa5184dbdf393c09fa593cb72d2a"
+  }
+}

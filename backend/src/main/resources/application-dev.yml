@@ -1,0 +1,15 @@
+server:
+  port: ${PORT:8080}
+
+zynpath:
+  environment: development
+  cors:
+    allowed-origins:
+      - "http://localhost:*"
+      - "http://10.0.2.2:*"
+      - "http://127.0.0.1:*"
+      - "http://192.168.*:*"
+      - "*"
+  logging:
+    level:
+      com.zynpath.backend: DEBUG

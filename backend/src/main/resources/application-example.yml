@@ -1,0 +1,36 @@
+# ===================================================================
+# Zynpath Backend - Safe Environment Configuration Example Template
+# DO NOT COMMIT PRODUCTION SECRETS OR CREDENTIALS IN THIS REPOSITORY
+# ===================================================================
+
+server:
+  port: 8080
+  address: 0.0.0.0
+
+spring:
+  application:
+    name: zynpath-backend
+  profiles:
+    active: dev
+
+# Database connection placeholder (evaluated in Phase 5+)
+# spring:
+#   datasource:
+#     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:zynpath}
+#     username: ${DB_USER:postgres}
+#     password: ${DB_PASSWORD:secret}
+
+zynpath:
+  environment: ${ENVIRONMENT:development}
+  cors:
+    allowed-origins:
+      - "http://localhost:8080"
+      - "http://10.0.2.2:8080"
+  auth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com}
+    facebook:
+      app-id: ${FACEBOOK_APP_ID:YOUR_FACEBOOK_APP_ID}
+      app-secret: ${FACEBOOK_APP_SECRET:YOUR_FACEBOOK_APP_SECRET}
+    session:
+      ttl-seconds: ${SESSION_TTL_SECONDS:2592000}

@@ -1,0 +1,34 @@
+{
+  "brandName": "Zynpath",
+  "fullName": "Zynpath: Number Path Puzzle",
+  "tagline": "One path. Every number.",
+  "colors": {
+    "primary": "#00F5D4",
+    "primaryGlow": "#3300F5D4",
+    "secondaryForest": "#2E5D4B",
+    "secondaryForestMint": "#52B788",
+    "secondaryForestAccent": "#40916C",
+    "accentGold": "#F59E0B",
+    "wallBarrierCrimson": "#E63946",
+    "backgroundMidnightDark": "#0B132B",
+    "backgroundMidnightSurface": "#1C2541",
+    "backgroundMidnightCard": "#223055",
+    "textPrimary": "#FFFFFF",
+    "textSecondary": "#94A3B8",
+    "textMuted": "#64748B"
+  },
+  "typography": {
+    "fontFamily": "Inter, Roboto, sans-serif",
+    "headingWeight": 700,
+    "bodyWeight": 400,
+    "titleScale": "24sp",
+    "taglineScale": "14sp"
+  },
+  "iconSpecification": {
+    "dimensionsDp": "108x108",
+    "safeAreaDiameterDp": 72,
+    "safeAreaBounds": { "left": 18, "top": 18, "right": 90, "bottom": 90 },
+    "pathStrokeWidthDp": 6,
+    "checkpointRadiusDp": 9
+  }
+}

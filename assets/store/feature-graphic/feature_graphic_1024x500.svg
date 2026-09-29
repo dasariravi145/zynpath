@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080D1D" />
+      <stop offset="60%" stop-color="#0B132B" />
+      <stop offset="100%" stop-color="#141E38" />
+    </linearGradient>
+
+    <!-- Path Glow Filter -->
+    <filter id="cyanGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="500" fill="url(#bgGrad)" />
+
+  <!-- Subtle Board Grid Background (Left Region: x=80 to 440, y=80 to 420) -->
+  <rect x="90" y="80" width="340" height="340" rx="20" fill="#1C2541" stroke="#223055" stroke-width="2" />
+
+  <!-- Grid Cell Guidelines (4x4 cells inside board) -->
+  <line x1="175" y1="80" x2="175" y2="420" stroke="#223055" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="260" y1="80" x2="260" y2="420" stroke="#223055" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="345" y1="80" x2="345" y2="420" stroke="#223055" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="90" y1="165" x2="430" y2="165" stroke="#223055" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="90" y1="250" x2="430" y2="250" stroke="#223055" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="90" y1="335" x2="430" y2="335" stroke="#223055" stroke-width="1.5" stroke-dasharray="4,4" />
+
+  <!-- Crimson Wall Edge Obstacles -->
+  <line x1="175" y1="165" x2="175" y2="250" stroke="#E63946" stroke-width="6" stroke-linecap="round" />
+  <line x1="260" y1="250" x2="345" y2="250" stroke="#E63946" stroke-width="6" stroke-linecap="round" />
+
+  <!-- Path Glow Overlay -->
+  <path d="M 132.5,122.5 L 387.5,122.5 L 387.5,207.5 L 217.5,207.5 L 217.5,292.5 L 387.5,292.5 L 387.5,377.5 L 132.5,377.5 L 132.5,207.5"
+        fill="none" stroke="#00F5D4" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"
+        opacity="0.35" filter="url(#cyanGlow)" />
+
+  <!-- Core Orthogonal Path Ribbon -->
+  <path d="M 132.5,122.5 L 387.5,122.5 L 387.5,207.5 L 217.5,207.5 L 217.5,292.5 L 387.5,292.5 L 387.5,377.5 L 132.5,377.5 L 132.5,207.5"
+        fill="none" stroke="#00F5D4" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Checkpoint 1 (Start - Forest Mint) at (132.5, 122.5) -->
+  <circle cx="132.5" cy="122.5" r="24" fill="#52B788" stroke="#FFFFFF" stroke-width="4" />
+  <text x="132.5" y="131" font-family="'Inter', sans-serif" font-size="24" font-weight="900" fill="#0B132B" text-anchor="middle">1</text>
+
+  <!-- Checkpoint 2 at (387.5, 207.5) -->
+  <circle cx="387.5" cy="207.5" r="24" fill="#40916C" stroke="#FFFFFF" stroke-width="4" />
+  <text x="387.5" y="216" font-family="'Inter', sans-serif" font-size="24" font-weight="900" fill="#FFFFFF" text-anchor="middle">2</text>
+
+  <!-- Checkpoint 3 at (217.5, 292.5) -->
+  <circle cx="217.5" cy="292.5" r="24" fill="#2E5D4B" stroke="#FFFFFF" stroke-width="4" />
+  <text x="217.5" y="301" font-family="'Inter', sans-serif" font-size="24" font-weight="900" fill="#FFFFFF" text-anchor="middle">3</text>
+
+  <!-- Checkpoint 4 (Final - Accent Gold) at (132.5, 207.5) -->
+  <circle cx="132.5" cy="207.5" r="28" fill="#F59E0B" stroke="#FFFFFF" stroke-width="5" />
+  <text x="132.5" y="217" font-family="'Inter', sans-serif" font-size="26" font-weight="900" fill="#0B132B" text-anchor="middle">4</text>
+
+  <!-- Right Region: Brand Typography & Feature Highlights -->
+  <!-- Title -->
+  <text x="520" y="170" font-family="'Inter', 'Roboto', sans-serif" font-size="72" font-weight="900" fill="#FFFFFF" letter-spacing="2">
+    ZYN<tspan fill="#00F5D4">PATH</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="524" y="222" font-family="'Inter', 'Roboto', sans-serif" font-size="26" font-weight="700" fill="#52B788" letter-spacing="3">
+    ONE PATH. EVERY NUMBER.
+  </text>
+
+  <!-- Value Proposition Bullet Description -->
+  <text x="524" y="280" font-family="'Inter', 'Roboto', sans-serif" font-size="18" font-weight="400" fill="#94A3B8" line-height="26">
+    Draw a single continuous line connecting checkpoints in order.
+  </text>
+  <text x="524" y="308" font-family="'Inter', 'Roboto', sans-serif" font-size="18" font-weight="400" fill="#94A3B8">
+    Cover 100% of the grid. No diagonals. Pure logic.
+  </text>
+
+  <!-- Feature Badge Pills -->
+  <g transform="translate(524, 345)">
+    <!-- Pill 1: 300 Solo Levels -->
+    <rect x="0" y="0" width="130" height="36" rx="18" fill="#1C2541" stroke="#00F5D4" stroke-width="1.5" />
+    <text x="65" y="23" font-family="'Inter', sans-serif" font-size="13" font-weight="700" fill="#00F5D4" text-anchor="middle">300 Levels</text>
+
+    <!-- Pill 2: Daily Challenge -->
+    <rect x="142" y="0" width="140" height="36" rx="18" fill="#1C2541" stroke="#52B788" stroke-width="1.5" />
+    <text x="212" y="23" font-family="'Inter', sans-serif" font-size="13" font-weight="700" fill="#52B788" text-anchor="middle">Daily Challenge</text>
+
+    <!-- Pill 3: 1v1 Duels -->
+    <rect x="294" y="0" width="130" height="36" rx="18" fill="#1C2541" stroke="#F59E0B" stroke-width="1.5" />
+    <text x="359" y="23" font-family="'Inter', sans-serif" font-size="13" font-weight="700" fill="#F59E0B" text-anchor="middle">1v1 Duels</text>
+  </g>
+</svg>

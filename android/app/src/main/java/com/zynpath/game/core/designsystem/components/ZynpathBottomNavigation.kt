@@ -71,9 +71,9 @@ fun ZynpathBottomNavigation(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = BackgroundDark,
-                    selectedTextColor = ForestMint,
-                    indicatorColor = ForestMint,
+                    selectedIconColor = com.zynpath.game.core.designsystem.theme.GameDeepNavy,
+                    selectedTextColor = com.zynpath.game.core.designsystem.theme.GameElectricCyan,
+                    indicatorColor = com.zynpath.game.core.designsystem.theme.GameElectricCyan,
                     unselectedIconColor = TextMuted,
                     unselectedTextColor = TextMuted
                 )

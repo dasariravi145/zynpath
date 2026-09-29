@@ -24,6 +24,74 @@
     <string name="onboarding_next">Next</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_play">PLAY</string>
+    <string name="onboarding_how_to_play">HOW TO PLAY</string>
+    <string name="onboarding_welcome_desc">Draw a single continuous line connecting numbered checkpoints in ascending order while covering every single cell on the board.</string>
+
+    <!-- Interactive Tutorial Stages -->
+    <string name="tutorial_title">Interactive Tutorial</string>
+    <string name="tutorial_stage_counter">Stage %1$d of %2$d</string>
+    <string name="tutorial_skip">Skip Tutorial</string>
+    <string name="tutorial_replay">Replay Tutorial</string>
+    <string name="tutorial_undo">Undo</string>
+    <string name="tutorial_reset">Reset</string>
+    <string name="tutorial_alt_text_mode">Text Guide</string>
+    <string name="tutorial_interactive_mode">Play Board</string>
+
+    <!-- Stage 1: Start at Checkpoint 1 -->
+    <string name="tutorial_s1_title">Start at Checkpoint 1</string>
+    <string name="tutorial_s1_desc">Every puzzle begins at checkpoint #1. Touch cell 1 to initiate your path.</string>
+    <string name="tutorial_s1_tip">Rule: The path must always originate from number 1.</string>
+
+    <!-- Stage 2: Orthogonal Continuous Path -->
+    <string name="tutorial_s2_title">Continuous Orthogonal Path</string>
+    <string name="tutorial_s2_desc">Draw your path into adjacent cells horizontally or vertically. Diagonal moves are never allowed.</string>
+    <string name="tutorial_s2_tip">Rule: Move up, down, left, or right. No diagonal cuts!</string>
+
+    <!-- Stage 3: Ascending Checkpoint Order -->
+    <string name="tutorial_s3_title">Ascending Checkpoint Order</string>
+    <string name="tutorial_s3_desc">Connect checkpoints in strictly ascending order: 1 → 2 → 3. You cannot skip ahead.</string>
+    <string name="tutorial_s3_tip">Rule: Always visit the lowest unvisited number next.</string>
+
+    <!-- Stage 4: Full-Grid Coverage -->
+    <string name="tutorial_s4_title">Full-Grid Coverage</string>
+    <string name="tutorial_s4_desc">Every playable cell must be visited exactly once. Reaching the final checkpoint alone is NOT a victory if cells are left empty!</string>
+    <string name="tutorial_s4_tip">Crucial: 100% cell coverage is required to solve any Zynpath puzzle.</string>
+
+    <!-- Stage 5: Blocked-Edge Walls -->
+    <string name="tutorial_s5_title">Blocked-Edge Walls</string>
+    <string name="tutorial_s5_desc">Crimson walls are barriers between cells, not blocked tiles. Both cells are playable, but you must route around the barrier edge.</string>
+    <string name="tutorial_s5_tip">Rule: Walls divide cell edges. Route through corridors around them.</string>
+
+    <!-- Stage 6: Mistakes and Recovery -->
+    <string name="tutorial_s6_title">Mistakes &amp; Recovery</string>
+    <string name="tutorial_s6_desc">Took a wrong turn? Tap Undo to step back one cell, or Reset to start over. Dragging backwards along your path also backtracks.</string>
+    <string name="tutorial_s6_tip">Tip: Undo and Reset are always free with zero penalty.</string>
+
+    <!-- Stage 7: Complete Full Puzzle -->
+    <string name="tutorial_s7_title">Complete Your First Puzzle</string>
+    <string name="tutorial_s7_desc">Put all the rules together! Start at 1, route around walls, visit checkpoints in order, and cover all 9 cells to the final number.</string>
+    <string name="tutorial_s7_tip">Goal: 100% coverage + ascending checkpoints = Victory!</string>
+
+    <!-- Tutorial Error / Rejection Feedback -->
+    <string name="tutorial_err_start_one">First step must be starting checkpoint #1.</string>
+    <string name="tutorial_err_diagonal">Diagonal movements are not allowed. Move horizontally or vertically.</string>
+    <string name="tutorial_err_order">Checkpoints must be visited in order: 1 → 2 → 3.</string>
+    <string name="tutorial_err_premature_final">Uncovered cells remain! All cells must be visited before reaching the final checkpoint.</string>
+    <string name="tutorial_err_wall">Blocked by a wall! Route around the barrier edge.</string>
+    <string name="tutorial_err_revisit">Cannot cross your own path. Each cell can only be visited once.</string>
+
+    <!-- Tutorial Completion -->
+    <string name="tutorial_completed_title">You completed your first Zynpath puzzle!</string>
+    <string name="tutorial_completed_subtitle">You\'ve mastered continuous number paths, ascending checkpoints, and wall navigation.</string>
+    <string name="tutorial_btn_start_solo">Start Solo Level 1</string>
+    <string name="tutorial_btn_home">Return Home</string>
+
+    <!-- Feature Discovery -->
+    <string name="discovery_world3_title">World 3: Wall Obstacles</string>
+    <string name="discovery_world3_desc">Interior crimson walls are now active! Remember: walls are blocked edges between cells. Route around them to reach open corridors.</string>
+    <string name="discovery_world3_replay_tutorial">Replay Wall Tutorial</string>
+    <string name="discovery_dismiss">Got it</string>
 
     <!-- Settings -->
     <string name="settings_sound_effects">Sound Effects</string>

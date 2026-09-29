@@ -1,0 +1,39 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <!-- Daily Challenge Calendar matching Reference Panel 03 -->
+    <!-- Shadow / Base Card -->
+    <path
+        android:pathData="M7,9 C7,7.34 8.34,6 10,6 L26,6 C27.66,6 29,7.34 29,9 L29,28 C29,29.66 27.66,31 26,31 L10,31 C8.34,31 7,29.66 7,28 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Red Header Banner -->
+    <path
+        android:pathData="M7,9 C7,7.34 8.34,6 10,6 L26,6 C27.66,6 29,7.34 29,9 L29,13 L7,13 Z"
+        android:fillColor="#E53935" />
+
+    <!-- Binder Rings / Pegs -->
+    <path
+        android:pathData="M12,4 L12,8"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M24,4 L24,8"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round" />
+
+    <!-- Number "28" Graphic in Red/Brown -->
+    <!-- Digit '2' -->
+    <path
+        android:pathData="M13,17 C13,16 14,15 15.5,15 C17,15 18,16 18,17 C18,18.5 16.5,19.5 13,22 L18.5,22 L18.5,23.5 L12.5,23.5 L12.5,22 C15,19.5 16.5,18.2 16.5,17 C16.5,16.2 16,15.8 15.5,15.8 C14.5,15.8 14.2,16.5 14.2,17 Z"
+        android:fillColor="#D32F2F" />
+
+    <!-- Digit '8' -->
+    <path
+        android:pathData="M22.5,15 C24,15 25,16 25,17 C25,17.8 24.4,18.5 23.6,18.8 C24.6,19.2 25.2,20 25.2,21 C25.2,22.4 24,23.5 22.5,23.5 C21,23.5 19.8,22.4 19.8,21 C19.8,20 20.4,19.2 21.4,18.8 C20.6,18.5 20,17.8 20,17 C20,16 21,15 22.5,15 Z M22.5,16 C21.8,16 21.2,16.5 21.2,17.1 C21.2,17.7 21.8,18.2 22.5,18.2 C23.2,18.2 23.8,17.7 23.8,17.1 C23.8,16.5 23.2,16 22.5,16 Z M22.5,19.2 C21.6,19.2 21,19.8 21,20.6 C21,21.4 21.6,22 22.5,22 C23.4,22 24,21.4 24,20.6 C24,19.8 23.4,19.2 22.5,19.2 Z"
+        android:fillColor="#D32F2F" />
+</vector>

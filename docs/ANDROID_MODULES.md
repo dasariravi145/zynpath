@@ -21,10 +21,35 @@ android/
 │   │   │   │   ├── core/
 │   │   │   │   │   ├── puzzle/
 │   │   │   │   │   │   ├── model/
-│   │   │   │   │   │   │   ├── GridCoordinate.kt    # (row, col) coordinates & orthogonal checks
-│   │   │   │   │   │   │   ├── WallEdge.kt          # Canonical blocked connection model
-│   │   │   │   │   │   │   ├── PuzzleBoardState.kt  # Grid state, checkpoints & authoritative solver
-│   │   │   │   │   │   │   └── SamplePuzzles.kt     # Verified 3x3 and 4x4 preview & tutorial boards
+│   │   │   │   │   │   │   ├── GridPosition.kt      # (row, column) coordinates & orthogonal checks
+│   │   │   │   │   │   │   ├── GridCoordinate.kt    # Typealias to GridPosition (backward compat)
+│   │   │   │   │   │   │   ├── GridDimensions.kt    # Immutable grid dimensions with overflow safety
+│   │   │   │   │   │   │   ├── Direction.kt         # UP, DOWN, LEFT, RIGHT orthogonal directions
+│   │   │   │   │   │   │   ├── NumberedCheckpoint.kt # Checkpoint #1..N model with position
+│   │   │   │   │   │   │   ├── BlockedEdge.kt       # Direction-independent canonical wall representation
+│   │   │   │   │   │   │   ├── WallEdge.kt          # Typealias to BlockedEdge (backward compat)
+│   │   │   │   │   │   │   ├── PuzzleCell.kt        # Minimal decoupled domain cell model
+│   │   │   │   │   │   │   ├── GridGraph.kt         # Planar grid graph with unblocked neighbor queries
+│   │   │   │   │   │   │   ├── PuzzleDefinition.kt  # Immutable puzzle topology definition
+│   │   │   │   │   │   │   ├── PathSegment.kt       # Directed orthogonal step between consecutive cells
+│   │   │   │   │   │   │   ├── PuzzlePath.kt        # Immutable ordered path representation
+│   │   │   │   │   │   │   ├── PuzzleBoardState.kt  # Grid state, checkpoints & solver
+│   │   │   │   │   │   │   ├── SamplePuzzles.kt     # Preview & tutorial boards
+│   │   │   │   │   │   │   ├── WorldConfiguration.kt # Single source of truth for Worlds 1-6
+│   │   │   │   │   │   │   └── ValidatedCompletionResult.kt # Completion contract & StarRatingPolicy
+│   │   │   │   │   │   ├── engine/
+│   │   │   │   │   │   │   ├── GameStatus.kt        # NOT_STARTED, IN_PROGRESS, COMPLETED, PAUSED
+│   │   │   │   │   │   │   ├── MoveRejectionReason.kt # Structured rejection codes
+│   │   │   │   │   │   │   ├── PuzzleAction.kt      # StartPath, ExtendPath, BacktrackTo, ResetPath, Pause/Resume
+│   │   │   │   │   │   │   ├── PuzzleEngineResult.kt # Accepted / Rejected outcome sealed interface
+│   │   │   │   │   │   │   ├── PuzzleGameState.kt   # Immutable game state snapshot with toBoardState() mapper
+│   │   │   │   │   │   │   ├── CompletionValidator.kt # 8-point independent authoritative completion validator
+│   │   │   │   │   │   │   └── PuzzleEngine.kt      # Interactive path engine with drag-undo and dual win gating
+│   │   │   │   │   │   ├── validator/
+│   │   │   │   │   │   │   ├── PuzzleDefinitionValidator.kt # Rejects malformed puzzle definitions
+│   │   │   │   │   │   │   └── FoundationalPathValidator.kt # Enforces non-negotiable path rules & dual win
+│   │   │   │   │   │   ├── fixtures/
+│   │   │   │   │   │   │   └── SamplePuzzleFixtures.kt # 4x4, 5x5, 5x5 walls & invalid fixtures
 │   │   │   │   │   │   └── ui/
 │   │   │   │   │   │       └── PuzzleBoard.kt       # High-performance Canvas puzzle board renderer
 │   │   │   │   │   ├── designsystem/
@@ -57,14 +82,18 @@ android/
 │   │   │   │   │   │   ├── entity/
 │   │   │   │   │   │   │   ├── LevelProgressEntity.kt
 │   │   │   │   │   │   │   ├── PlayerStatsEntity.kt
-│   │   │   │   │   │   │   └── DailyChallengeEntity.kt
+│   │   │   │   │   │   │   ├── DailyChallengeEntity.kt
+│   │   │   │   │   │   │   └── GameSessionEntity.kt # Resumable active session model
 │   │   │   │   │   │   ├── dao/
 │   │   │   │   │   │   │   ├── LevelProgressDao.kt
 │   │   │   │   │   │   │   ├── PlayerStatsDao.kt
-│   │   │   │   │   │   │   └── DailyChallengeDao.kt
-│   │   │   │   │   │   └── ZynpathDatabase.kt       # Room Database definition
+│   │   │   │   │   │   │   ├── DailyChallengeDao.kt
+│   │   │   │   │   │   │   └── GameSessionDao.kt   # Session lifecycle DAO
+│   │   │   │   │   │   ├── repository/
+│   │   │   │   │   │   │   └── ProgressRepository.kt # Progress observation, personal bests, transactions
+│   │   │   │   │   │   └── ZynpathDatabase.kt       # Room Database v2 definition & MIGRATION_1_2
 │   │   │   │   │   └── di/
-│   │   │   │   │       ├── AppModule.kt             # DataStore & app dispatchers
+│   │   │   │   │       ├── AppModule.kt             # DataStore, repository & dispatchers
 │   │   │   │   │       └── DatabaseModule.kt        # Room DB & DAO providers
 │   │   │   │   └── feature/
 │   │   │   │       ├── navigation/
@@ -108,7 +137,17 @@ android/
 │   │   │           └── ic_launcher_background.xml
 │   │   └── test/
 │   │       └── java/com/zynpath/game/
-│   │           ├── fake/FakePreferencesRepository.kt
+│   │           ├── core/puzzle/
+│   │           │   ├── GridModelTest.kt                 # Coordinates, boundaries, neighbors, overflow
+│   │           │   ├── CheckpointAndWallTest.kt         # Checkpoints & direction-independent walls
+│   │           │   ├── PuzzleDefinitionValidationTest.kt # Structural puzzle definition validation
+│   │           │   ├── FoundationalPathValidationTest.kt # Path validation rules & dual win conditions
+│   │           │   ├── InteractiveMovementTest.kt       # Interactive movement, bounds, start, walls, cycles
+│   │           │   ├── BacktrackingAndResetTest.kt      # Single-step undo, multi-cell retraction, checkpoint reset
+│   │           │   └── InteractiveCompletionTest.kt     # Section 26 Mandatory Tests A-F & completion events
+│   │           ├── fake/
+│   │           │   ├── FakePreferencesRepository.kt
+│   │           │   └── FakeDaos.kt
 │   │           ├── SplashViewModelTest.kt
 │   │           ├── OnboardingViewModelTest.kt
 │   │           ├── SettingsViewModelTest.kt
@@ -116,7 +155,11 @@ android/
 │   │           ├── PuzzleBoardModelTest.kt
 │   │           ├── SamplePuzzleValidityTest.kt
 │   │           ├── WorldSelectionTest.kt
-│   │           └── NavigationDestinationsTest.kt
+│   │           ├── NavigationDestinationsTest.kt
+│   │           ├── ProgressRepositoryTest.kt
+│   │           ├── PreferencesRepositoryTest.kt
+│   │           ├── HomeViewModelTest.kt
+│   │           └── LevelSelectionViewModelTest.kt
 │   └── build.gradle.kts
 ├── gradle/
 │   ├── libs.versions.toml

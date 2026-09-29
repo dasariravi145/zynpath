@@ -1,0 +1,69 @@
+# =========================================================================
+# Zynpath Production Docker Compose Reference Architecture
+# Note: For deployment reference only. Do not commit actual secrets.
+# =========================================================================
+
+version: '3.8'
+
+services:
+  zynpath-db:
+    image: postgres:16-alpine
+    container_name: zynpath-production-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-zynpath}
+      POSTGRES_USER: ${DB_USER:-zynpath_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Error: DB_PASSWORD must be provided}
+    volumes:
+      - zynpath_db_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432" # Bound locally; not exposed directly to public internet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-zynpath_admin} -d ${DB_NAME:-zynpath}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zynpath-net
+
+  zynpath-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zynpath-backend:${APP_VERSION:-1.0.0}
+    container_name: zynpath-production-app
+    restart: always
+    depends_on:
+      zynpath-db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8080
+      DB_HOST: zynpath-db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-zynpath}
+      DB_USER: ${DB_USER:-zynpath_admin}
+      DB_PASSWORD: ${DB_PASSWORD:?Error: DB_PASSWORD must be provided}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Error: GOOGLE_CLIENT_ID must be provided}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
+      SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-2592000}
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-https://zynpath.com,https://api.zynpath.com}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://zynpath.com,https://api.zynpath.com}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - zynpath-net
+
+volumes:
+  zynpath_db_data:
+    driver: local
+
+networks:
+  zynpath-net:
+    driver: bridge

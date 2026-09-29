@@ -1,0 +1,41 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Crown Base Band -->
+    <path
+        android:pathData="M3,18 L21,18 L21,20 L3,20 Z"
+        android:fillColor="#FF8D32"/>
+    <path
+        android:pathData="M3,17 L21,17 L21,19 L3,19 Z"
+        android:fillColor="#FFC247"/>
+    <!-- Jewels on Band -->
+    <path
+        android:pathData="M6,18m-1,0a1,1 0,1 1,2 0a1,1 0,1 1,-2 0"
+        android:fillColor="#21D4FD"/>
+    <path
+        android:pathData="M12,18m-1,0a1,1 0,1 1,2 0a1,1 0,1 1,-2 0"
+        android:fillColor="#20D76B"/>
+    <path
+        android:pathData="M18,18m-1,0a1,1 0,1 1,2 0a1,1 0,1 1,-2 0"
+        android:fillColor="#21D4FD"/>
+    <!-- Crown Spikes -->
+    <path
+        android:pathData="M3,17 L5,8 L9,13 L12,4 L15,13 L19,8 L21,17 Z"
+        android:fillColor="#FFC247"/>
+    <!-- Crown Spikes Highlight -->
+    <path
+        android:pathData="M3,17 L5,8 L9,13 L12,4 L12,17 Z"
+        android:fillColor="#FFE27A"/>
+    <!-- Crown Orbs on Points -->
+    <path
+        android:pathData="M5,8m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0"
+        android:fillColor="#FFE27A"/>
+    <path
+        android:pathData="M12,4m-1.8,0a1.8,1.8 0,1 1,3.6 0a1.8,1.8 0,1 1,-3.6 0"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M19,8m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0"
+        android:fillColor="#FFE27A"/>
+</vector>

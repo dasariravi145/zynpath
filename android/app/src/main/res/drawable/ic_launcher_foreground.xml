@@ -3,30 +3,61 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:scaleX="0.75"
-        android:scaleY="0.75"
-        android:translateX="13.5"
-        android:translateY="13.5">
-        <!-- Continuous Orthogonal Path -->
-        <path
-            android:fillColor="#00000000"
-            android:strokeColor="#00F5D4"
-            android:strokeWidth="8"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round"
-            android:pathData="M 24,24 L 84,24 L 84,54 L 24,54 L 24,84 L 84,84" />
-        <!-- Checkpoint 1 (Start) -->
-        <path
-            android:fillColor="#52B788"
-            android:pathData="M 24,24 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0" />
-        <!-- Checkpoint 2 (Middle) -->
-        <path
-            android:fillColor="#40916C"
-            android:pathData="M 84,54 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0" />
-        <!-- Checkpoint 3 (End) -->
-        <path
-            android:fillColor="#2E5D4B"
-            android:pathData="M 84,84 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0" />
-    </group>
+
+    <!-- Outer Path Glow Halo -->
+    <path
+        android:strokeColor="#3300F5D4"
+        android:strokeWidth="12"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 32,32 L 76,32 L 76,54 L 32,54 L 32,76 L 76,76" />
+
+    <!-- Continuous Orthogonal Core Path Ribbon -->
+    <path
+        android:strokeColor="#00F5D4"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 32,32 L 76,32 L 76,54 L 32,54 L 32,76 L 76,76" />
+
+    <!-- Checkpoint 1 (Start - Forest Mint) -->
+    <path
+        android:fillColor="#52B788"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M 32,32 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0" />
+    <!-- Checkpoint 1 Number '1' -->
+    <path
+        android:strokeColor="#0B132B"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M 30.5,29.5 L 32,28 L 32,36 M 30,36 L 34,36" />
+
+    <!-- Checkpoint 2 (Middle - Forest Accent) -->
+    <path
+        android:fillColor="#40916C"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M 32,54 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0" />
+    <!-- Checkpoint 2 Number '2' -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 29.5,51 C 29.5,49.5 34.5,49.5 34.5,52 C 34.5,54.5 29.5,55.5 29.5,57.5 L 34.5,57.5" />
+
+    <!-- Checkpoint 3 (Final - Accent Gold) -->
+    <path
+        android:fillColor="#F59E0B"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M 76,76 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0" />
+    <!-- Checkpoint 3 Number '3' -->
+    <path
+        android:strokeColor="#0B132B"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 73.5,72.5 C 75,71.5 78.5,71.5 78.5,74 C 78.5,75.5 76.5,76 75.5,76 C 77,76 78.5,76.5 78.5,78.5 C 78.5,80.5 75,80.5 73.5,79.5" />
 </vector>

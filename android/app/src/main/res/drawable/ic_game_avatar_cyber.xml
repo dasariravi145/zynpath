@@ -1,0 +1,34 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Background Circle -->
+    <path
+        android:pathData="M24,24m-22,0a22,22 0,1 1,44 0a22,22 0,1 1,-44 0"
+        android:fillColor="#07142D"/>
+    <!-- Cyber Rim (Electric Cyan) -->
+    <path
+        android:pathData="M24,24m-21,0a21,21 0,1 1,42 0a21,21 0,1 1,-42 0"
+        android:strokeWidth="2"
+        android:strokeColor="#21D4FD"/>
+    <!-- Cyber Shoulders -->
+    <path
+        android:pathData="M11,44 C11,35 15,31 24,31 C33,31 37,35 37,44 Z"
+        android:fillColor="#154A98"/>
+    <!-- Tech Helmet Core -->
+    <path
+        android:pathData="M16,20 C16,13 19.5,8 24,8 C28.5,8 32,13 32,20 C32,26.5 28.5,29 24,29 C19.5,29 16,26.5 16,20 Z"
+        android:fillColor="#101D3C"/>
+    <!-- Cyber Crest / Antennas -->
+    <path
+        android:pathData="M23,5 L25,5 L25,10 L23,10 Z"
+        android:fillColor="#21D4FD"/>
+    <!-- Hexagonal Visor Grid -->
+    <path
+        android:pathData="M18,17 L30,17 L29,22 L19,22 Z"
+        android:fillColor="#21D4FD"/>
+    <path
+        android:pathData="M19,18 L29,18 L28,21 L20,21 Z"
+        android:fillColor="#FFE27A"/>
+</vector>

@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Cyan Glow -->
+    <path
+        android:pathData="M7,3 L17,3 L22,9 L12,22 L2,9 Z"
+        android:fillColor="#3321D4FD"/>
+    <!-- Bottom Facet Left -->
+    <path
+        android:pathData="M2,9 L7,9 L12,22 Z"
+        android:fillColor="#154A98"/>
+    <!-- Bottom Facet Center -->
+    <path
+        android:pathData="M7,9 L17,9 L12,22 Z"
+        android:fillColor="#168BFF"/>
+    <!-- Bottom Facet Right -->
+    <path
+        android:pathData="M17,9 L22,9 L12,22 Z"
+        android:fillColor="#101D3C"/>
+    <!-- Top Table Facet -->
+    <path
+        android:pathData="M7,3 L17,3 L14,7 L10,7 Z"
+        android:fillColor="#FFFFFF"/>
+    <!-- Top Left Facets -->
+    <path
+        android:pathData="M2,9 L7,3 L10,7 L7,9 Z"
+        android:fillColor="#21D4FD"/>
+    <!-- Top Right Facets -->
+    <path
+        android:pathData="M17,3 L22,9 L17,9 L14,7 Z"
+        android:fillColor="#168BFF"/>
+    <!-- Center Top Facet -->
+    <path
+        android:pathData="M10,7 L14,7 L17,9 L7,9 Z"
+        android:fillColor="#80E7FF"/>
+</vector>

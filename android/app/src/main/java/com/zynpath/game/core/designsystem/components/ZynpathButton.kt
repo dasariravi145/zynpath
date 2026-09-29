@@ -1,30 +1,18 @@
 package com.zynpath.game.core.designsystem.components
 
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.zynpath.game.core.designsystem.theme.BackgroundCard
-import com.zynpath.game.core.designsystem.theme.BackgroundDark
-import com.zynpath.game.core.designsystem.theme.ForestMint
-import com.zynpath.game.core.designsystem.theme.TextMuted
-import com.zynpath.game.core.designsystem.theme.TextPrimary
 
+/**
+ * Primary action button for Zynpath.
+ * Delegates to the authoritative [GamePrimaryButton] with Gold & Orange gradients and 3D arcade bevel.
+ */
 @Composable
 fun ZynpathPrimaryButton(
     text: String,
@@ -33,72 +21,43 @@ fun ZynpathPrimaryButton(
     enabled: Boolean = true,
     leadingIcon: (@Composable () -> Unit)? = null
 ) {
-    Button(
+    GamePrimaryButton(
+        text = text,
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(56.dp),
+        modifier = modifier,
         enabled = enabled,
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = ForestMint,
-            contentColor = BackgroundDark,
-            disabledContainerColor = BackgroundCard,
-            disabledContentColor = TextMuted
-        ),
-        contentPadding = PaddingValues(horizontal = 24.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            leadingIcon?.let {
-                it()
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            Text(
-                text = text,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
+        leadingIcon = leadingIcon
+    )
 }
 
+/**
+ * Secondary action button for Zynpath.
+ * Delegates to the authoritative [GameSecondaryButton] with translucent royal-blue glass and glowing border.
+ */
 @Composable
 fun ZynpathSecondaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    borderColor: Color = ForestMint
+    borderColor: Color? = null,
+    leadingIcon: (@Composable () -> Unit)? = null
 ) {
-    OutlinedButton(
+    GameSecondaryButton(
+        text = text,
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(52.dp),
+        modifier = modifier,
         enabled = enabled,
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = TextPrimary
-        ),
-        border = ButtonDefaults.outlinedButtonBorder.copy(
-            brush = androidx.compose.ui.graphics.SolidColor(borderColor)
-        ),
-        contentPadding = PaddingValues(horizontal = 20.dp)
-    ) {
-        Text(
-            text = text,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
+        leadingIcon = leadingIcon
+    )
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF0B132B)
+@Preview(showBackground = true, backgroundColor = 0xFF07142D)
 @Composable
 private fun ZynpathButtonPreview() {
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = Modifier.padding(16.dp),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         ZynpathPrimaryButton(text = "Play Solo (Primary)", onClick = {})
         ZynpathSecondaryButton(text = "World Select (Secondary)", onClick = {})

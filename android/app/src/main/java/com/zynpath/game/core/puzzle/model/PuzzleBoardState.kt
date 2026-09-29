@@ -9,7 +9,9 @@ data class PuzzleBoardState(
     val columnCount: Int,
     val checkpoints: Map<GridCoordinate, Int>,
     val walls: Set<WallEdge> = emptySet(),
-    val path: List<GridCoordinate> = emptyList()
+    val path: List<GridCoordinate> = emptyList(),
+    val nextRequiredCheckpoint: Int = 1,
+    val hintedCoordinate: GridCoordinate? = null
 ) {
     init {
         require(rowCount > 0 && columnCount > 0) { "Grid dimensions must be positive ($rowCount x $columnCount)" }
@@ -50,11 +52,23 @@ data class PuzzleBoardState(
     val totalRequiredCells: Int
         get() = rowCount * columnCount
 
+    val totalCells: Int
+        get() = totalRequiredCells
+
     /**
      * Number of unique cells currently covered by the path.
      */
     val coveredCellCount: Int
         get() = path.distinct().size
+
+    val coveredCount: Int
+        get() = coveredCellCount
+
+    val isFullyCovered: Boolean
+        get() = coveredCellCount == totalRequiredCells
+
+    val highestCheckpointVisited: Int
+        get() = checkpoints.filterKeys { it in path }.values.maxOrNull() ?: 0
 
     /**
      * True if the specified coordinate is on the current path.
@@ -81,6 +95,12 @@ data class PuzzleBoardState(
             if (path.size < 2) return emptyList()
             return path.zipWithNext()
         }
+
+    /**
+     * Authoritative completion status alias for presentation and accessibility layers.
+     */
+    val isCompleted: Boolean
+        get() = isSolved
 
     /**
      * Authoritative check:
@@ -119,4 +139,18 @@ data class PuzzleBoardState(
 
             return expectedCheckpoint == maxCheckpointNumber + 1
         }
+
+    companion object {
+        fun fromDefinition(definition: PuzzleDefinition, hintedCoordinate: GridCoordinate? = null): PuzzleBoardState {
+            return PuzzleBoardState(
+                rowCount = definition.gridDimensions.rows,
+                columnCount = definition.gridDimensions.columns,
+                checkpoints = definition.checkpointMap,
+                walls = definition.blockedEdges,
+                path = emptyList(),
+                nextRequiredCheckpoint = 1,
+                hintedCoordinate = hintedCoordinate
+            )
+        }
+    }
 }

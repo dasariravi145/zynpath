@@ -1,0 +1,48 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Monochrome Continuous Orthogonal Path -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 32,32 L 76,32 L 76,54 L 32,54 L 32,76 L 76,76" />
+
+    <!-- Checkpoint 1 (Start) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 32,32 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M 30.5,29.5 L 32,28 L 32,36 M 30,36 L 34,36" />
+
+    <!-- Checkpoint 2 (Middle) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M 32,54 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 29.5,51 C 29.5,49.5 34.5,49.5 34.5,52 C 34.5,54.5 29.5,55.5 29.5,57.5 L 34.5,57.5" />
+
+    <!-- Checkpoint 3 (Final) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 76,76 m -10,0 a 10,10 0 1,0 20,0 a 10,10 0 1,0 -20,0" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 73.5,72.5 C 75,71.5 78.5,71.5 78.5,74 C 78.5,75.5 76.5,76 75.5,76 C 77,76 78.5,76.5 78.5,78.5 C 78.5,80.5 75,80.5 73.5,79.5" />
+</vector>

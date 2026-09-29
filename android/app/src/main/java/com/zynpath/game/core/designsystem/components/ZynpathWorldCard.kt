@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,7 +51,8 @@ data class WorldCardData(
     val completedLevels: Int,
     val isLocked: Boolean,
     val hasWalls: Boolean = false,
-    val accentColor: Color = ForestMint
+    val accentColor: Color = ForestMint,
+    val unlockRequirementText: String? = null
 )
 
 @Composable
@@ -62,16 +65,27 @@ fun ZynpathWorldCard(
     val isCompleted = world.completedLevels >= world.totalLevels && world.totalLevels > 0
     val progress = if (world.totalLevels > 0) world.completedLevels.toFloat() / world.totalLevels.toFloat() else 0f
 
+    val accessibilityDesc = if (world.isLocked) {
+        "World ${world.worldId}, ${world.name}, Locked. ${world.unlockRequirementText ?: "Complete previous world levels to unlock."}"
+    } else if (isCompleted) {
+        "World ${world.worldId}, ${world.name}, Completed, ${world.completedLevels} of ${world.totalLevels} levels solved"
+    } else {
+        "World ${world.worldId}, ${world.name}, ${world.completedLevels} of ${world.totalLevels} levels solved, ${world.gridSizeDescription}"
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (world.isLocked) BackgroundCard.copy(alpha = 0.6f) else BackgroundElevated)
+            .background(if (world.isLocked) BackgroundCard.copy(alpha = 0.5f) else BackgroundElevated)
             .then(
-                if (!world.isLocked && !isCompleted) Modifier.border(1.dp, world.accentColor.copy(alpha = 0.4f), shape) else Modifier
+                if (!world.isLocked && !isCompleted) Modifier.border(1.dp, world.accentColor.copy(alpha = 0.4f), shape)
+                else if (isCompleted) Modifier.border(1.dp, AccentGold.copy(alpha = 0.5f), shape)
+                else Modifier.border(1.dp, BackgroundCard, shape)
             )
-            .clickable(enabled = !world.isLocked) { onClick() }
-            .padding(20.dp)
+            .clickable(onClick = onClick)
+            .padding(18.dp)
+            .semantics { contentDescription = accessibilityDesc }
     ) {
         Column {
             Row(
@@ -79,10 +93,13 @@ fun ZynpathWorldCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(42.dp)
                             .clip(CircleShape)
                             .background(
                                 when {
@@ -95,7 +112,7 @@ fun ZynpathWorldCard(
                     ) {
                         Text(
                             text = "${world.worldId}",
-                            fontSize = 16.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = when {
                                 world.isLocked -> TextMuted
@@ -158,12 +175,12 @@ fun ZynpathWorldCard(
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(ForestMint)
-                            .size(32.dp),
+                            .size(34.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play",
+                            contentDescription = "Enter World",
                             tint = BackgroundDark,
                             modifier = Modifier.size(20.dp)
                         )
@@ -171,40 +188,50 @@ fun ZynpathWorldCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Progress bar and counts
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // Progress bar, unlock requirement, or completed count
+            if (world.isLocked) {
                 Text(
-                    text = if (world.isLocked) "Locked" else "${world.completedLevels} / ${world.totalLevels} Completed",
+                    text = world.unlockRequirementText ?: "Locked • Solve previous world levels to unlock",
                     fontSize = 12.sp,
-                    color = if (world.isLocked) TextMuted else TextSecondary
+                    color = TextMuted,
+                    fontWeight = FontWeight.Medium
                 )
-                if (world.hasWalls) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFE63946).copy(alpha = 0.2f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "WALLS",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFE63946)
-                        )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${world.completedLevels} / ${world.totalLevels} Completed (${(progress * 100).toInt()}%)",
+                        fontSize = 12.sp,
+                        color = if (isCompleted) AccentGold else TextSecondary,
+                        fontWeight = if (isCompleted) FontWeight.SemiBold else FontWeight.Normal
+                    )
+
+                    if (world.hasWalls) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFE63946).copy(alpha = 0.2f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "WALLS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFE63946)
+                            )
+                        }
                     }
                 }
-            }
 
-            if (!world.isLocked) {
                 Spacer(modifier = Modifier.height(8.dp))
+
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = { progress.coerceIn(0f, 1f) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
@@ -245,7 +272,8 @@ private fun ZynpathWorldCardPreview() {
                 totalLevels = 50,
                 completedLevels = 0,
                 isLocked = true,
-                hasWalls = true
+                hasWalls = true,
+                unlockRequirementText = "Requires 15 levels in World 2 (Solved: 12/15)"
             ),
             onClick = {}
         )

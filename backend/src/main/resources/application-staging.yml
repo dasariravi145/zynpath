@@ -1,0 +1,39 @@
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  jackson:
+    serialization:
+      indent-output: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+
+zynpath:
+  environment: staging
+  api:
+    base-url: "https://staging-api.zynpath.com/api/v1"
+    ws-url: "wss://staging-api.zynpath.com/ws"
+  cors:
+    allowed-origins:
+      - "https://staging.zynpath.com"
+      - "https://staging-api.zynpath.com"
+  websocket:
+    allowed-origins: "https://staging.zynpath.com,https://staging-api.zynpath.com"
+  logging:
+    level:
+      root: INFO
+      com.zynpath.backend: DEBUG
+      org.springframework.web: INFO

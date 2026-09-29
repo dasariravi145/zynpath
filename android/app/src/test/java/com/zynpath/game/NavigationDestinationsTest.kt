@@ -24,7 +24,8 @@ class NavigationDestinationsTest {
             Screen.Friends,
             Screen.Profile,
             Screen.Premium,
-            Screen.Settings
+            Screen.Settings,
+            Screen.SignIn
         )
 
         val routes = screens.map { it.route }

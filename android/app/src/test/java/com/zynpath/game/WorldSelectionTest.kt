@@ -2,6 +2,9 @@ package com.zynpath.game
 
 import com.zynpath.game.feature.level.LevelSelectionViewModel
 import com.zynpath.game.feature.world.WorldSelectionViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -50,14 +53,14 @@ class WorldSelectionTest {
         val w5 = worlds[4]
         assertEquals(5, w5.worldId)
         assertEquals("Advanced Logic", w5.name)
-        assertEquals("7×7", w5.gridSizeDescription)
+        assertEquals("7×7 with walls", w5.gridSizeDescription)
         assertEquals(50, w5.totalLevels)
 
         // World 6
         val w6 = worlds[5]
         assertEquals(6, w6.worldId)
         assertEquals("Expert Path", w6.name)
-        assertEquals("8×8", w6.gridSizeDescription)
+        assertEquals("8×8 with walls", w6.gridSizeDescription)
         assertEquals(100, w6.totalLevels)
 
         // Total 300 base levels
@@ -76,5 +79,81 @@ class WorldSelectionTest {
         }
 
         assertEquals(301, expectedStart) // All 300 levels covered
+    }
+
+    @Test
+    fun worldConfiguration_unlocksWorldsDeterministically() {
+        val noCompletions = emptySet<Int>()
+        assertTrue("World 1 is unlocked by default", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(1, noCompletions))
+        assertFalse("World 2 is locked without World 1 completions", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(2, noCompletions))
+
+        // Complete World 1 (levels 1..20)
+        val world1Completed = (1..20).toSet()
+        assertTrue("World 2 unlocked after completing World 1", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(2, world1Completed))
+        assertFalse("World 3 remains locked", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(3, world1Completed))
+
+        // Complete World 2 (levels 1..50)
+        val world2Completed = (1..50).toSet()
+        assertTrue("World 3 unlocked after completing World 2", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(3, world2Completed))
+    }
+
+    @Test
+    fun levelUnlocking_requiresPreviousLevelCompletion() {
+        val noCompletions = emptySet<Int>()
+        assertTrue("Level 1 unlocked by default", com.zynpath.game.core.puzzle.model.WorldConfiguration.isLevelUnlocked(1, noCompletions))
+        assertFalse("Level 2 locked by default", com.zynpath.game.core.puzzle.model.WorldConfiguration.isLevelUnlocked(2, noCompletions))
+
+        val level1Completed = setOf(1)
+        assertTrue("Level 2 unlocked after level 1 completed", com.zynpath.game.core.puzzle.model.WorldConfiguration.isLevelUnlocked(2, level1Completed))
+        assertFalse("Level 3 still locked", com.zynpath.game.core.puzzle.model.WorldConfiguration.isLevelUnlocked(3, level1Completed))
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun worldSelectionViewModel_updatesWorldLockStateReactively() = kotlinx.coroutines.test.runTest {
+        val testDispatcher = kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)
+        kotlinx.coroutines.Dispatchers.setMain(testDispatcher)
+        try {
+            val progressRepo = com.zynpath.game.core.database.repository.ProgressRepositoryImpl(
+                com.zynpath.game.fake.FakeLevelProgressDao(),
+                com.zynpath.game.fake.FakePlayerStatsDao(),
+                com.zynpath.game.fake.FakeGameSessionDao()
+            )
+            val prefsRepo = com.zynpath.game.fake.FakePreferencesRepository()
+            val viewModel = WorldSelectionViewModel(progressRepo, prefsRepo)
+
+            val job = backgroundScope.launch(testDispatcher) {
+                viewModel.uiState.collect {}
+            }
+            testScheduler.advanceUntilIdle()
+
+            // Initial state: World 1 unlocked, World 2 locked
+            val initialWorlds = viewModel.uiState.value.worlds
+            assertFalse(initialWorlds[0].isLocked)
+            assertTrue(initialWorlds[1].isLocked)
+
+            // Complete all 20 levels in World 1
+            for (i in 1..20) {
+                progressRepo.recordValidatedCompletion(
+                    com.zynpath.game.core.puzzle.model.ValidatedCompletionResult(
+                        puzzleId = "p_$i",
+                        levelId = i,
+                        worldId = 1,
+                        isValidated = true,
+                        elapsedTimeMs = 10000L,
+                        moveCount = 16,
+                        hintCount = 0
+                    )
+                )
+            }
+            testScheduler.advanceUntilIdle()
+
+            val updatedWorlds = viewModel.uiState.value.worlds
+            assertFalse("World 2 should now be unlocked", updatedWorlds[1].isLocked)
+            assertEquals(20, updatedWorlds[0].completedLevels)
+            assertEquals(60, viewModel.uiState.value.totalStarsEarned)
+        } finally {
+            kotlinx.coroutines.Dispatchers.resetMain()
+        }
     }
 }

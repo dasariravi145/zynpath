@@ -1,0 +1,53 @@
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+  shutdown: graceful
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: zynpath-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  jackson:
+    serialization:
+      indent-output: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+zynpath:
+  api:
+    version: v1
+    prefix: /api/v1
+  service-name: "Zynpath Game Service"
+  environment: ${ENVIRONMENT:development}
+  auth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+    facebook:
+      app-id: ${FACEBOOK_APP_ID:}
+      app-secret: ${FACEBOOK_APP_SECRET:}
+    session:
+      ttl-seconds: ${SESSION_TTL_SECONDS:2592000}
+  billing:
+    package-name: ${PLAY_PACKAGE_NAME:com.zynpath.game}
+    service-account-json-path: ${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:}
+    subscription-product-id: ${PLAY_SUBSCRIPTION_PRODUCT_ID:zynpath_premium}
+    monthly-base-plan-id: ${PLAY_MONTHLY_BASE_PLAN_ID:premium-monthly}
+    six-month-base-plan-id: ${PLAY_SIX_MONTH_BASE_PLAN_ID:premium-six-months}
+  websocket:
+    allowed-origins: ${WS_ALLOWED_ORIGINS:*}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
