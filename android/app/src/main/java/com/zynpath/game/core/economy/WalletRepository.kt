@@ -72,6 +72,16 @@ interface WalletRepository {
      */
     fun observeRecentTransactions(limit: Int = 20): Flow<List<WalletTransactionEntity>>
 
+    /**
+     * Fetches recent ledger transactions for the Coin Details / Wallet sheet.
+     */
+    suspend fun getRecentTransactions(limit: Int = 20): List<WalletTransactionEntity>
+
+    /**
+     * Alias for remaining daily coin ads.
+     */
+    suspend fun getRemainingCoinAds(dateUtc: String): Int = getRemainingDailyCoinAds(dateUtc)
+
     // --- Solo Reward Run Lifecycle ---
     suspend fun isLevelPaidAttemptActive(levelId: Int): Boolean
     suspend fun commitSoloRewardRunEntry(levelId: Int): Result<Boolean>
@@ -100,4 +110,17 @@ interface WalletRepository {
     suspend fun isWorldCompletionAdBonusClaimed(worldId: Int): Boolean
     suspend fun claimWorldCompletionReward(worldId: Int): Result<Int>
     suspend fun claimWorldCompletionAdBonus(worldId: Int): Result<Int>
+
+    // --- Extra Hints & In-Level Purchases ---
+    suspend fun purchaseExtraHint(levelId: Int): Result<Int>
+    suspend fun purchaseShuffle(levelId: Int): Result<Int>
+
+    // --- Optional Timed Challenge (200 entry, 300 total payout) ---
+    suspend fun commitTimedChallengeEntry(challengeId: String): Result<Int>
+    suspend fun payoutTimedChallenge(challengeId: String): Result<Int>
+    suspend fun isTimedChallengePayoutClaimed(challengeId: String): Boolean
+
+    // --- Optional Cosmetics ---
+    suspend fun purchaseCosmetic(cosmeticId: String, price: Int): Result<Int>
+    suspend fun isCosmeticPurchased(cosmeticId: String): Boolean
 }

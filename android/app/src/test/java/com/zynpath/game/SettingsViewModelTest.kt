@@ -72,4 +72,14 @@ class SettingsViewModelTest {
         advanceUntilIdle()
         assertEquals("NEON_CYAN", fakeRepo.userPreferencesFlow.first().themePreference)
     }
+
+    @Test
+    fun googleConnect_initialStateIsIdle() = runTest {
+        val fakeRepo = FakePreferencesRepository(UserPreferences())
+        val viewModel = SettingsViewModel(fakeRepo)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isGoogleConnecting.value)
+        assertEquals(null, viewModel.googleConnectError.value)
+    }
 }

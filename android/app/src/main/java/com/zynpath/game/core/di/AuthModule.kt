@@ -4,6 +4,8 @@ import com.zynpath.game.core.auth.api.AuthApiService
 import com.zynpath.game.core.auth.api.OkHttpAuthApiService
 import com.zynpath.game.core.auth.provider.FacebookAuthClient
 import com.zynpath.game.core.auth.provider.FacebookAuthClientImpl
+import com.zynpath.game.core.auth.provider.FirebaseAuthClient
+import com.zynpath.game.core.auth.provider.FirebaseAuthClientImpl
 import com.zynpath.game.core.auth.provider.GoogleAuthClient
 import com.zynpath.game.core.auth.provider.GoogleAuthClientImpl
 import com.zynpath.game.core.auth.repository.AuthRepository
@@ -37,6 +39,12 @@ abstract class AuthModule {
     abstract fun bindFacebookAuthClient(
         impl: FacebookAuthClientImpl
     ): FacebookAuthClient
+
+    @Binds
+    @Singleton
+    abstract fun bindFirebaseAuthClient(
+        impl: FirebaseAuthClientImpl
+    ): FirebaseAuthClient
 
     @Binds
     @Singleton

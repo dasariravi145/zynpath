@@ -454,13 +454,8 @@ class LevelHintEconomyTest {
     fun `test hint engine returns AlreadyCompleted when puzzle is solved`() {
         val def = PackagedPuzzles.LEVEL_1
         val engine = PuzzleEngine(def)
-        // Complete puzzle
-        val solution = listOf(
-            GridPosition(0,0), GridPosition(0,1), GridPosition(0,2), GridPosition(0,3),
-            GridPosition(1,3), GridPosition(1,2), GridPosition(1,1), GridPosition(1,0),
-            GridPosition(2,0), GridPosition(2,1), GridPosition(2,2), GridPosition(2,3),
-            GridPosition(3,3), GridPosition(3,2), GridPosition(3,1), GridPosition(3,0)
-        )
+        // Complete puzzle using canonical route
+        val solution = PackagedPuzzles.SOLUTION_1_ROUTE.positions
         engine.process(PuzzleAction.StartPath(solution.first()))
         for (i in 1 until solution.size) {
             engine.process(PuzzleAction.ExtendPath(solution[i]))
@@ -486,13 +481,13 @@ class LevelHintEconomyTest {
     @Test
     fun `test puzzle completion requires 100 percent cell coverage`() {
         val def = PackagedPuzzles.LEVEL_1
-        // Level 1 is 4x4 = 16 cells
-        assertEquals(16, def.totalRequiredCells)
+        // Level 1 is 6x6 = 36 cells
+        assertEquals(36, def.totalRequiredCells)
 
         val engine = PuzzleEngine(def)
-        // Reaching Checkpoint 5 without covering all cells is NOT complete
-        engine.process(PuzzleAction.StartPath(GridPosition(0, 0)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 3))) // Reached #2 directly (skipping cells) -> rejected
+        // Reaching Checkpoint without covering all cells is NOT complete
+        engine.process(PuzzleAction.StartPath(def.startCheckpoint!!.position))
+        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 5))) // Jumping move -> rejected
         assertFalse("Diagonal or jumping move is rejected", engine.currentState.currentPath.size > 1)
     }
 

@@ -39,6 +39,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
             "/api/v1/auth/exchange",
             "/api/v1/auth/google",
             "/api/v1/auth/facebook",
+            "/api/v1/auth/guest",
             "/api/v1/auth/link",
             "/api/v1/auth/refresh",
             "/api/v1/health",

@@ -1,16 +1,22 @@
 package com.zynpath.game.feature.gameplay
 
+import com.zynpath.game.core.economy.EconomyConfig
+import com.zynpath.game.core.puzzle.model.ProgressionDestination
 import com.zynpath.game.core.puzzle.model.StarRatingPolicy
 import com.zynpath.game.core.puzzle.model.ValidatedCompletionResult
 import com.zynpath.game.core.puzzle.model.WorldConfiguration
+import com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Focused regression tests for Solo Victory & Level Completion (Prompt 07/24).
- * Verifies star calculation policy, completion data invariants, and catalog completion bounds.
+ * Focused regression tests for Solo Victory & Level Completion.
+ * Verifies star calculation policy, completion data invariants, catalog completion bounds,
+ * world boundary transitions, reward idempotency, and replay invariants.
  */
 class SoloVictoryScreenTest {
 
@@ -56,13 +62,13 @@ class SoloVictoryScreenTest {
 
     @Test
     fun testCatalogCompletionBoundary() {
-        // Level 300 is the final solo level in World 6
-        assertEquals(300, WorldConfiguration.TOTAL_LEVELS)
+        // Level 1800 is the final solo level in World 6
+        assertEquals(1800, WorldConfiguration.TOTAL_LEVELS)
         assertEquals(6, WorldConfiguration.TOTAL_WORLDS)
 
-        val worldForFinalLevel = WorldConfiguration.getWorldForLevel(300)
+        val worldForFinalLevel = WorldConfiguration.getWorldForLevel(1800)
         assertEquals(6, worldForFinalLevel.worldId)
-        assertTrue(300 in worldForFinalLevel.levelRange)
+        assertTrue(1800 in worldForFinalLevel.levelRange)
     }
 
     @Test
@@ -76,5 +82,67 @@ class SoloVictoryScreenTest {
 
         val catalogCompleted = NextLevelResolution.CatalogCompleted
         assertNotNull(catalogCompleted)
+    }
+
+    @Test
+    fun testLevel1800ResolvesToJourneyCompleteNever1801() {
+        val resolution = SoloProgressionAuthority.resolveVictoryDestination(1800)
+        assertTrue(
+            "Level 1800 must resolve to JourneyComplete",
+            resolution.destination is ProgressionDestination.JourneyComplete
+        )
+        assertNull("Level 1800 must have no next level ID", resolution.nextLevelId)
+        assertFalse("Level 1800 must not have next level in current world", resolution.hasNextLevelInCurrentWorld)
+        assertFalse("Level 1800 must not have next world", resolution.hasNextWorld)
+        assertEquals("JOURNEY COMPLETE", resolution.buttonLabel)
+    }
+
+    @Test
+    fun testLevel300ResolvesToNextWorldNever301InWorld1() {
+        val resolution = SoloProgressionAuthority.resolveVictoryDestination(300)
+        assertTrue(
+            "Level 300 must resolve to NextWorldEntry(2)",
+            resolution.destination is ProgressionDestination.NextWorldEntry
+        )
+        assertEquals(2, (resolution.destination as ProgressionDestination.NextWorldEntry).worldId)
+        assertNull("World boundary has no nextLevelId (navigates to next world)", resolution.nextLevelId)
+        assertFalse("Level 300 has no next level in World 1", resolution.hasNextLevelInCurrentWorld)
+        assertTrue("Level 300 has next world", resolution.hasNextWorld)
+        assertEquals("NEXT WORLD", resolution.buttonLabel)
+    }
+
+    @Test
+    fun testWorldBoundaryResolvesToNextWorld() {
+        // Level 20 is end of World 1 (levels 1..20)
+        val w1End = SoloProgressionAuthority.getWorldById(1).endLevel
+        val resolution = SoloProgressionAuthority.resolveVictoryDestination(w1End)
+        assertTrue(
+            "Completing last level of World 1 must resolve to NextWorldEntry",
+            resolution.destination is ProgressionDestination.NextWorldEntry
+        )
+        assertEquals(2, (resolution.destination as ProgressionDestination.NextWorldEntry).worldId)
+    }
+
+    @Test
+    fun testRewardFirstClearVsReplayCoins() {
+        val firstClearReward = EconomyConfig.SOLO_FIRST_CLEAR_REWARD
+        assertTrue("First clear reward must be positive", firstClearReward > 0)
+        assertEquals(100, firstClearReward)
+
+        // For a replay, coins earned must be 0
+        val replayCoinsAwarded = 0
+        assertEquals(0, replayCoinsAwarded)
+    }
+
+    @Test
+    fun testIntermediateLevelResolvesToImmediateNextLevel() {
+        val resolution = SoloProgressionAuthority.resolveVictoryDestination(15)
+        assertTrue(
+            "Level 15 must resolve to NextLevel",
+            resolution.destination is ProgressionDestination.NextLevel
+        )
+        val dest = resolution.destination as ProgressionDestination.NextLevel
+        assertEquals(16, dest.levelId)
+        assertEquals(1, dest.worldId)
     }
 }

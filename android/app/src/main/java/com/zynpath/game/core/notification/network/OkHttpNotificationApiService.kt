@@ -33,7 +33,7 @@ class OkHttpNotificationApiService(
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     private fun getBaseUrl(): String {
-        return customBaseUrl?.removeSuffix("/") ?: BuildConfig.BACKEND_BASE_URL.removeSuffix("/")
+        return (customBaseUrl ?: BuildConfig.BACKEND_BASE_URL).trim().removeSuffix("/").removeSuffix("/api/v1")
     }
 
     override suspend fun getNotifications(

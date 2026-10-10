@@ -1,7 +1,10 @@
 package com.zynpath.game.feature.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -36,6 +39,7 @@ import com.zynpath.game.feature.multiplayer.FriendsArenaRoomScreen
 import com.zynpath.game.feature.multiplayer.MiniLeagueScreen
 import com.zynpath.game.feature.multiplayer.MultiplayerHubScreen
 import com.zynpath.game.feature.multiplayer.QuickDuelScreen
+import com.zynpath.game.feature.multiplayer.QuickDuelViewModel
 import com.zynpath.game.feature.multiplayer.MatchHistoryScreen
 import com.zynpath.game.feature.multiplayer.MatchDetailsScreen
 import com.zynpath.game.feature.multiplayer.LeaderboardScreen
@@ -45,6 +49,7 @@ import com.zynpath.game.feature.premium.packs.PremiumPacksScreen
 import com.zynpath.game.feature.world.WorldSelectionScreen
 import androidx.navigation.navDeepLink
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ZynpathNavGraph(
     modifier: Modifier = Modifier,
@@ -139,8 +144,8 @@ fun ZynpathNavGraph(
 
         composable(Screen.Home.route) {
             HomeScreen(
-                onNavigateToSoloPlay = { navController.navigate(Screen.WorldSelection.route) },
-                onNavigateToLevels = { navController.navigate(Screen.WorldSelection.route) },
+                onNavigateToSoloPlay = { navController.navigate(Screen.LevelSelection.createRoute()) },
+                onNavigateToLevels = { navController.navigate(Screen.LevelSelection.createRoute()) },
                 onNavigateToTutorial = { navController.navigate(Screen.Tutorial.route) },
                 onNavigateToQuickDuel = { navController.navigate(Screen.QuickDuel.route) },
                 onNavigateToFriendDuel = { navController.navigate(Screen.FriendDuel.createRoute()) },
@@ -153,25 +158,36 @@ fun ZynpathNavGraph(
                 onNavigateToNotifications = { navController.navigate(Screen.Notifications.route) },
                 onNavigateToAchievements = { navController.navigate(Screen.Achievements.route) },
                 onNavigateToFriendsArena = { navController.navigate(Screen.FriendsArena.route) },
+                onNavigateToFriendsArenaRoom = { roomId -> navController.navigate(Screen.FriendsArenaRoom.createRoute(roomId)) },
                 onNavigateToPlayLevel = { worldId, levelId ->
                     navController.navigate(Screen.Gameplay.createRoute(worldId, levelId))
                 },
                 onNavigateToResume = { worldId, levelId ->
                     navController.navigate(Screen.Gameplay.createRoute(worldId, levelId))
+                },
+                onNavigateToRewards = {
+                    navController.navigate(Screen.Rewards.route)
+                },
+                onNavigateToCosmetics = {
+                    navController.navigate(Screen.Cosmetics.route)
                 }
             )
         }
 
-        composable(Screen.WorldSelection.route) {
-            WorldSelectionScreen(
-                onBackClick = { navController.popBackStack() },
-                onSelectWorld = { worldId ->
-                    navController.navigate(Screen.LevelSelection.createRoute(worldId))
-                },
-                onNavigateToPremiumPacks = {
-                    navController.navigate(Screen.PremiumPacks.route)
-                }
+        composable(Screen.Rewards.route) {
+            com.zynpath.game.feature.rewards.RewardsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCosmetics = { navController.navigate(Screen.Cosmetics.route) }
             )
+        }
+
+        composable(Screen.WorldSelection.route) {
+            // Forward directly to Level Selection to eliminate World Map from navigation flow
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                navController.navigate(Screen.LevelSelection.createRoute()) {
+                    popUpTo(Screen.WorldSelection.route) { inclusive = true }
+                }
+            }
         }
 
         composable(
@@ -179,11 +195,11 @@ fun ZynpathNavGraph(
             arguments = listOf(
                 navArgument("worldId") {
                     type = NavType.IntType
-                    defaultValue = 1
+                    defaultValue = 0
                 }
             )
         ) { backStackEntry ->
-            val worldId = backStackEntry.arguments?.getInt("worldId") ?: 1
+            val worldId = backStackEntry.arguments?.getInt("worldId") ?: 0
             LevelSelectionScreen(
                 onBackClick = { navController.popBackStack() },
                 onSelectLevel = { wId, levelNum ->
@@ -291,9 +307,18 @@ fun ZynpathNavGraph(
         }
 
         composable(Screen.QuickDuel.route) {
+            val homeEntry: NavBackStackEntry? = remember(navController) {
+                runCatching { navController.getBackStackEntry(Screen.Home.route) }.getOrNull()
+            }
+            val quickDuelViewModel: QuickDuelViewModel = if (homeEntry != null) {
+                hiltViewModel<QuickDuelViewModel>(viewModelStoreOwner = homeEntry)
+            } else {
+                hiltViewModel<QuickDuelViewModel>()
+            }
             QuickDuelScreen(
                 onBackClick = { navController.popBackStack() },
-                onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) }
+                onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) },
+                viewModel = quickDuelViewModel
             )
         }
 
@@ -351,7 +376,7 @@ fun ZynpathNavGraph(
             FriendsArenaEntryScreen(
                 onBackClick = { navController.popBackStack() },
                 onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) },
-                onNavigateToCreateRoom = { navController.navigate(Screen.FriendsArenaRoom.createRoute()) },
+                onNavigateToCreateRoom = { roomId -> navController.navigate(Screen.FriendsArenaRoom.createRoute(roomId)) },
                 onNavigateToJoinWithCode = { navController.navigate(Screen.FriendsArenaJoin.createRoute()) },
                 onNavigateToFacebookFriends = { navController.navigate(Screen.FriendsArenaFacebook.createRoute()) }
             )

@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.googleServices)
 }
 
 android {
@@ -82,10 +83,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        if (googleWebClientId.isNotBlank()) {
-            resValue("string", "default_web_client_id", googleWebClientId)
-        }
     }
 
 
@@ -105,7 +102,6 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
             buildConfigField("String", "BACKEND_BASE_URL", "\"$debugBackendBaseUrl\"")
@@ -147,6 +143,10 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -206,6 +206,10 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
 
     // Testing
     testImplementation(libs.junit)

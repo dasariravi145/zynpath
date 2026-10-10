@@ -160,11 +160,21 @@ class MultiplayerRepositoryImpl @Inject constructor(
     }
 
     override suspend fun startQuickDuelSearch(): Boolean = withContext(ioDispatcher) {
-        val token = secureTokenStorage.getSessionToken()
+        var token = secureTokenStorage.getSessionToken()
         if (token.isNullOrBlank()) {
-            _errorMessage.value = "Sign in to your Zynpath account to play online multiplayer"
-            _clientMatchState.value = ClientMatchState.ERROR
-            return@withContext false
+            val randId = java.util.UUID.randomUUID().toString().replace("-", "")
+            val guestToken = "zyn_guest_${randId.take(16)}"
+            val guestId = "guest_${randId.take(12)}"
+            secureTokenStorage.saveSession(
+                sessionToken = guestToken,
+                playerId = guestId,
+                publicZynpathId = "ZYN-${randId.take(4).uppercase()}",
+                displayName = "Guest_${randId.take(4).uppercase()}",
+                accountType = "GUEST",
+                provider = "GUEST",
+                expiresAt = System.currentTimeMillis() + 86400000L
+            )
+            token = guestToken
         }
 
         _errorMessage.value = null
@@ -199,12 +209,17 @@ class MultiplayerRepositoryImpl @Inject constructor(
 
     override suspend fun cancelMatchmaking(): Boolean = withContext(ioDispatcher) {
         stopStatusPolling()
-        val token = secureTokenStorage.getSessionToken() ?: return@withContext false
-        val result = multiplayerApiService.cancelQuickDuel(token)
+        countdownJob?.cancel()
+        countdownJob = null
+        val token = secureTokenStorage.getSessionToken()
         _ticketStatus.value = null
+        _currentSession.value = null
         _clientMatchState.value = ClientMatchState.IDLE
         webSocketClient.disconnect()
-        result is NetworkResult.Success
+        if (token != null) {
+            multiplayerApiService.cancelQuickDuel(token)
+        }
+        true
     }
 
     override suspend fun createFriendDuel(targetPublicZynpathId: String): Boolean = withContext(ioDispatcher) {
@@ -948,11 +963,19 @@ class MultiplayerRepositoryImpl @Inject constructor(
     }
 
     private suspend fun onMatchFound(matchId: String) {
+        if (_clientMatchState.value != ClientMatchState.SEARCHING) {
+            Log.d(TAG, "Ignoring onMatchFound because clientMatchState is ${_clientMatchState.value}")
+            return
+        }
         stopStatusPolling()
         _clientMatchState.value = ClientMatchState.MATCH_FOUND
         val token = secureTokenStorage.getSessionToken() ?: return
         when (val res = multiplayerApiService.getMatchSnapshot(token, matchId)) {
             is NetworkResult.Success -> {
+                if (_clientMatchState.value != ClientMatchState.MATCH_FOUND) {
+                    Log.d(TAG, "Discarding snapshot because clientMatchState transitioned to ${_clientMatchState.value}")
+                    return
+                }
                 _currentSession.value = res.data
                 if (res.data.results.isNotEmpty()) {
                     _matchResults.value = res.data.results
@@ -968,6 +991,10 @@ class MultiplayerRepositoryImpl @Inject constructor(
         Log.d(TAG, "Incoming WS event: ${event.eventType} for match=${event.matchId}")
         when (event.eventType) {
             "MATCH_FOUND" -> {
+                if (_clientMatchState.value != ClientMatchState.SEARCHING) {
+                    Log.d(TAG, "Ignoring incoming MATCH_FOUND event because client is in ${_clientMatchState.value}")
+                    return
+                }
                 event.matchId?.let { matchId ->
                     scope.launch { onMatchFound(matchId) }
                 }

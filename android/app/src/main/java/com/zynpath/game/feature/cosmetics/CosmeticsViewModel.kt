@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,7 +30,8 @@ import javax.inject.Inject
 class CosmeticsViewModel @Inject constructor(
     private val cosmeticsRepository: CosmeticsRepository,
     private val preferencesRepository: PreferencesRepository,
-    private val profileRepository: PlayerProfileRepository
+    private val profileRepository: PlayerProfileRepository,
+    val walletRepository: com.zynpath.game.core.economy.WalletRepository? = null
 ) : ViewModel() {
 
     private data class LocalUiState(
@@ -45,13 +47,27 @@ class CosmeticsViewModel @Inject constructor(
     private val _isEquipping = MutableStateFlow(false)
     private val _snackbarMessage = MutableStateFlow<String?>(null)
 
+    private val _walletBalance = MutableStateFlow(0)
+
+    init {
+        val wallet = walletRepository
+        if (wallet != null) {
+            viewModelScope.launch {
+                wallet.balanceFlow.collectLatest { bal ->
+                    _walletBalance.value = bal
+                }
+            }
+        }
+    }
+
     private val _localUiState = combine(
         _selectedCategory,
         _previewCosmetics,
         _selectedPreviewItem,
-        _snackbarMessage
-    ) { category, previewOverride, selectedItem, snackbar ->
-        LocalUiState(category, previewOverride, selectedItem, snackbar)
+        _snackbarMessage,
+        _walletBalance
+    ) { category, previewOverride, selectedItem, snackbar, walletBal ->
+        Pair(LocalUiState(category, previewOverride, selectedItem, snackbar), walletBal)
     }
 
     val uiState: StateFlow<CosmeticsUiState> = combine(
@@ -60,7 +76,7 @@ class CosmeticsViewModel @Inject constructor(
         preferencesRepository.userPreferencesFlow,
         profileRepository.observeProfile(),
         _localUiState
-    ) { catalogWithDecisions, equipped, prefs, profile, local ->
+    ) { catalogWithDecisions, equipped, prefs, profile, (local, walletBal) ->
         val activePreview = local.previewOverride ?: equipped
         val currentAvatar = AvatarCatalog.getAvatar(profile.avatarId)
 
@@ -83,6 +99,7 @@ class CosmeticsViewModel @Inject constructor(
             isReducedMotion = prefs.isReducedMotion,
             currentAvatar = currentAvatar,
             isEquipping = _isEquipping.value,
+            walletBalance = walletBal,
             snackbarMessage = local.snackbar
         )
     }.stateIn(
@@ -123,6 +140,37 @@ class CosmeticsViewModel @Inject constructor(
             } else {
                 _snackbarMessage.value = "Active Premium subscription required to equip ${item.name}."
             }
+        }
+    }
+
+    fun getCosmeticCoinPrice(item: CosmeticItem): Int {
+        return if (item.category == CosmeticCategory.AVATAR_FRAME) {
+            com.zynpath.game.core.economy.EconomyConfig.COSMETIC_AVATAR_FRAME_MIN_PRICE
+        } else {
+            com.zynpath.game.core.economy.EconomyConfig.COSMETIC_THEME_EFFECT_MIN_PRICE
+        }
+    }
+
+    fun purchaseAndEquipWithCoins(item: CosmeticItem) {
+        val wallet = walletRepository ?: return
+        val price = getCosmeticCoinPrice(item)
+        viewModelScope.launch {
+            _isEquipping.value = true
+            val currentBal = wallet.getCurrentBalance()
+            if (currentBal < price) {
+                _isEquipping.value = false
+                _snackbarMessage.value = "Need ${price - currentBal} more coins to purchase ${item.name}."
+                return@launch
+            }
+
+            val debitRes = wallet.purchaseCosmetic(item.id, price)
+            if (debitRes.isSuccess) {
+                cosmeticsRepository.equipCosmetic(item.id)
+                _snackbarMessage.value = "Purchased and equipped ${item.name} for $price coins!"
+            } else {
+                _snackbarMessage.value = "Purchase failed: ${debitRes.exceptionOrNull()?.message ?: "Insufficient coins"}"
+            }
+            _isEquipping.value = false
         }
     }
 

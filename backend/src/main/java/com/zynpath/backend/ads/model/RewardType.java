@@ -8,5 +8,6 @@ package com.zynpath.backend.ads.model;
  * - Never grants competitive advantages, time extensions, or leaderboard boosts.
  */
 public enum RewardType {
-    SOLO_HINT
+    SOLO_HINT,
+    SOLO_COINS
 }

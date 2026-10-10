@@ -23,9 +23,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Settings
 import com.zynpath.game.core.designsystem.components.ZynpathMasterCurrencyPill
-import com.zynpath.game.core.designsystem.components.ZynpathMasterPillButton
 import com.zynpath.game.core.designsystem.components.ZynpathMasterSegmentedTabs
-import com.zynpath.game.core.designsystem.components.ZynpathPillStyle
+import com.zynpath.game.core.economy.EconomyConfig
 import com.zynpath.game.core.designsystem.theme.RefCyanNeon
 import com.zynpath.game.core.designsystem.theme.RefGoldPrimary
 import com.zynpath.game.core.designsystem.theme.RefGreenClaim
@@ -55,7 +54,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Pause
@@ -114,6 +113,7 @@ import com.zynpath.game.core.designsystem.components.RewardTier
 import com.zynpath.game.core.designsystem.components.RewardType
 import com.zynpath.game.core.designsystem.components.StatusBadge
 import com.zynpath.game.core.designsystem.components.ZynpathConfirmationDialog
+import com.zynpath.game.core.designsystem.components.glossyTopHighlight
 import com.zynpath.game.core.designsystem.feedback.SoundFeedbackManager
 import com.zynpath.game.core.designsystem.feedback.rememberSoundFeedbackManager
 import com.zynpath.game.core.designsystem.theme.AccentGold
@@ -252,8 +252,8 @@ fun DailyChallengeScreen(
 }
 
 /**
- * Handles presentation for ready state: switches between Daily Challenge Hub Overview
- * and the active interactive gameplay board.
+ * Handles presentation for ready state: directly renders the active interactive gameplay board
+ * with quick access to rules and leaderboard modal.
  */
 @Composable
 private fun DailyChallengeReadyScreen(
@@ -263,33 +263,17 @@ private fun DailyChallengeReadyScreen(
     onBackClick: () -> Unit,
     onNavigateToLeaderboard: (String) -> Unit
 ) {
-    // When there is an active path in progress and puzzle is not completed, default to active play
-    var isPlaying by rememberSaveable {
-        mutableStateOf(state.gameState.currentPath.size > 1 && !state.gameState.isCompleted)
-    }
+    var showLeaderboardModal by rememberSaveable { mutableStateOf(false) }
 
-    if (isPlaying) {
-        DailyChallengeActiveBoardView(
-            state = state,
-            viewModel = viewModel,
-            soundFeedback = soundFeedback,
-            onBackToOverview = { isPlaying = false },
-            onNavigateToLeaderboard = onNavigateToLeaderboard
-        )
-    } else {
-        DailyChallengeHubView(
-            state = state,
-            viewModel = viewModel,
-            onStartPlay = { isPlaying = true },
-            onReplay = {
-                viewModel.onReplayChallenge()
-                isPlaying = true
-            },
-            onBackClick = onBackClick,
-            onRulesClick = { viewModel.toggleRulesDialog(true) },
-            onNavigateToLeaderboard = { onNavigateToLeaderboard(state.challenge.dateKey) }
-        )
-    }
+    DailyChallengeActiveBoardView(
+        state = state,
+        viewModel = viewModel,
+        soundFeedback = soundFeedback,
+        onBackToOverview = onBackClick,
+        onNavigateToLeaderboard = {
+            showLeaderboardModal = true
+        }
+    )
 
     // Rules Dialog (Shared between Hub and Board)
     if (state.showRulesDialog) {
@@ -307,669 +291,12 @@ private fun DailyChallengeReadyScreen(
             onDismiss = { viewModel.toggleRulesDialog(false) }
         )
     }
-}
 
-/**
- * 1. HERO & HUB VIEW:
- * Displays Daily Challenge hero header, challenge card, streak/rewards, and leaderboard action.
- */
-@Composable
-private fun DailyChallengeHubView(
-    state: DailyChallengeUiState.Ready,
-    viewModel: DailyChallengeViewModel,
-    onStartPlay: () -> Unit,
-    onReplay: () -> Unit,
-    onBackClick: () -> Unit,
-    onRulesClick: () -> Unit,
-    onNavigateToLeaderboard: () -> Unit
-) {
-    var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(RefNavyDark)
-            .statusBarsPadding()
-    ) {
-        // Master Reference Panel 07 Top Bar: Currency, Stars, Settings
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF131D33))
-                    .border(1.dp, Color(0xFF24324E), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ZynpathMasterCurrencyPill(
-                    iconRes = R.drawable.ic_game_coin,
-                    amount = java.text.NumberFormat.getIntegerInstance().format(state.coinBalance),
-                    iconTint = RefGoldPrimary
-                )
-                ZynpathMasterCurrencyPill(
-                    iconRes = R.drawable.ic_game_star,
-                    amount = state.totalStars.toString(),
-                    iconTint = Color(0xFF00E5FF)
-                )
-                IconButton(
-                    onClick = onRulesClick,
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF131D33))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Screen Title: REWARDS
-            Text(
-                text = "REWARDS",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
-                letterSpacing = 1.sp
-            )
-
-            // Segmented Navigation: Daily (active gold pill), Missions, Achievements
-            ZynpathMasterSegmentedTabs(
-                tabs = listOf("Daily", "Missions", "Achievements"),
-                selectedIndex = selectedTabIndex,
-                onTabSelected = { selectedTabIndex = it },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (selectedTabIndex == 0) {
-                // DAILY TAB (Panel 07)
-                // 1. Daily Rewards Banner
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(RefNavySurface)
-                        .border(1.dp, Color(0xFF1E3A8A), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.img_rewards_gift),
-                            contentDescription = null,
-                            modifier = Modifier.size(46.dp)
-                        )
-                        Column {
-                            Text(
-                                text = "Daily Rewards",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Play daily and earn amazing rewards!",
-                                fontSize = 12.sp,
-                                color = Color(0xFF94A3B8)
-                            )
-                        }
-                    }
-                }
-
-                // 2. 5-Day Streak Progress Row (Day 1..Day 5)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    val days = listOf(
-                        Triple("Day 1", "20", state.isDailyLoginClaimed),
-                        Triple("Day 2", "20", false),
-                        Triple("Day 3", "20", false),
-                        Triple("Day 4", "20", false),
-                        Triple("Day 5", "Gift", false)
-                    )
-
-                    days.forEachIndexed { index, (dayLabel, rewardVal, isChecked) ->
-                        val isCurrentDay = index == 1
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isCurrentDay) Color(0xFF1E3A8A) else RefNavySurface)
-                                .border(
-                                    width = if (isCurrentDay) 1.5.dp else 1.dp,
-                                    color = if (isCurrentDay) RefGoldPrimary else Color(0xFF1E293B),
-                                    shape = RoundedCornerShape(10.dp)
-                                )
-                                .padding(vertical = 8.dp, horizontal = 2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = dayLabel,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isCurrentDay) RefGoldPrimary else Color(0xFF94A3B8)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                if (isChecked) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(20.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF10B981)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                    }
-                                } else if (index == 2) {
-                                    Icon(
-                                        imageVector = Icons.Default.Star,
-                                        contentDescription = null,
-                                        tint = RefGoldPrimary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                } else if (index == 4) {
-                                    Icon(
-                                        imageVector = Icons.Default.CardGiftcard,
-                                        contentDescription = null,
-                                        tint = Color(0xFFFF5252),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                } else {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.ic_game_coin),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = rewardVal,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // 3. Hero Reward Presentation: Glowing Treasure Chest
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.img_rewards_chest),
-                        contentDescription = "Reward Chest",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxWidth(0.72f)
-                            .height(160.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "DAILY LOGIN REWARD",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = RefGoldPrimary,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = if (state.isDailyLoginClaimed) "Claimed +20 Coins!" else "+20 Coins",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-                }
-
-                // 4. Primary CTA: Big Green "Claim" Pill Button
-                ZynpathMasterPillButton(
-                    text = if (state.isDailyLoginClaimed) "CLAIMED ✓" else "Claim",
-                    onClick = {
-                        viewModel.claimDailyLoginReward()
-                    },
-                    style = ZynpathPillStyle.GREEN,
-                    enabled = !state.isDailyLoginClaimed,
-                    height = 54.dp,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (state.isDailyLoginClaimed && !state.isDailyLoginAdBonusClaimed) {
-                    val context = LocalContext.current
-                    val activity = context as? Activity
-                    Spacer(modifier = Modifier.height(4.dp))
-                    ZynpathMasterPillButton(
-                        text = "WATCH AD FOR +20 BONUS",
-                        onClick = {
-                            if (activity != null) {
-                                viewModel.claimDailyLoginAdBonus(activity)
-                            }
-                        },
-                        style = ZynpathPillStyle.GOLD,
-                        height = 46.dp,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 5. Daily Challenge Gameplay Launch Section
-                ZynpathMasterPillButton(
-                    text = if (state.gameState.isCompleted) "REPLAY TODAY'S QUEST" else "PLAY TODAY'S QUEST",
-                    onClick = if (state.gameState.isCompleted) onReplay else onStartPlay,
-                    style = ZynpathPillStyle.GOLD,
-                    height = 50.dp,
-                    modifier = Modifier.fillMaxWidth(0.85f)
-                )
-            } else {
-                // Missions & Achievements View
-                DailyProgressRewardsSection(state = state)
-            }
-
-            // Global Standings Card
-            GamePanel(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "GLOBAL STANDINGS",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentGold,
-                            letterSpacing = 1.2.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = if (state.isLeaderboardEligible) {
-                                "Your solve time is eligible for ranking!"
-                            } else {
-                                "Compete with solvers worldwide"
-                            },
-                            fontSize = 13.sp,
-                            color = TextSecondary
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    GameSecondaryButton(
-                        text = "LEADERBOARD",
-                        onClick = onNavigateToLeaderboard,
-                        fillMaxWidth = false,
-                        height = 42.dp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-}
-
-/**
- * Hero Header with title, actual date, status badge, and lightweight Compose number-path artwork.
- */
-@Composable
-private fun DailyHeroSection(
-    challenge: DailyChallengeDefinition,
-    availability: DailyChallengeAvailability,
-    isCompleted: Boolean,
-    isReducedMotion: Boolean
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Status Badge Pill
-        val statusText = when {
-            isCompleted || availability == DailyChallengeAvailability.COMPLETED -> "COMPLETED TODAY"
-            availability == DailyChallengeAvailability.IN_PROGRESS -> "IN PROGRESS"
-            availability == DailyChallengeAvailability.AVAILABLE -> "TODAY'S QUEST AVAILABLE"
-            else -> availability.name.replace('_', ' ')
-        }
-
-        val statusColor = when {
-            isCompleted || availability == DailyChallengeAvailability.COMPLETED -> GameGoldHighlight
-            availability == DailyChallengeAvailability.IN_PROGRESS -> GameElectricCyan
-            else -> ForestMint
-        }
-
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(statusColor.copy(alpha = 0.15f))
-                .border(1.dp, statusColor.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-        ) {
-            Text(
-                text = statusText,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = statusColor,
-                letterSpacing = 1.sp
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "DAILY CHALLENGE",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Black,
-            color = GameGoldHighlight,
-            letterSpacing = 2.sp,
-            textAlign = TextAlign.Center
+    if (showLeaderboardModal) {
+        LeaderboardModal(
+            dateKey = state.challenge.dateKey,
+            onDismiss = { showLeaderboardModal = false }
         )
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Text(
-            text = "Date: ${challenge.dateKey} • ${challenge.difficultyTier}",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextSecondary,
-            letterSpacing = 1.sp
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Lightweight Compose Number-Path Illustration
-        DailyPathIllustration(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(84.dp)
-                .padding(horizontal = 8.dp),
-            isReducedMotion = isReducedMotion
-        )
-    }
-}
-
-/**
- * Original number-path visual using lightweight Compose graphics.
- */
-@Composable
-private fun DailyPathIllustration(
-    modifier: Modifier = Modifier,
-    isReducedMotion: Boolean = false
-) {
-    val pulseAnim = remember { Animatable(0f) }
-    LaunchedEffect(isReducedMotion) {
-        if (!isReducedMotion) {
-            pulseAnim.animateTo(
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 2000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse
-                )
-            )
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xD90A132C))
-            .border(1.dp, Color(0x551E3A8A), RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-
-            val p1 = Offset(w * 0.12f, h * 0.55f)
-            val p2 = Offset(w * 0.38f, h * 0.38f)
-            val p3 = Offset(w * 0.64f, h * 0.62f)
-            val p4 = Offset(w * 0.88f, h * 0.40f)
-
-            val path = Path().apply {
-                moveTo(p1.x, p1.y)
-                lineTo(p2.x, p2.y)
-                lineTo(p3.x, p3.y)
-                lineTo(p4.x, p4.y)
-            }
-
-            val pulse = if (isReducedMotion) 0.5f else pulseAnim.value
-
-            // Soft cyan outer glow
-            drawPath(
-                path = path,
-                color = PathCyanGlow.copy(alpha = 0.22f + 0.15f * pulse),
-                style = Stroke(width = 10.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
-
-            // Electric cyan core
-            drawPath(
-                path = path,
-                color = GameElectricCyan,
-                style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
-
-            // Draw Checkpoint Nodes
-            drawCircle(color = ForestMint, radius = 11.dp.toPx(), center = p1)
-            drawCircle(color = Color(0xFF064E3B), radius = 9.dp.toPx(), center = p1)
-
-            drawCircle(color = GameElectricCyan, radius = 10.dp.toPx(), center = p2)
-            drawCircle(color = Color(0xFF0C2A4A), radius = 8.dp.toPx(), center = p2)
-
-            drawCircle(color = GameElectricCyan, radius = 10.dp.toPx(), center = p3)
-            drawCircle(color = Color(0xFF0C2A4A), radius = 8.dp.toPx(), center = p3)
-
-            // Terminal Gold Checkpoint
-            drawCircle(color = AccentGold.copy(alpha = 0.3f + 0.2f * pulse), radius = 15.dp.toPx(), center = p4)
-            drawCircle(color = AccentGold, radius = 12.dp.toPx(), center = p4)
-            drawCircle(color = Color(0xFF78350F), radius = 9.dp.toPx(), center = p4)
-        }
-    }
-}
-
-/**
- * 2. CHALLENGE CARD:
- * Displays today's puzzle status and appropriate action button.
- */
-@Composable
-private fun DailyChallengeStatusCard(
-    state: DailyChallengeUiState.Ready,
-    onStartPlay: () -> Unit,
-    onReplay: () -> Unit
-) {
-    GamePanel(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "TODAY'S PUZZLE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextMuted,
-                        letterSpacing = 1.2.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "${state.challenge.gridDimensions.rows}×${state.challenge.gridDimensions.columns} Grid • ${state.challenge.difficultyTier}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                }
-
-                StatusBadge(
-                    text = if (state.isOnlineAttempt) "VERIFIED" else "LOCAL",
-                    color = if (state.isOnlineAttempt) ForestMint else Color(0xFFFFB74D)
-                )
-            }
-
-            when {
-                state.gameState.isCompleted || state.availability == DailyChallengeAvailability.COMPLETED -> {
-                    // Completed State
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF0B1736))
-                            .border(1.dp, Color(0xFF263966), RoundedCornerShape(12.dp))
-                            .padding(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("TIME", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                                Text(formatTime(state.elapsedTimeMs), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            }
-                            Box(modifier = Modifier.size(1.dp, 24.dp).background(Color(0xFF253760)))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("MOVES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                                Text("${state.moveCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            }
-                            Box(modifier = Modifier.size(1.dp, 24.dp).background(Color(0xFF253760)))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("RESULT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                                Text("SOLVED", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ForestMint)
-                            }
-                        }
-                    }
-
-                    GameSecondaryButton(
-                        text = "PLAY AGAIN (REPLAY)",
-                        onClick = onReplay,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                state.availability == DailyChallengeAvailability.IN_PROGRESS || state.gameState.currentPath.size > 1 -> {
-                    // In-progress State
-                    Text(
-                        text = "Active session: ${state.gameState.coveredCellCount} of ${state.gameState.totalRequiredCells} cells covered.",
-                        fontSize = 13.sp,
-                        color = GameElectricCyan
-                    )
-
-                    GamePrimaryButton(
-                        text = "CONTINUE CHALLENGE",
-                        onClick = onStartPlay,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                else -> {
-                    // Available State
-                    Text(
-                        text = "Connect all numbered checkpoints in ascending order and achieve 100% board coverage to maintain your streak!",
-                        fontSize = 13.sp,
-                        color = TextSecondary,
-                        lineHeight = 18.sp
-                    )
-
-                    GamePrimaryButton(
-                        text = "PLAY CHALLENGE",
-                        onClick = onStartPlay,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 3. PROGRESS & REWARDS SECTION:
- * Displays current streak, max streak, and best time.
- */
-@Composable
-private fun DailyProgressRewardsSection(state: DailyChallengeUiState.Ready) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "PROGRESS & STREAK",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextMuted,
-            letterSpacing = 1.2.sp
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            GameRewardBadge(
-                type = RewardType.STAR,
-                title = "STREAK",
-                value = "${state.currentStreak} Days",
-                tier = RewardTier.GOLD,
-                modifier = Modifier.weight(1f)
-            )
-
-            GameRewardBadge(
-                type = RewardType.CROWN,
-                title = "BEST STREAK",
-                value = "${state.maxStreak} Days",
-                tier = RewardTier.DIAMOND,
-                modifier = Modifier.weight(1f)
-            )
-
-            state.personalBestTimeMs?.let { bestMs ->
-                GameRewardBadge(
-                    type = RewardType.TROPHY,
-                    title = "BEST TIME",
-                    value = formatTime(bestMs),
-                    tier = RewardTier.GOLD,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
     }
 }
 
@@ -995,7 +322,7 @@ private fun DailyChallengeActiveBoardView(
         MoveRejectionReason.BLOCKED_BY_WALL -> "Blocked by wall edge"
         MoveRejectionReason.CELL_ALREADY_VISITED -> "Cell already on path"
         MoveRejectionReason.WRONG_CHECKPOINT_ORDER -> "Visit checkpoints in ascending order"
-        MoveRejectionReason.PREMATURE_FINAL_CHECKPOINT -> "Cover all cells before final checkpoint"
+        MoveRejectionReason.PREMATURE_FINAL_CHECKPOINT -> "Fill every cell first"
         MoveRejectionReason.GAME_ALREADY_COMPLETED -> "Puzzle already completed"
         MoveRejectionReason.GAME_PAUSED -> "Game is paused"
         MoveRejectionReason.INVALID_ACTION -> "Invalid action"
@@ -1041,7 +368,7 @@ private fun DailyChallengeActiveBoardView(
                     }
 
                     IconButton(onClick = { viewModel.toggleRulesDialog(true) }, modifier = Modifier.size(40.dp)) {
-                        Icon(Icons.Default.HelpOutline, contentDescription = "Rules", tint = TextSecondary)
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Rules", tint = TextSecondary)
                     }
 
                     IconButton(onClick = { viewModel.onPause() }, modifier = Modifier.size(40.dp)) {
@@ -1258,8 +585,6 @@ private fun DailyChallengeActiveBoardView(
 
     // Completion Dialog
     if (state.gameState.isCompleted) {
-        val context = LocalContext.current
-        val activity = context as? Activity
         DailyChallengeCompletionDialog(
             challenge = state.challenge,
             solveTimeMs = state.elapsedTimeMs,
@@ -1270,12 +595,7 @@ private fun DailyChallengeActiveBoardView(
             verificationStatus = state.verificationStatus,
             isLeaderboardEligible = state.isLeaderboardEligible,
             onlineResult = state.onlineResult,
-            isDailyChallengeAdBonusClaimed = state.isDailyChallengeAdBonusClaimed,
-            onWatchAdBonus = {
-                if (activity != null) {
-                    viewModel.claimDailyChallengeAdBonus(activity)
-                }
-            },
+            isFirstClearBonusAwarded = state.isFirstClearBonusAwarded,
             onLeaderboardClick = { onNavigateToLeaderboard(state.challenge.dateKey) },
             onReplay = { viewModel.onReplayChallenge() },
             onHome = onBackToOverview
@@ -1375,8 +695,7 @@ private fun DailyChallengeCompletionDialog(
     verificationStatus: DailyVerificationStatus,
     isLeaderboardEligible: Boolean,
     onlineResult: DailyChallengeOnlineResult?,
-    isDailyChallengeAdBonusClaimed: Boolean,
-    onWatchAdBonus: () -> Unit,
+    isFirstClearBonusAwarded: Boolean,
     onLeaderboardClick: () -> Unit,
     onReplay: () -> Unit,
     onHome: () -> Unit
@@ -1389,55 +708,73 @@ private fun DailyChallengeCompletionDialog(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF0A132C))
-                .border(1.2.dp, AccentGold.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-                .padding(24.dp)
+                .padding(horizontal = 20.dp)
+                .widthIn(max = 360.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xF80A1635),
+                            GameMidnightBlue
+                        )
+                    )
+                )
+                .border(GameBorders.modalGoldCyan, RoundedCornerShape(22.dp))
+                .glossyTopHighlight(cornerRadius = 22.dp, highlightAlpha = 0.20f)
+                .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(11.dp)
             ) {
-                // Trophy Icon
+                // 1. Trophy Icon (compact 44.dp)
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(AccentGold.copy(alpha = 0.16f)),
+                        .background(AccentGold.copy(alpha = 0.16f))
+                        .border(1.dp, AccentGold.copy(alpha = 0.5f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_game_trophy),
                         contentDescription = null,
                         tint = AccentGold,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
 
-                Text(
-                    text = "DAILY CHALLENGE SOLVED!",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    color = GameGoldHighlight,
-                    letterSpacing = 1.sp,
-                    textAlign = TextAlign.Center
-                )
+                // 2. Title & Date
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "DAILY COMPLETED!",
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Black,
+                        color = GameGoldHighlight,
+                        letterSpacing = 1.sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
 
-                Text(
-                    text = "${challenge.dateKey} • ${challenge.difficultyTier}",
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
+                    Spacer(modifier = Modifier.height(2.dp))
 
-                // Stats row
+                    Text(
+                        text = "${challenge.dateKey} • ${challenge.difficultyTier}",
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                // 3. Compact Stats Row (Time & Streak)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFF0F1A36))
-                        .padding(12.dp)
+                        .border(1.dp, Color(0xFF1B2E58), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1446,54 +783,50 @@ private fun DailyChallengeCompletionDialog(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("TIME", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                            Text(formattedSolveTime, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text(formattedSolveTime, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                         }
-                        Box(modifier = Modifier.size(1.dp, 24.dp).background(Color(0xFF253760)))
+                        Box(modifier = Modifier.size(1.dp, 22.dp).background(Color(0xFF253760)))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("STREAK", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                            Text("$currentStreak Days", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = AccentGold)
+                            Text("$currentStreak Days", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AccentGold)
                         }
                     }
                 }
 
-                // Economy payout badge
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1E3A8A).copy(alpha = 0.5f))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_game_coin),
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "+15 COINS EARNED!",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = RefGoldPrimary
-                    )
+                // First Clear Bonus Pill (if awarded)
+                if (isFirstClearBonusAwarded) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF1E3A8A).copy(alpha = 0.45f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_game_coin),
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "+${EconomyConfig.DAILY_CHALLENGE_FIRST_CLEAR_REWARD} COINS EARNED!",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = RefGoldPrimary
+                        )
+                    }
                 }
 
-                if (!isDailyChallengeAdBonusClaimed) {
-                    ZynpathMasterPillButton(
-                        text = "WATCH AD FOR +15 BONUS",
-                        onClick = onWatchAdBonus,
-                        style = ZynpathPillStyle.GOLD,
-                        height = 42.dp,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
+                // 4. Action Buttons
+                // [ LEADERBOARD ] (44.dp height)
                 GamePrimaryButton(
-                    text = "VIEW LEADERBOARD",
+                    text = "LEADERBOARD",
                     onClick = onLeaderboardClick,
+                    height = 44.dp,
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // [ REPLAY ]  [ DONE ] (Row of secondary buttons, 42.dp height)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1501,11 +834,13 @@ private fun DailyChallengeCompletionDialog(
                     GameSecondaryButton(
                         text = "REPLAY",
                         onClick = onReplay,
+                        height = 42.dp,
                         modifier = Modifier.weight(1f)
                     )
                     GameSecondaryButton(
                         text = "DONE",
                         onClick = onHome,
+                        height = 42.dp,
                         modifier = Modifier.weight(1f)
                     )
                 }

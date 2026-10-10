@@ -13,7 +13,6 @@ data class SignInUiState(
     val authState: AuthState = AuthState.GUEST,
     val currentSession: AuthSession? = null,
     val isGoogleAvailable: Boolean = false,
-    val isFacebookAvailable: Boolean = false,
     val isLoading: Boolean = false,
     val isReducedMotion: Boolean = false,
     val errorMessage: String? = null,

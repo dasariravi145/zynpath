@@ -41,6 +41,12 @@ class PuzzleSolver(
     fun solve(definition: PuzzleDefinition): SolverResult = solve(definition, defaultConfiguration)
 
     /**
+     * Solves the given [PuzzleDefinition] from checkpoint #1 with an explicit [SearchBudget].
+     */
+    fun solve(definition: PuzzleDefinition, budget: SearchBudget): SolverResult =
+        solve(definition, budget.toSolverConfiguration())
+
+    /**
      * Solves the given [PuzzleDefinition] from checkpoint #1 with an explicit [SolverConfiguration].
      */
     fun solve(definition: PuzzleDefinition, config: SolverConfiguration): SolverResult {
@@ -54,6 +60,15 @@ class PuzzleSolver(
             ?: return SolverResult.invalid("MISSING_START_CHECKPOINT: Puzzle definition missing start checkpoint #1")
         return solveFromPartialPath(definition, PuzzlePath.of(startCheckpoint.position), config)
     }
+
+    /**
+     * Solves the given [PuzzleDefinition] continuing from an existing [partialPath] with a [SearchBudget].
+     */
+    fun solveFromPartialPath(
+        definition: PuzzleDefinition,
+        partialPath: PuzzlePath,
+        budget: SearchBudget
+    ): SolverResult = solveFromPartialPath(definition, partialPath, budget.toSolverConfiguration())
 
     /**
      * Solves the given [PuzzleDefinition] continuing from an existing [partialPath].
@@ -243,6 +258,9 @@ class PuzzleSolver(
 
             if (legalCandidates.isEmpty()) {
                 state.backtracks++
+                if (state.backtracks >= config.maxBacktracks) {
+                    state.searchLimitReached = true
+                }
                 return
             }
 
@@ -338,6 +356,10 @@ class PuzzleSolver(
                 // Step back (backtrack)
                 state.pop()
                 state.backtracks++
+                if (state.backtracks >= config.maxBacktracks) {
+                    state.searchLimitReached = true
+                    return
+                }
             }
         }
 

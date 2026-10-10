@@ -156,16 +156,8 @@ class ZynpathAudioManagerImpl @Inject constructor(
     private fun observePreferences() {
         scope.launch {
             preferencesRepository.userPreferencesFlow.collectLatest { prefs ->
-                val sfxChanged = isSfxEnabled.getAndSet(prefs.isSfxEnabled) != prefs.isSfxEnabled
-                val musicChanged = isMusicEnabled.getAndSet(prefs.isMusicEnabled) != prefs.isMusicEnabled
-
-                if (musicChanged) {
-                    if (prefs.isMusicEnabled) {
-                        startMusic()
-                    } else {
-                        stopMusic()
-                    }
-                }
+                isSfxEnabled.set(prefs.isSfxEnabled)
+                // Note: Dedicated background music removed from Zynpath per Prompt 49
             }
         }
     }
@@ -219,18 +211,14 @@ class ZynpathAudioManagerImpl @Inject constructor(
         }
     }
 
-    // --- Background Music Management ---
+    // --- Background Music Management (Disabled per Prompt 49) ---
 
     override fun startMusic() {
-        if (!isMusicEnabled.get()) return
-        if (isMusicPlaying.get()) return
-
-        requestAudioFocus()
-        resumeMusicInternal()
+        // Dedicated background music is not required and has been removed from Zynpath.
     }
 
     override fun pauseMusic() {
-        pauseMusicInternal()
+        stopMusic()
     }
 
     override fun stopMusic() {
@@ -246,22 +234,7 @@ class ZynpathAudioManagerImpl @Inject constructor(
     }
 
     private fun resumeMusicInternal() {
-        try {
-            if (mediaPlayer == null) {
-                // Synthesize or prepare ambient track
-                val musicFile = SyntheticSoundGenerator.createOrGetSoundFile(context.cacheDir, ZynpathAudioEvent.MATCH_COMPLETED)
-                mediaPlayer = MediaPlayer().apply {
-                    setDataSource(musicFile.absolutePath)
-                    isLooping = true
-                    setVolume(musicVolume, musicVolume)
-                    prepare()
-                }
-            }
-            mediaPlayer?.start()
-            isMusicPlaying.set(true)
-        } catch (e: Exception) {
-            Log.w(tag, "Failed to start background music: ${e.message}")
-        }
+        // Disabled: Dedicated background music removed from Zynpath.
     }
 
     private fun pauseMusicInternal() {
@@ -315,9 +288,7 @@ class ZynpathAudioManagerImpl @Inject constructor(
     // --- Lifecycle Management ---
 
     override fun onStart(owner: LifecycleOwner) {
-        if (isMusicEnabled.get()) {
-            startMusic()
-        }
+        // Background music playback removed per Prompt 49
     }
 
     override fun onStop(owner: LifecycleOwner) {

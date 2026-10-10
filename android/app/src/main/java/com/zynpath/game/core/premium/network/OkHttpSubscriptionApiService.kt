@@ -30,7 +30,7 @@ class OkHttpSubscriptionApiService(
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     override fun getBaseUrl(): String {
-        return customBaseUrl?.removeSuffix("/") ?: BuildConfig.BACKEND_BASE_URL.removeSuffix("/")
+        return (customBaseUrl ?: BuildConfig.BACKEND_BASE_URL).trim().removeSuffix("/").removeSuffix("/api/v1")
     }
 
     override suspend fun getEntitlement(sessionToken: String): NetworkResult<PremiumEntitlement> = withContext(ioDispatcher) {

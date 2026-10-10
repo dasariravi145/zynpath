@@ -174,7 +174,7 @@ fun PremiumScreen(
                                 color = TextPrimary
                             )
                             Text(
-                                text = "Sign in with Google or Facebook to link and protect your subscription across devices.",
+                                text = "Sign in with Google to link and protect your subscription across devices.",
                                 fontSize = 11.sp,
                                 color = TextSecondary,
                                 lineHeight = 15.sp

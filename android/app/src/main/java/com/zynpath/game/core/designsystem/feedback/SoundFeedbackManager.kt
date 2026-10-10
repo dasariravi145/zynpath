@@ -62,6 +62,16 @@ class SoundFeedbackManager(
         } catch (_: Exception) {}
     }
 
+    /**
+     * Plays bright metallic collection chime when coins are earned.
+     */
+    fun playCoinCollected() {
+        if (!isSfxEnabled) return
+        try {
+            toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP2, 100)
+        } catch (_: Exception) {}
+    }
+
     fun release() {
         try {
             toneGenerator?.release()

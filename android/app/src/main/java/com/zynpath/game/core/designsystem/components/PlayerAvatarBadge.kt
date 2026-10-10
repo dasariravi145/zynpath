@@ -1,5 +1,6 @@
 package com.zynpath.game.core.designsystem.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.zynpath.game.R
@@ -57,11 +59,13 @@ fun PlayerAvatarBadge(
                 .border(1.5.dp, if (isGuest) GameElectricCyan else GameGoldHighlight, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
+            Image(
                 painter = painterResource(id = avatarDrawableId),
                 contentDescription = null,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(32.dp)
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
             )
         }
         Spacer(modifier = Modifier.width(10.dp))
@@ -99,11 +103,13 @@ fun ZynpathPlayerAvatar(
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
+        Image(
             painter = painterResource(id = avatarDrawableId),
             contentDescription = if (isGuest) "Guest Avatar" else "Player Avatar",
-            tint = Color.Unspecified,
-            modifier = Modifier.size(size * 0.88f)
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .size(size * 0.80f)
+                .clip(CircleShape)
         )
     }
 }

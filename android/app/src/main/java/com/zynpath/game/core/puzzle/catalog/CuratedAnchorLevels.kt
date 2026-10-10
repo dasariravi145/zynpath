@@ -57,10 +57,9 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(7, GridPosition(4, 4))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(0, 1)),
-            BlockedEdge.between(GridPosition(4, 1), GridPosition(4, 2)),
-            BlockedEdge.between(GridPosition(0, 2), GridPosition(0, 3)),
-            BlockedEdge.between(GridPosition(4, 3), GridPosition(4, 4))
+            BlockedEdge.between(GridPosition(1, 1), GridPosition(1, 2)),
+            BlockedEdge.between(GridPosition(3, 1), GridPosition(3, 2)),
+            BlockedEdge.between(GridPosition(2, 2), GridPosition(2, 3))
         ),
         difficultyMetadata = "BALANCED",
         seed = 3100L
@@ -94,9 +93,9 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(6, GridPosition(5, 0))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(1, 0)),
-            BlockedEdge.between(GridPosition(1, 5), GridPosition(2, 5)),
-            BlockedEdge.between(GridPosition(2, 0), GridPosition(3, 0))
+            BlockedEdge.between(GridPosition(1, 2), GridPosition(2, 2)),
+            BlockedEdge.between(GridPosition(2, 4), GridPosition(3, 4)),
+            BlockedEdge.between(GridPosition(3, 2), GridPosition(4, 2))
         ),
         difficultyMetadata = "STRATEGIC",
         seed = 4101L
@@ -133,12 +132,10 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(8, GridPosition(0, 5))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(0, 1)),
-            BlockedEdge.between(GridPosition(5, 1), GridPosition(5, 2)),
-            BlockedEdge.between(GridPosition(0, 2), GridPosition(0, 3)),
-            BlockedEdge.between(GridPosition(5, 3), GridPosition(5, 4)),
-            BlockedEdge.between(GridPosition(0, 4), GridPosition(0, 5)),
-            BlockedEdge.between(GridPosition(2, 2), GridPosition(2, 3))
+            BlockedEdge.between(GridPosition(1, 1), GridPosition(1, 2)),
+            BlockedEdge.between(GridPosition(3, 1), GridPosition(3, 2)),
+            BlockedEdge.between(GridPosition(2, 3), GridPosition(2, 4)),
+            BlockedEdge.between(GridPosition(4, 3), GridPosition(4, 4))
         ),
         difficultyMetadata = "STRATEGIC",
         seed = 4150L
@@ -174,11 +171,11 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(7, GridPosition(6, 6))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(1, 0)),
-            BlockedEdge.between(GridPosition(1, 6), GridPosition(2, 6)),
-            BlockedEdge.between(GridPosition(2, 0), GridPosition(3, 0)),
-            BlockedEdge.between(GridPosition(3, 6), GridPosition(4, 6)),
-            BlockedEdge.between(GridPosition(4, 0), GridPosition(5, 0))
+            BlockedEdge.between(GridPosition(1, 2), GridPosition(2, 2)),
+            BlockedEdge.between(GridPosition(1, 4), GridPosition(2, 4)),
+            BlockedEdge.between(GridPosition(3, 2), GridPosition(4, 2)),
+            BlockedEdge.between(GridPosition(3, 4), GridPosition(4, 4)),
+            BlockedEdge.between(GridPosition(4, 3), GridPosition(5, 3))
         ),
         difficultyMetadata = "ADVANCED",
         seed = 5151L
@@ -217,14 +214,12 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(9, GridPosition(6, 6))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(0, 1)),
-            BlockedEdge.between(GridPosition(6, 1), GridPosition(6, 2)),
-            BlockedEdge.between(GridPosition(0, 2), GridPosition(0, 3)),
-            BlockedEdge.between(GridPosition(6, 3), GridPosition(6, 4)),
-            BlockedEdge.between(GridPosition(0, 4), GridPosition(0, 5)),
-            BlockedEdge.between(GridPosition(6, 5), GridPosition(6, 6)),
+            BlockedEdge.between(GridPosition(1, 1), GridPosition(1, 2)),
             BlockedEdge.between(GridPosition(3, 1), GridPosition(3, 2)),
-            BlockedEdge.between(GridPosition(3, 4), GridPosition(3, 5))
+            BlockedEdge.between(GridPosition(5, 1), GridPosition(5, 2)),
+            BlockedEdge.between(GridPosition(2, 3), GridPosition(2, 4)),
+            BlockedEdge.between(GridPosition(4, 3), GridPosition(4, 4)),
+            BlockedEdge.between(GridPosition(1, 4), GridPosition(1, 5))
         ),
         difficultyMetadata = "ADVANCED",
         seed = 5200L
@@ -262,14 +257,14 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(8, GridPosition(7, 0))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(1, 0)),
-            BlockedEdge.between(GridPosition(1, 7), GridPosition(2, 7)),
-            BlockedEdge.between(GridPosition(2, 0), GridPosition(3, 0)),
-            BlockedEdge.between(GridPosition(3, 7), GridPosition(4, 7)),
-            BlockedEdge.between(GridPosition(4, 0), GridPosition(5, 0)),
-            BlockedEdge.between(GridPosition(5, 7), GridPosition(6, 7)),
-            BlockedEdge.between(GridPosition(6, 0), GridPosition(7, 0)),
-            BlockedEdge.between(GridPosition(3, 3), GridPosition(4, 3))
+            BlockedEdge.between(GridPosition(1, 2), GridPosition(2, 2)),
+            BlockedEdge.between(GridPosition(1, 5), GridPosition(2, 5)),
+            BlockedEdge.between(GridPosition(2, 3), GridPosition(3, 3)),
+            BlockedEdge.between(GridPosition(3, 2), GridPosition(4, 2)),
+            BlockedEdge.between(GridPosition(3, 5), GridPosition(4, 5)),
+            BlockedEdge.between(GridPosition(4, 3), GridPosition(5, 3)),
+            BlockedEdge.between(GridPosition(5, 2), GridPosition(6, 2)),
+            BlockedEdge.between(GridPosition(5, 5), GridPosition(6, 5))
         ),
         difficultyMetadata = "EXPERT",
         seed = 6201L
@@ -310,18 +305,15 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(10, GridPosition(0, 7))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(0, 1)),
-            BlockedEdge.between(GridPosition(7, 1), GridPosition(7, 2)),
-            BlockedEdge.between(GridPosition(0, 2), GridPosition(0, 3)),
-            BlockedEdge.between(GridPosition(7, 3), GridPosition(7, 4)),
-            BlockedEdge.between(GridPosition(0, 4), GridPosition(0, 5)),
-            BlockedEdge.between(GridPosition(7, 5), GridPosition(7, 6)),
-            BlockedEdge.between(GridPosition(0, 6), GridPosition(0, 7)),
+            BlockedEdge.between(GridPosition(1, 1), GridPosition(1, 2)),
             BlockedEdge.between(GridPosition(3, 1), GridPosition(3, 2)),
+            BlockedEdge.between(GridPosition(5, 1), GridPosition(5, 2)),
+            BlockedEdge.between(GridPosition(2, 3), GridPosition(2, 4)),
             BlockedEdge.between(GridPosition(4, 3), GridPosition(4, 4)),
-            BlockedEdge.between(GridPosition(2, 5), GridPosition(2, 6)),
-            BlockedEdge.between(GridPosition(5, 0), GridPosition(5, 1)),
-            BlockedEdge.between(GridPosition(2, 3), GridPosition(2, 4))
+            BlockedEdge.between(GridPosition(6, 3), GridPosition(6, 4)),
+            BlockedEdge.between(GridPosition(1, 5), GridPosition(1, 6)),
+            BlockedEdge.between(GridPosition(3, 5), GridPosition(3, 6)),
+            BlockedEdge.between(GridPosition(5, 5), GridPosition(5, 6))
         ),
         difficultyMetadata = "EXPERT",
         seed = 6250L
@@ -361,16 +353,16 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(9, GridPosition(7, 0))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(1, 0)),
-            BlockedEdge.between(GridPosition(1, 7), GridPosition(2, 7)),
-            BlockedEdge.between(GridPosition(2, 0), GridPosition(3, 0)),
-            BlockedEdge.between(GridPosition(3, 7), GridPosition(4, 7)),
-            BlockedEdge.between(GridPosition(4, 0), GridPosition(5, 0)),
-            BlockedEdge.between(GridPosition(5, 7), GridPosition(6, 7)),
-            BlockedEdge.between(GridPosition(6, 0), GridPosition(7, 0)),
-            BlockedEdge.between(GridPosition(1, 3), GridPosition(2, 3)),
+            BlockedEdge.between(GridPosition(1, 2), GridPosition(2, 2)),
+            BlockedEdge.between(GridPosition(1, 4), GridPosition(2, 4)),
+            BlockedEdge.between(GridPosition(2, 3), GridPosition(3, 3)),
+            BlockedEdge.between(GridPosition(2, 5), GridPosition(3, 5)),
+            BlockedEdge.between(GridPosition(3, 2), GridPosition(4, 2)),
             BlockedEdge.between(GridPosition(3, 4), GridPosition(4, 4)),
-            BlockedEdge.between(GridPosition(5, 2), GridPosition(6, 2))
+            BlockedEdge.between(GridPosition(4, 3), GridPosition(5, 3)),
+            BlockedEdge.between(GridPosition(4, 5), GridPosition(5, 5)),
+            BlockedEdge.between(GridPosition(5, 2), GridPosition(6, 2)),
+            BlockedEdge.between(GridPosition(5, 4), GridPosition(6, 4))
         ),
         difficultyMetadata = "MASTER",
         seed = 6251L
@@ -413,20 +405,18 @@ object CuratedAnchorLevels {
             NumberedCheckpoint(12, GridPosition(0, 7))
         ),
         blockedEdges = setOf(
-            BlockedEdge.between(GridPosition(0, 0), GridPosition(0, 1)),
-            BlockedEdge.between(GridPosition(7, 1), GridPosition(7, 2)),
-            BlockedEdge.between(GridPosition(0, 2), GridPosition(0, 3)),
-            BlockedEdge.between(GridPosition(7, 3), GridPosition(7, 4)),
-            BlockedEdge.between(GridPosition(0, 4), GridPosition(0, 5)),
-            BlockedEdge.between(GridPosition(7, 5), GridPosition(7, 6)),
-            BlockedEdge.between(GridPosition(0, 6), GridPosition(0, 7)),
-            BlockedEdge.between(GridPosition(2, 1), GridPosition(2, 2)),
-            BlockedEdge.between(GridPosition(4, 0), GridPosition(4, 1)),
-            BlockedEdge.between(GridPosition(5, 2), GridPosition(5, 3)),
-            BlockedEdge.between(GridPosition(3, 3), GridPosition(3, 4)),
-            BlockedEdge.between(GridPosition(4, 4), GridPosition(4, 5)),
+            BlockedEdge.between(GridPosition(1, 1), GridPosition(1, 2)),
+            BlockedEdge.between(GridPosition(2, 2), GridPosition(2, 3)),
+            BlockedEdge.between(GridPosition(3, 1), GridPosition(3, 2)),
+            BlockedEdge.between(GridPosition(4, 2), GridPosition(4, 3)),
+            BlockedEdge.between(GridPosition(5, 1), GridPosition(5, 2)),
+            BlockedEdge.between(GridPosition(6, 2), GridPosition(6, 3)),
+            BlockedEdge.between(GridPosition(1, 4), GridPosition(1, 5)),
             BlockedEdge.between(GridPosition(2, 5), GridPosition(2, 6)),
-            BlockedEdge.between(GridPosition(5, 6), GridPosition(5, 7))
+            BlockedEdge.between(GridPosition(3, 4), GridPosition(3, 5)),
+            BlockedEdge.between(GridPosition(4, 5), GridPosition(4, 6)),
+            BlockedEdge.between(GridPosition(5, 4), GridPosition(5, 5)),
+            BlockedEdge.between(GridPosition(6, 5), GridPosition(6, 6))
         ),
         difficultyMetadata = "MASTER",
         seed = 6300L
@@ -445,29 +435,33 @@ object CuratedAnchorLevels {
         )
     )
 
-    val ANCHOR_LEVELS: Map<Int, PuzzleDefinition> = mapOf(
-        100 to LEVEL_100,
-        101 to LEVEL_101,
-        150 to LEVEL_150,
-        151 to LEVEL_151,
-        200 to LEVEL_200,
-        201 to LEVEL_201,
-        250 to LEVEL_250,
-        251 to LEVEL_251,
-        300 to LEVEL_300
-    )
+    val ANCHOR_LEVELS: Map<Int, PuzzleDefinition> by lazy {
+        mapOf(
+            100 to (CuratedWorld3Levels.getLevel(100) ?: LEVEL_100),
+            101 to (CuratedWorld4Levels.getLevel(101) ?: LEVEL_101),
+            150 to (CuratedWorld4Levels.getLevel(150) ?: LEVEL_150),
+            151 to (CuratedWorld5Levels.getLevel(151) ?: LEVEL_151),
+            200 to (CuratedWorld5Levels.getLevel(200) ?: LEVEL_200),
+            201 to (CuratedWorld6Levels.getLevel(201) ?: LEVEL_201),
+            250 to (CuratedWorld6Levels.getLevel(250) ?: LEVEL_250),
+            251 to (CuratedWorld6Levels.getLevel(251) ?: LEVEL_251),
+            300 to (CuratedWorld6Levels.getLevel(300) ?: LEVEL_300)
+        )
+    }
 
-    val ANCHOR_SOLUTIONS: Map<Int, PuzzlePath> = mapOf(
-        100 to SOLUTION_100,
-        101 to SOLUTION_101,
-        150 to SOLUTION_150,
-        151 to SOLUTION_151,
-        200 to SOLUTION_200,
-        201 to SOLUTION_201,
-        250 to SOLUTION_250,
-        251 to SOLUTION_251,
-        300 to SOLUTION_300
-    )
+    val ANCHOR_SOLUTIONS: Map<Int, PuzzlePath> by lazy {
+        mapOf(
+            100 to (CuratedWorld3Levels.getSolution(100) ?: SOLUTION_100),
+            101 to (CuratedWorld4Levels.getSolution(101) ?: SOLUTION_101),
+            150 to (CuratedWorld4Levels.getSolution(150) ?: SOLUTION_150),
+            151 to (CuratedWorld5Levels.getSolution(151) ?: SOLUTION_151),
+            200 to (CuratedWorld5Levels.getSolution(200) ?: SOLUTION_200),
+            201 to (CuratedWorld6Levels.getSolution(201) ?: SOLUTION_201),
+            250 to (CuratedWorld6Levels.getSolution(250) ?: SOLUTION_250),
+            251 to (CuratedWorld6Levels.getSolution(251) ?: SOLUTION_251),
+            300 to (CuratedWorld6Levels.getSolution(300) ?: SOLUTION_300)
+        )
+    }
 
     /**
      * Resolves the world-accurate representative fallback puzzle when generation fails or is offline.
@@ -478,10 +472,10 @@ object CuratedAnchorLevels {
         return when (world.worldId) {
             1 -> PackagedPuzzles.LEVEL_1
             2 -> PackagedPuzzles.LEVEL_21
-            3 -> LEVEL_100
-            4 -> LEVEL_101
-            5 -> LEVEL_151
-            6 -> LEVEL_201
+            3 -> CuratedWorld3Levels.getLevel(100) ?: LEVEL_100
+            4 -> CuratedWorld4Levels.getLevel(101) ?: LEVEL_101
+            5 -> CuratedWorld5Levels.getLevel(151) ?: LEVEL_151
+            6 -> CuratedWorld6Levels.getLevel(201) ?: LEVEL_201
             else -> PackagedPuzzles.LEVEL_1
         }
     }
@@ -496,8 +490,8 @@ object CuratedAnchorLevels {
             2 -> CuratedFirst50Levels.SOLUTION_21
             3 -> SOLUTION_100
             4 -> SOLUTION_101
-            5 -> SOLUTION_151
-            6 -> SOLUTION_201
+            5 -> CuratedWorld5Levels.getSolution(151) ?: SOLUTION_151
+            6 -> CuratedWorld6Levels.getSolution(201) ?: SOLUTION_201
             else -> PackagedPuzzles.SOLUTION_1_ROUTE
         }
     }

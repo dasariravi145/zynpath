@@ -16,17 +16,25 @@ enum class DifficultyBand(
     val maxScore: Double,
     val displayName: String
 ) {
+    TUTORIAL(0.0, 0.20, "Tutorial"),
     BEGINNER(0.0, 0.20, "Beginner"),
     EASY(0.20, 0.40, "Easy"),
     MEDIUM(0.40, 0.60, "Medium"),
-    HARD(0.60, 0.80, "Hard"),
-    EXPERT(0.80, 1.00, "Expert");
+    HARD(0.60, 0.75, "Hard"),
+    VERY_HARD(0.75, 0.88, "Very Hard"),
+    EXPERT(0.88, 0.94, "Expert"),
+    EXTREME(0.94, 1.00, "Extreme");
 
     companion object {
         fun fromScore(score: Double): DifficultyBand {
             val clamped = score.coerceIn(0.0, 1.0)
-            return entries.firstOrNull { clamped >= it.minScore && clamped < it.maxScore }
-                ?: EXPERT
+            if (clamped >= 0.94) return EXTREME
+            if (clamped >= 0.88) return EXPERT
+            if (clamped >= 0.75) return VERY_HARD
+            if (clamped >= 0.60) return HARD
+            if (clamped >= 0.40) return MEDIUM
+            if (clamped >= 0.20) return EASY
+            return TUTORIAL
         }
     }
 }

@@ -7,5 +7,6 @@ package com.zynpath.game.core.auth.model
  */
 enum class AuthProvider(val displayName: String) {
     GOOGLE("Google"),
-    FACEBOOK("Facebook")
+    FACEBOOK("Facebook"),
+    GUEST("Guest")
 }

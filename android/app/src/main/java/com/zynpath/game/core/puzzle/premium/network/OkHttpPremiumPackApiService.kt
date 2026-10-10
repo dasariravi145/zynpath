@@ -32,7 +32,7 @@ class OkHttpPremiumPackApiService(
     constructor(okHttpClient: OkHttpClient) : this(okHttpClient, null, Dispatchers.IO)
 
     override fun getBaseUrl(): String {
-        return customBaseUrl?.removeSuffix("/") ?: BuildConfig.BACKEND_BASE_URL.removeSuffix("/")
+        return (customBaseUrl ?: BuildConfig.BACKEND_BASE_URL).trim().removeSuffix("/").removeSuffix("/api/v1")
     }
 
     override suspend fun getPackCatalog(sessionToken: String?): NetworkResult<List<PremiumPackManifest>> = withContext(ioDispatcher) {

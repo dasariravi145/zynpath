@@ -1,12 +1,15 @@
 package com.zynpath.game.core.designsystem.components
 
+import androidx.compose.foundation.border
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zynpath.game.core.designsystem.theme.BackgroundElevated
 import com.zynpath.game.core.designsystem.theme.ForestMint
@@ -60,7 +63,7 @@ fun ZynpathConfirmationDialog(
                 )
             }
         },
-        modifier = modifier,
+        modifier = modifier.border(1.dp, Color(0x4421D4FD), ZynpathShapes.large),
         shape = ZynpathShapes.large,
         containerColor = BackgroundElevated
     )

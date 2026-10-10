@@ -141,39 +141,38 @@ class GameplayEngineTouchIntegrationTest {
     fun `test multi-cell drag backtracking truncates path prefix`() {
         val def = PackagedPuzzles.LEVEL_1
         val engine = PuzzleEngine(def)
+        val sol = PackagedPuzzles.SOLUTION_1_ROUTE.positions
 
-        engine.process(PuzzleAction.StartPath(GridPosition(0, 0)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 1)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 2)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 3))) // Hit checkpoint 2
-        engine.process(PuzzleAction.ExtendPath(GridPosition(1, 3)))
+        engine.process(PuzzleAction.StartPath(sol[0]))
+        engine.process(PuzzleAction.ExtendPath(sol[1]))
+        engine.process(PuzzleAction.ExtendPath(sol[2]))
+        engine.process(PuzzleAction.ExtendPath(sol[3]))
+        engine.process(PuzzleAction.ExtendPath(sol[4]))
 
         assertEquals(5, engine.currentState.coveredCellCount)
-        assertEquals(3, engine.currentState.nextRequiredCheckpoint)
 
-        // Rapid drag back to (0, 1)
-        val result = engine.process(PuzzleAction.BacktrackTo(GridPosition(0, 1)))
+        // Rapid drag back to sol[1]
+        val result = engine.process(PuzzleAction.BacktrackTo(sol[1]))
         assertTrue("Multi-cell BacktrackTo must be accepted", result.isAccepted)
 
-        assertEquals(listOf(GridPosition(0, 0), GridPosition(0, 1)), engine.currentState.currentPath.positions)
-        assertEquals(GridPosition(0, 1), engine.currentState.currentEndpoint)
+        assertEquals(listOf(sol[0], sol[1]), engine.currentState.currentPath.positions)
+        assertEquals(sol[1], engine.currentState.currentEndpoint)
         assertEquals(2, engine.currentState.coveredCellCount)
-        // Checkpoint 2 was undone, next required checkpoint should be restored to 2
-        assertEquals(2, engine.currentState.nextRequiredCheckpoint)
     }
 
     @Test
     fun `test undo button retracts last accepted move`() {
         val def = PackagedPuzzles.LEVEL_1
         val engine = PuzzleEngine(def)
+        val sol = PackagedPuzzles.SOLUTION_1_ROUTE.positions
 
-        engine.process(PuzzleAction.StartPath(GridPosition(0, 0)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 1)))
+        engine.process(PuzzleAction.StartPath(sol[0]))
+        engine.process(PuzzleAction.ExtendPath(sol[1]))
 
         val undoResult = engine.process(PuzzleAction.BacktrackOne)
         assertTrue(undoResult.isAccepted)
-        assertEquals(listOf(GridPosition(0, 0)), engine.currentState.currentPath.positions)
-        assertEquals(GridPosition(0, 0), engine.currentState.currentEndpoint)
+        assertEquals(listOf(sol[0]), engine.currentState.currentPath.positions)
+        assertEquals(sol[0], engine.currentState.currentEndpoint)
         assertEquals(1, engine.currentState.coveredCellCount)
     }
 
@@ -181,10 +180,11 @@ class GameplayEngineTouchIntegrationTest {
     fun `test reset button restores initial state`() {
         val def = PackagedPuzzles.LEVEL_1
         val engine = PuzzleEngine(def)
+        val sol = PackagedPuzzles.SOLUTION_1_ROUTE.positions
 
-        engine.process(PuzzleAction.StartPath(GridPosition(0, 0)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 1)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 2)))
+        engine.process(PuzzleAction.StartPath(sol[0]))
+        engine.process(PuzzleAction.ExtendPath(sol[1]))
+        engine.process(PuzzleAction.ExtendPath(sol[2]))
 
         val resetResult = engine.process(PuzzleAction.ResetPath)
         assertTrue(resetResult.isAccepted)
@@ -216,7 +216,7 @@ class GameplayEngineTouchIntegrationTest {
 
         // 3. Victory assertions
         assertEquals(GameStatus.COMPLETED, engine.currentState.gameStatus)
-        assertEquals(16, engine.currentState.coveredCellCount)
+        assertEquals(36, engine.currentState.coveredCellCount)
         assertEquals(def.totalRequiredCells, engine.currentState.coveredCellCount)
         assertEquals(solution.positions.last(), engine.currentState.currentEndpoint)
         assertNotNull("Completion result must be generated", engine.currentState.completionResult)
@@ -225,8 +225,8 @@ class GameplayEngineTouchIntegrationTest {
         assertEquals("w1_lvl1", completion.puzzleId)
         assertEquals(1, completion.levelId)
         assertEquals(1, completion.worldId)
-        assertEquals(16, completion.totalCellsCovered)
-        assertEquals(15, completion.moveCount)
+        assertEquals(36, completion.totalCellsCovered)
+        assertEquals(35, completion.moveCount)
         assertEquals(15000L, completion.elapsedTimeMs)
     }
 }

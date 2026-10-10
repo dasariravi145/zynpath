@@ -92,11 +92,11 @@ class AccessibilityAndDeviceCompatibilityTest {
     @Test
     fun testNonColorOnlyIndicatorsAreExplicit() {
         val def = PackagedPuzzles.LEVEL_1
-        // Checkpoints are identified with explicit integer sequence numbers 1..5
+        // Checkpoints are identified with explicit integer sequence numbers 1..N
         val checkpoints = def.checkpoints
-        assertEquals(5, checkpoints.size)
+        assertTrue(checkpoints.size in 6..10)
         val numbers = checkpoints.map { it.number }
-        assertEquals(listOf(1, 2, 3, 4, 5), numbers)
+        assertEquals((1..checkpoints.size).toList(), numbers)
 
         // Start cell has sequence number 1 and start flag
         val startCheckpoint = checkpoints.find { it.isStart }

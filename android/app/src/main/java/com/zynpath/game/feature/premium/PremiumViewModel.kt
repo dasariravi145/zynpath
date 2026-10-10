@@ -121,7 +121,7 @@ class PremiumViewModel @Inject constructor(
         if (!state.isAccountLinked) {
             _uiState.update {
                 it.copy(
-                    errorMessage = "An authenticated Google or Facebook account is required to subscribe so your entitlement is permanently secured."
+                    errorMessage = "An authenticated Google Account is required to subscribe so your entitlement is permanently secured."
                 )
             }
             return

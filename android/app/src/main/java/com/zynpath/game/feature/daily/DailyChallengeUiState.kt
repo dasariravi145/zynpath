@@ -44,6 +44,7 @@ sealed interface DailyChallengeUiState {
         val isDailyLoginClaimed: Boolean = false,
         val isDailyLoginAdBonusClaimed: Boolean = false,
         val isDailyChallengeAdBonusClaimed: Boolean = false,
-        val isDailyChallengeClearClaimed: Boolean = false
+        val isDailyChallengeClearClaimed: Boolean = false,
+        val isFirstClearBonusAwarded: Boolean = false
     ) : DailyChallengeUiState
 }

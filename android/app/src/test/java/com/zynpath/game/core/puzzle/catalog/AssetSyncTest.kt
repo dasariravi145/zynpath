@@ -5,6 +5,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import com.zynpath.game.core.puzzle.generator.PuzzleFingerprint
 
 /**
  * Validates and synchronizes packaged assets in src/main/assets.
@@ -40,6 +41,7 @@ class AssetSyncTest {
 
         // Test File write / sync if directory is writable
         val candidateDirs = listOf(
+            File("d:/Zynpath/android/app/src/main/assets"),
             File("src/main/assets"),
             File("app/src/main/assets"),
             File("android/app/src/main/assets")
@@ -50,17 +52,19 @@ class AssetSyncTest {
                     val manifestFile = File(dir, "catalog_manifest.json")
                     manifestFile.writeText(manifestJson)
 
-                    for ((levelId, _) in PackagedPuzzles.ALL_PACKAGED) {
-                        val world = WorldDefinition.forLevel(levelId)
-                        val puzzleFile = File(dir, "puzzles/w${world.worldId}/lvl$levelId.json")
-                        puzzleFile.parentFile?.mkdirs()
+                    for (levelId in 1..300) {
                         val json = CatalogAssetGenerator.generateAssetJson(levelId)
                         if (json != null) {
+                            val world = WorldDefinition.forLevel(levelId)
+                            val puzzleFile = File(dir, "puzzles/w${world.worldId}/lvl$levelId.json")
+                            puzzleFile.parentFile?.mkdirs()
                             puzzleFile.writeText(json)
                         }
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                System.err.println("Asset sync error for dir $dir: ${e.message}")
+            }
         }
     }
 }

@@ -57,10 +57,10 @@ data class WorldDefinition(
             worldId = 1,
             displayName = "Learn the Path",
             firstLevelId = 1,
-            lastLevelId = 20,
-            gridDimensions = GridDimensions(4, 4),
-            minimumCheckpointCount = 4,
-            maximumCheckpointCount = 6,
+            lastLevelId = 300,
+            gridDimensions = GridDimensions(6, 6),
+            minimumCheckpointCount = 6,
+            maximumCheckpointCount = 14,
             minimumWallCount = 0,
             maximumWallCount = 0,
             themeIdentifier = "forest_mint"
@@ -69,51 +69,51 @@ data class WorldDefinition(
         val WORLD_2 = WorldDefinition(
             worldId = 2,
             displayName = "Longer Connections",
-            firstLevelId = 21,
-            lastLevelId = 50,
-            gridDimensions = GridDimensions(5, 5),
-            minimumCheckpointCount = 4,
-            maximumCheckpointCount = 7,
+            firstLevelId = 301,
+            lastLevelId = 600,
+            gridDimensions = GridDimensions(7, 7),
+            minimumCheckpointCount = 8,
+            maximumCheckpointCount = 16,
             minimumWallCount = 0,
-            maximumWallCount = 0,
+            maximumWallCount = 6,
             themeIdentifier = "accent_blue"
         )
 
         val WORLD_3 = WorldDefinition(
             worldId = 3,
             displayName = "Wall Challenge",
-            firstLevelId = 51,
-            lastLevelId = 100,
-            gridDimensions = GridDimensions(5, 5),
-            minimumCheckpointCount = 4,
-            maximumCheckpointCount = 7,
-            minimumWallCount = 1,
-            maximumWallCount = 5,
+            firstLevelId = 601,
+            lastLevelId = 900,
+            gridDimensions = GridDimensions(8, 8),
+            minimumCheckpointCount = 10,
+            maximumCheckpointCount = 22,
+            minimumWallCount = 0,
+            maximumWallCount = 8,
             themeIdentifier = "wall_crimson"
         )
 
         val WORLD_4 = WorldDefinition(
             worldId = 4,
             displayName = "Complex Routes",
-            firstLevelId = 101,
-            lastLevelId = 150,
-            gridDimensions = GridDimensions(6, 6),
-            minimumCheckpointCount = 4,
-            maximumCheckpointCount = 8,
-            minimumWallCount = 2,
-            maximumWallCount = 8,
+            firstLevelId = 901,
+            lastLevelId = 1200,
+            gridDimensions = GridDimensions(9, 9),
+            minimumCheckpointCount = 12,
+            maximumCheckpointCount = 28,
+            minimumWallCount = 0,
+            maximumWallCount = 10,
             themeIdentifier = "accent_purple"
         )
 
         val WORLD_5 = WorldDefinition(
             worldId = 5,
             displayName = "Advanced Logic",
-            firstLevelId = 151,
-            lastLevelId = 200,
-            gridDimensions = GridDimensions(7, 7),
-            minimumCheckpointCount = 4,
-            maximumCheckpointCount = 10,
-            minimumWallCount = 4,
+            firstLevelId = 1201,
+            lastLevelId = 1500,
+            gridDimensions = GridDimensions(11, 11),
+            minimumCheckpointCount = 14,
+            maximumCheckpointCount = 35,
+            minimumWallCount = 0,
             maximumWallCount = 12,
             themeIdentifier = "accent_gold"
         )
@@ -121,13 +121,13 @@ data class WorldDefinition(
         val WORLD_6 = WorldDefinition(
             worldId = 6,
             displayName = "Expert Path",
-            firstLevelId = 201,
-            lastLevelId = 300,
-            gridDimensions = GridDimensions(8, 8),
-            minimumCheckpointCount = 4,
-            maximumCheckpointCount = 12,
-            minimumWallCount = 6,
-            maximumWallCount = 18,
+            firstLevelId = 1501,
+            lastLevelId = 1800,
+            gridDimensions = GridDimensions(12, 12),
+            minimumCheckpointCount = 16,
+            maximumCheckpointCount = 40,
+            minimumWallCount = 0,
+            maximumWallCount = 15,
             themeIdentifier = "success_green"
         )
 
@@ -141,6 +141,18 @@ data class WorldDefinition(
 
         fun forLevel(levelId: Int): WorldDefinition {
             return ALL_WORLDS.firstOrNull { levelId in it.levelRange } ?: WORLD_1
+        }
+
+        fun getExpectedGridDimensions(levelId: Int): GridDimensions {
+            return when (levelId) {
+                in 1..300 -> GridDimensions(6, 6)
+                in 301..600 -> GridDimensions(7, 7)
+                in 601..900 -> GridDimensions(8, 8)
+                in 901..1200 -> GridDimensions(9, 9)
+                in 1201..1500 -> GridDimensions(11, 11)
+                in 1501..1800 -> GridDimensions(12, 12)
+                else -> GridDimensions(6, 6)
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ import com.zynpath.game.core.auth.model.AuthSession
 import com.zynpath.game.core.auth.model.AuthState
 import com.zynpath.game.core.auth.provider.FacebookAuthClient
 import com.zynpath.game.core.auth.provider.FacebookCredentialResult
+import com.zynpath.game.core.auth.provider.FirebaseAuthClient
 import com.zynpath.game.core.auth.provider.GoogleAuthClient
 import com.zynpath.game.core.auth.provider.GoogleCredentialResult
 import com.zynpath.game.core.auth.storage.SecureTokenStorage
@@ -32,12 +33,14 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val googleAuthClient: GoogleAuthClient,
     private val facebookAuthClient: FacebookAuthClient,
+    private val firebaseAuthClient: FirebaseAuthClient,
     private val authApiService: AuthApiService,
     private val secureTokenStorage: SecureTokenStorage,
     private val profileRepository: PlayerProfileRepository,
     private val entitlementRepository: javax.inject.Provider<com.zynpath.game.core.premium.SubscriptionEntitlementRepository>,
     private val notificationRepository: javax.inject.Provider<com.zynpath.game.core.notification.repository.NotificationRepository>,
-    private val syncCoordinatorProvider: javax.inject.Provider<com.zynpath.game.core.sync.coordinator.SyncCoordinator>
+    private val syncCoordinatorProvider: javax.inject.Provider<com.zynpath.game.core.sync.coordinator.SyncCoordinator>,
+    private val walletRepositoryProvider: javax.inject.Provider<com.zynpath.game.core.economy.WalletRepository>
 ) : AuthRepository {
 
     private val refreshMutex = Mutex()
@@ -57,6 +60,7 @@ class AuthRepositoryImpl @Inject constructor(
         return when (provider) {
             AuthProvider.GOOGLE -> googleAuthClient.isConfigured()
             AuthProvider.FACEBOOK -> facebookAuthClient.isConfigured()
+            AuthProvider.GUEST -> true
         }
     }
 
@@ -72,10 +76,60 @@ class AuthRepositoryImpl @Inject constructor(
 
         return when (val credResult = googleAuthClient.getCredential(context)) {
             is GoogleCredentialResult.Success -> {
+                try {
+                    firebaseAuthClient.signInWithGoogle(credResult.idToken)
+                } catch (_: Throwable) {}
                 exchangeProviderCredential(AuthProvider.GOOGLE, credResult.idToken)
             }
             is GoogleCredentialResult.Cancelled -> {
                 _authState.value = if (_currentSession.value != null) AuthState.AUTHENTICATED else AuthState.GUEST
+                AuthResult.Cancelled
+            }
+            is GoogleCredentialResult.NotConfigured -> {
+                _authState.value = AuthState.SIGN_IN_FAILED
+                AuthResult.ProviderNotConfigured(AuthProvider.GOOGLE, credResult.message)
+            }
+            is GoogleCredentialResult.Failure -> {
+                _authState.value = AuthState.SIGN_IN_FAILED
+                AuthResult.Error("PROVIDER_ERROR", credResult.message)
+            }
+        }
+    }
+
+    override suspend fun connectWithGoogle(context: Context): AuthResult {
+        _authState.value = AuthState.SIGNING_IN
+        if (!googleAuthClient.isConfigured()) {
+            _authState.value = AuthState.SIGN_IN_FAILED
+            return AuthResult.ProviderNotConfigured(
+                AuthProvider.GOOGLE,
+                "Google Sign-In is not configured. Define default_web_client_id or GOOGLE_CLIENT_ID."
+            )
+        }
+
+        return when (val credResult = googleAuthClient.getCredential(context)) {
+            is GoogleCredentialResult.Success -> {
+                try {
+                    firebaseAuthClient.signInWithGoogle(credResult.idToken)
+                } catch (_: Throwable) {}
+                val currentSession = _currentSession.value
+                val isGuest = currentSession == null || currentSession.provider == AuthProvider.GUEST
+                if (isGuest) {
+                    val linkResult = executeGuestLinking(AuthProvider.GOOGLE, credResult.idToken)
+                    if (linkResult is AuthResult.Conflict) {
+                        exchangeProviderCredential(AuthProvider.GOOGLE, credResult.idToken)
+                    } else {
+                        linkResult
+                    }
+                } else {
+                    exchangeProviderCredential(AuthProvider.GOOGLE, credResult.idToken)
+                }
+            }
+            is GoogleCredentialResult.Cancelled -> {
+                _authState.value = if (_currentSession.value != null && _currentSession.value?.provider != AuthProvider.GUEST) {
+                    AuthState.AUTHENTICATED
+                } else {
+                    AuthState.GUEST
+                }
                 AuthResult.Cancelled
             }
             is GoogleCredentialResult.NotConfigured -> {
@@ -130,6 +184,9 @@ class AuthRepositoryImpl @Inject constructor(
 
         return when (val credResult = googleAuthClient.getCredential(context)) {
             is GoogleCredentialResult.Success -> {
+                try {
+                    firebaseAuthClient.signInWithGoogle(credResult.idToken)
+                } catch (_: Throwable) {}
                 executeGuestLinking(AuthProvider.GOOGLE, credResult.idToken)
             }
             is GoogleCredentialResult.Cancelled -> {
@@ -270,6 +327,13 @@ class AuthRepositoryImpl @Inject constructor(
                     }
                 } catch (_: Exception) {}
 
+                // Safely reassign local guest wallet transactions to newly authenticated player ID
+                try {
+                    if (isLinking) {
+                        walletRepositoryProvider.get().reassignToAuthenticatedPlayer(dto.playerId)
+                    }
+                } catch (_: Exception) {}
+
                 AuthResult.Success(session)
             }
             is NetworkResult.Error -> {
@@ -403,7 +467,74 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun ensureGuestSession(): AuthSession {
+        val existing = _currentSession.value
+        if (existing != null && !existing.isExpired) {
+            return existing
+        }
+
+        val profile = profileRepository.getProfile()
+        val guestUuid = profile.playerId
+        val displayName = if (profile.displayName.isNotBlank() && profile.displayName != "Pathfinder") {
+            profile.displayName
+        } else {
+            "Guest_${guestUuid.takeLast(4).uppercase()}"
+        }
+
+        return when (val result = authApiService.createGuestSession(guestUuid, displayName)) {
+            is NetworkResult.Success -> {
+                val dto = result.data
+                secureTokenStorage.saveSession(
+                    sessionToken = dto.sessionToken,
+                    playerId = dto.playerId,
+                    publicZynpathId = dto.publicZynpathId,
+                    displayName = dto.displayName,
+                    accountType = dto.accountType,
+                    provider = "GUEST",
+                    expiresAt = dto.expiresAt
+                )
+                val session = AuthSession(
+                    playerId = dto.playerId,
+                    publicZynpathId = dto.publicZynpathId,
+                    displayName = dto.displayName,
+                    accountType = dto.accountType,
+                    provider = AuthProvider.GUEST,
+                    expiresAt = dto.expiresAt
+                )
+                _currentSession.value = session
+                session
+            }
+            else -> {
+                val fallbackToken = secureTokenStorage.getSessionToken() ?: "guest_session_${guestUuid}"
+                val fallbackPublicId = profile.publicZynpathId ?: "ZYN-${guestUuid.take(4).uppercase()}"
+                secureTokenStorage.saveSession(
+                    sessionToken = fallbackToken,
+                    playerId = guestUuid,
+                    publicZynpathId = fallbackPublicId,
+                    displayName = displayName,
+                    accountType = "GUEST",
+                    provider = "GUEST",
+                    expiresAt = System.currentTimeMillis() + 86400000L
+                )
+                val session = AuthSession(
+                    playerId = guestUuid,
+                    publicZynpathId = fallbackPublicId,
+                    displayName = displayName,
+                    accountType = "GUEST",
+                    provider = AuthProvider.GUEST,
+                    expiresAt = System.currentTimeMillis() + 86400000L
+                )
+                _currentSession.value = session
+                session
+            }
+        }
+    }
+
     override suspend fun signOut() {
+        try {
+            firebaseAuthClient.signOut()
+        } catch (_: Throwable) {}
+
         val token = secureTokenStorage.getSessionToken()
         if (token != null) {
             try {

@@ -59,6 +59,10 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
+import com.zynpath.game.feature.wallet.CoinDetailsBottomSheet
+import com.zynpath.game.core.economy.EconomyConfig
 import com.zynpath.game.core.designsystem.animation.ZynpathAnimations.rejectionShake
 import com.zynpath.game.core.designsystem.components.LevelDifficultyIndicator
 import com.zynpath.game.core.designsystem.components.StatusBadge
@@ -149,6 +153,7 @@ import kotlinx.coroutines.launch
  * - Validated victory overlay with celebratory particles, personal best display, Next Level, and Replay.
  * - Full accessibility with adequate touch targets (>=48dp), scalable typography, and screen reader semantics.
  */
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun GameplayShellScreen(
     worldId: Int,
@@ -164,10 +169,14 @@ fun GameplayShellScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showPauseDialog by remember { mutableStateOf(false) }
     var showRulesDialog by remember { mutableStateOf(false) }
+    var showCoinVaultSheet by remember { mutableStateOf(false) }
     var nextLevelStatusMessage by remember { mutableStateOf<String?>(null) }
     var isResolvingNextLevel by remember { mutableStateOf(false) }
 
-    val chapterTheme = remember(levelId) { ChapterThemes.getThemeForLevel(levelId) }
+    val effectiveLevelId = viewModel?.levelId ?: com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.toGlobalLevel(worldId, levelId)
+    val effectiveWorldId = viewModel?.worldId ?: com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getWorld(effectiveLevelId).worldId
+
+    val chapterTheme = remember(effectiveLevelId) { ChapterThemes.getThemeForLevel(effectiveLevelId) }
     val coroutineScope = rememberCoroutineScope()
     val liveUiState = viewModel?.uiState?.collectAsStateWithLifecycle()?.value
 
@@ -383,7 +392,7 @@ fun GameplayShellScreen(
         MoveRejectionReason.BLOCKED_BY_WALL -> "Blocked by wall edge"
         MoveRejectionReason.CELL_ALREADY_VISITED -> "Cell already on path"
         MoveRejectionReason.WRONG_CHECKPOINT_ORDER -> "Visit checkpoints in ascending order"
-        MoveRejectionReason.PREMATURE_FINAL_CHECKPOINT -> "Cover all cells before final checkpoint"
+        MoveRejectionReason.PREMATURE_FINAL_CHECKPOINT -> "Fill every cell first"
         MoveRejectionReason.GAME_ALREADY_COMPLETED -> "Puzzle already completed"
         MoveRejectionReason.GAME_PAUSED -> "Game is paused"
         MoveRejectionReason.INVALID_ACTION -> "Invalid action"
@@ -1049,7 +1058,7 @@ fun GameplayShellScreen(
         )
     }
 
-    // Hint Limit Reached Dialog (Prompt 14 Section 29, Prompt 29 Section 21)
+    // Hint Limit Reached Dialog (Prompt Section 6 & 15)
     if (readyState?.showLimitReachedDialog == true) {
         val context = LocalContext.current
         var currentContext = context
@@ -1060,37 +1069,94 @@ fun GameplayShellScreen(
 
         val isAdReady = readyState.isRewardedAdAvailable && !readyState.isUnlimitedHints
         val isAdLoading = readyState.isAdRewardLoading
+        val currentBalance = readyState.currentWalletBalance
+        val hintPrice = EconomyConfig.EXTRA_HINT_COIN_PRICE // 300 coins
+        val hasSufficientCoins = currentBalance >= hintPrice
+        val neededCoins = (hintPrice - currentBalance).coerceAtLeast(0)
 
         AlertDialog(
             onDismissRequest = { viewModel?.dismissLimitReachedDialog() },
             title = {
                 Text(
-                    text = "No Hints Remaining",
+                    text = "Free Hints Used",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = ForestMint
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "You have used both free hints for Level ${readyState.levelId}.\n\n" +
-                                "Undo and Reset remain completely free and unlimited to help you solve the puzzle!",
-                        fontSize = 14.sp,
+                        text = "Both free hints for Level ${readyState.levelId} have been used.\n" +
+                                "Undo and Reset remain 100% free and unlimited!",
+                        fontSize = 13.sp,
                         color = TextSecondary,
-                        lineHeight = 20.sp
+                        lineHeight = 18.sp
                     )
 
+                    // Wallet Balance & Price Info Card
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0F1E36))
+                            .border(1.dp, Color(0xFF243B66), RoundedCornerShape(10.dp))
+                            .padding(12.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Your Balance:",
+                                    fontSize = 12.sp,
+                                    color = TextMuted
+                                )
+                                Text(
+                                    text = "$currentBalance Coins",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentGold
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Extra Hint Price:",
+                                    fontSize = 12.sp,
+                                    color = TextMuted
+                                )
+                                Text(
+                                    text = "$hintPrice Coins",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            if (!hasSufficientCoins) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Need $neededCoins more coins for extra hint.",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFFFD166)
+                                )
+                            }
+                        }
+                    }
+
                     if (!readyState.isUnlimitedHints) {
-                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Optional: Watch a short video to earn +1 Hint for Level ${readyState.levelId}.",
-                            fontSize = 13.sp,
-                            color = TextPrimary,
-                            fontWeight = FontWeight.SemiBold
+                            text = "Or watch one optional rewarded video for 1 hint (0 coins).",
+                            fontSize = 12.sp,
+                            color = TextMuted
                         )
                         if (!isAdReady && !isAdLoading && !readyState.rewardedAdError.isNullOrEmpty()) {
-                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "Ad Status: ${readyState.rewardedAdError}",
                                 fontSize = 11.sp,
@@ -1105,8 +1171,27 @@ fun GameplayShellScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (isAdReady && activity != null) {
+                    // Option A: Purchase Extra Hint or Route to Free Rewards
+                    if (hasSufficientCoins) {
                         ZynpathPrimaryButton(
+                            text = "Buy 1 Hint ($hintPrice Coins)",
+                            onClick = { viewModel?.purchaseExtraHintWithCoins() },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        ZynpathPrimaryButton(
+                            text = "Earn Free Coins (Rewards)",
+                            onClick = {
+                                viewModel?.dismissLimitReachedDialog()
+                                showCoinVaultSheet = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // Option B: Rewarded Video Ad for 1 Hint (0 coins)
+                    if (isAdReady && activity != null) {
+                        ZynpathSecondaryButton(
                             text = if (isAdLoading) "Loading Ad..." else "Watch Ad — Get 1 Hint",
                             onClick = { viewModel?.watchRewardedAdForHint(activity) },
                             enabled = !isAdLoading,
@@ -1116,7 +1201,7 @@ fun GameplayShellScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp),
+                                .padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -1128,23 +1213,12 @@ fun GameplayShellScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Loading video ad...",
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 color = TextMuted
                             )
                         }
-                    } else {
-                        ZynpathPrimaryButton(
-                            text = "Retry Loading Ad",
-                            onClick = { viewModel?.retryLoadingRewardedAd() },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "Video ad not ready yet. Tap retry or try again in a moment.",
-                            fontSize = 11.sp,
-                            color = TextMuted,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
                     }
+
                     ZynpathSecondaryButton(
                         text = "Keep Playing",
                         onClick = { viewModel?.dismissLimitReachedDialog() },
@@ -1234,14 +1308,20 @@ fun GameplayShellScreen(
         val context = LocalContext.current
         val activity = context as? Activity
         SoloVictoryScreen(
-            worldId = worldId,
-            levelId = levelId,
+            worldId = effectiveWorldId,
+            levelId = effectiveLevelId,
             timeFormatted = formattedTime,
             elapsedTimeMs = readyState.elapsedTimeMs,
             moves = readyState.gameState.moveCount,
             earnedStars = earnedStars,
             coinsEarned = readyState.coinsEarned,
+            currentWalletBalance = readyState.currentWalletBalance,
+            levelCoinsAwarded = readyState.levelCoinsAwarded,
+            worldCoinsAwarded = readyState.worldCoinsAwarded,
             isWorldRewardBonusEligible = readyState.isWorldRewardBonusEligible,
+            totalCells = readyState.gameState.totalRequiredCells,
+            coveredCells = readyState.gameState.coveredCellCount,
+            isPathValidated = readyState.isCompleted,
             onWatchWorldAdBonus = {
                 if (activity != null) {
                     viewModel?.watchAdForWorldBonus(activity)
@@ -1255,113 +1335,151 @@ fun GameplayShellScreen(
             isLoadingNext = isResolvingNextLevel,
             nextLevelStatusMessage = nextLevelStatusMessage,
             onNextLevel = {
-                if (activity != null && !readyState.isWorldRewardBonusEligible && viewModel?.interstitialAdManager?.isAdReadyToShow() == true) {
-                    viewModel.interstitialAdManager.showInterstitial(activity)
+                if (isResolvingNextLevel) return@SoloVictoryScreen
+                val proceedToNext: () -> Unit = {
+                    coroutineScope.launch {
+                        isResolvingNextLevel = true
+                        try {
+                            if (viewModel != null) {
+                                when (val resolution = viewModel.resolveNextLevel()) {
+                                    is NextLevelResolution.Available -> {
+                                        if (onNextLevelClick != null) {
+                                            onNextLevelClick(resolution.worldId, resolution.levelId)
+                                        } else {
+                                            onBackClick()
+                                        }
+                                    }
+                                    is NextLevelResolution.WorldComplete -> {
+                                        if (onNextWorldClick != null) {
+                                            onNextWorldClick(resolution.nextWorldId)
+                                        } else if (onNextLevelClick != null) {
+                                            val firstLevel = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getWorldById(resolution.nextWorldId).startLevel
+                                            onNextLevelClick(resolution.nextWorldId, firstLevel)
+                                        } else {
+                                            onBackClick()
+                                        }
+                                    }
+                                    is NextLevelResolution.Locked -> {
+                                        nextLevelStatusMessage = "Level ${resolution.levelId} is locked by progression."
+                                    }
+                                    is NextLevelResolution.Unavailable -> {
+                                        nextLevelStatusMessage = resolution.message
+                                    }
+                                    is NextLevelResolution.CatalogCompleted -> {
+                                        if (onJourneyCompleteClick != null) {
+                                            onJourneyCompleteClick()
+                                        } else {
+                                            nextLevelStatusMessage = "Congratulations! You have completed all 300 levels in the Zynpath catalog!"
+                                        }
+                                    }
+                                }
+                            } else {
+                                val res = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.resolveVictoryDestination(effectiveLevelId)
+                                when (val dest = res.destination) {
+                                    is com.zynpath.game.core.puzzle.model.ProgressionDestination.NextLevel -> {
+                                        if (onNextLevelClick != null) {
+                                            onNextLevelClick(dest.worldId, dest.levelId)
+                                        } else {
+                                            onBackClick()
+                                        }
+                                    }
+                                    is com.zynpath.game.core.puzzle.model.ProgressionDestination.NextWorldEntry -> {
+                                        if (onNextWorldClick != null) {
+                                            onNextWorldClick(dest.worldId)
+                                        } else if (onNextLevelClick != null) {
+                                            val firstLevel = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getWorldById(dest.worldId).startLevel
+                                            onNextLevelClick(dest.worldId, firstLevel)
+                                        } else {
+                                            onBackClick()
+                                        }
+                                    }
+                                    is com.zynpath.game.core.puzzle.model.ProgressionDestination.JourneyComplete -> {
+                                        if (onJourneyCompleteClick != null) {
+                                            onJourneyCompleteClick()
+                                        } else {
+                                            nextLevelStatusMessage = "Congratulations! You have completed all 300 levels in the Zynpath catalog!"
+                                        }
+                                    }
+                                }
+                            }
+                        } finally {
+                            isResolvingNextLevel = false
+                        }
+                    }
                 }
-                coroutineScope.launch {
-                    isResolvingNextLevel = true
-                    try {
-                        if (viewModel != null) {
-                            when (val resolution = viewModel.resolveNextLevel()) {
-                                is NextLevelResolution.Available -> {
-                                    if (onNextLevelClick != null) {
-                                        onNextLevelClick(resolution.worldId, resolution.levelId)
-                                    } else {
-                                        onBackClick()
-                                    }
-                                }
-                                is NextLevelResolution.WorldComplete -> {
-                                    if (onNextWorldClick != null) {
-                                        onNextWorldClick(resolution.nextWorldId)
-                                    } else if (onNextLevelClick != null) {
-                                        val firstLevel = com.zynpath.game.core.puzzle.model.WorldConfiguration.getWorld(resolution.nextWorldId).startLevel
-                                        onNextLevelClick(resolution.nextWorldId, firstLevel)
-                                    } else {
-                                        onBackClick()
-                                    }
-                                }
-                                is NextLevelResolution.Locked -> {
-                                    nextLevelStatusMessage = "Level ${resolution.levelId} is locked by progression."
-                                }
-                                is NextLevelResolution.Unavailable -> {
-                                    nextLevelStatusMessage = resolution.message
-                                }
-                                is NextLevelResolution.CatalogCompleted -> {
-                                    if (onJourneyCompleteClick != null) {
-                                        onJourneyCompleteClick()
-                                    } else {
-                                        nextLevelStatusMessage = "Congratulations! You have completed all 300 levels in the Zynpath catalog!"
-                                    }
-                                }
+
+                val adManager = viewModel?.interstitialAdManager
+                if (activity != null && adManager != null && viewModel != null) {
+                    coroutineScope.launch {
+                        val distinctCount = viewModel.getDistinctCompletedLevelCount()
+                        if (adManager.isMilestoneEligible(distinctCount)) {
+                            adManager.markMilestoneHandled(distinctCount)
+                            if (adManager.canShowInterstitial()) {
+                                adManager.showInterstitial(activity, onClosed = proceedToNext)
+                            } else {
+                                proceedToNext()
                             }
                         } else {
-                            val res = com.zynpath.game.core.puzzle.model.ProgressionDestinationResolver.resolve(worldId, levelId)
-                            when (val dest = res.destination) {
-                                is com.zynpath.game.core.puzzle.model.ProgressionDestination.NextLevel -> {
-                                    if (onNextLevelClick != null) {
-                                        onNextLevelClick(dest.worldId, dest.levelId)
-                                    } else {
-                                        onBackClick()
-                                    }
-                                }
-                                is com.zynpath.game.core.puzzle.model.ProgressionDestination.NextWorldEntry -> {
-                                    if (onNextWorldClick != null) {
-                                        onNextWorldClick(dest.worldId)
-                                    } else if (onNextLevelClick != null) {
-                                        val firstLevel = com.zynpath.game.core.puzzle.model.WorldConfiguration.getWorld(dest.worldId).startLevel
-                                        onNextLevelClick(dest.worldId, firstLevel)
-                                    } else {
-                                        onBackClick()
-                                    }
-                                }
-                                is com.zynpath.game.core.puzzle.model.ProgressionDestination.JourneyComplete -> {
-                                    if (onJourneyCompleteClick != null) {
-                                        onJourneyCompleteClick()
-                                    } else {
-                                        nextLevelStatusMessage = "Congratulations! You have completed all 300 levels in the Zynpath catalog!"
-                                    }
-                                }
-                            }
+                            proceedToNext()
                         }
-                    } finally {
-                        isResolvingNextLevel = false
                     }
+                } else {
+                    proceedToNext()
                 }
             },
             onNextWorld = {
-                if (activity != null && !readyState.isWorldRewardBonusEligible && viewModel?.interstitialAdManager?.isAdReadyToShow() == true) {
-                    viewModel.interstitialAdManager.showInterstitial(activity)
-                }
-                coroutineScope.launch {
-                    isResolvingNextLevel = true
-                    try {
-                        val destinationRes = viewModel?.resolveProgressionDestination()
-                            ?: com.zynpath.game.core.puzzle.model.ProgressionDestinationResolver.resolve(worldId, levelId)
-                        val targetWorldId = destinationRes.nextWorldId
-                        if (targetWorldId != null) {
-                            val isUnlocked = viewModel?.isWorldUnlocked(targetWorldId) ?: true
-                            if (isUnlocked) {
-                                if (onNextWorldClick != null) {
-                                    onNextWorldClick(targetWorldId)
-                                } else if (onNextLevelClick != null) {
-                                    val firstLevel = com.zynpath.game.core.puzzle.model.WorldConfiguration.getWorld(targetWorldId).startLevel
-                                    onNextLevelClick(targetWorldId, firstLevel)
+                if (isResolvingNextLevel) return@SoloVictoryScreen
+                val proceedToNextWorld: () -> Unit = {
+                    coroutineScope.launch {
+                        isResolvingNextLevel = true
+                        try {
+                            val destinationRes = viewModel?.resolveProgressionDestination()
+                                ?: com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.resolveVictoryDestination(effectiveLevelId)
+                            val targetWorldId = destinationRes.nextWorldId
+                            if (targetWorldId != null) {
+                                val isUnlocked = viewModel?.isWorldUnlocked(targetWorldId) ?: true
+                                if (isUnlocked) {
+                                    if (onNextWorldClick != null) {
+                                        onNextWorldClick(targetWorldId)
+                                    } else if (onNextLevelClick != null) {
+                                        val firstLevel = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getWorldById(targetWorldId).startLevel
+                                        onNextLevelClick(targetWorldId, firstLevel)
+                                    } else {
+                                        onBackClick()
+                                    }
                                 } else {
-                                    onBackClick()
+                                    nextLevelStatusMessage = "World $targetWorldId is locked by progression rules."
                                 }
                             } else {
-                                nextLevelStatusMessage = "World $targetWorldId is locked by progression rules."
+                                if (onJourneyCompleteClick != null) {
+                                    onJourneyCompleteClick()
+                                } else {
+                                    nextLevelStatusMessage = "You have conquered all worlds in the journey!"
+                                }
+                            }
+                        } finally {
+                            isResolvingNextLevel = false
+                        }
+                    }
+                }
+
+                val adManager = viewModel?.interstitialAdManager
+                if (activity != null && adManager != null && viewModel != null) {
+                    coroutineScope.launch {
+                        val distinctCount = viewModel.getDistinctCompletedLevelCount()
+                        if (adManager.isMilestoneEligible(distinctCount)) {
+                            adManager.markMilestoneHandled(distinctCount)
+                            if (adManager.canShowInterstitial()) {
+                                adManager.showInterstitial(activity, onClosed = proceedToNextWorld)
+                            } else {
+                                proceedToNextWorld()
                             }
                         } else {
-                            if (onJourneyCompleteClick != null) {
-                                onJourneyCompleteClick()
-                            } else {
-                                nextLevelStatusMessage = "You have conquered all worlds in the journey!"
-                            }
+                            proceedToNextWorld()
                         }
-                    } finally {
-                        isResolvingNextLevel = false
                     }
+                } else {
+                    proceedToNextWorld()
                 }
             },
             onJourneyComplete = {
@@ -1378,6 +1496,34 @@ fun GameplayShellScreen(
             },
             onHome = onHomeClick ?: onBackClick,
             onDismissStatusMessage = { nextLevelStatusMessage = null }
+        )
+    }
+
+    if (showCoinVaultSheet && viewModel?.walletRepository != null && viewModel.coinRewardedAdManager != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val todayUtc = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString()
+        var isDailyClaimed by remember { mutableStateOf(false) }
+        var isDailyAdClaimed by remember { mutableStateOf(false) }
+        var remainingAds by remember { mutableStateOf(EconomyConfig.MAX_DAILY_COIN_ADS) }
+        var recentTx by remember { mutableStateOf<List<com.zynpath.game.core.database.entity.WalletTransactionEntity>>(emptyList()) }
+
+        LaunchedEffect(Unit) {
+            isDailyClaimed = viewModel.walletRepository.isDailyLoginClaimed(todayUtc)
+            isDailyAdClaimed = viewModel.walletRepository.isDailyLoginAdBonusClaimed(todayUtc)
+            remainingAds = viewModel.walletRepository.getRemainingCoinAds(todayUtc)
+            recentTx = viewModel.walletRepository.getRecentTransactions(20)
+        }
+
+        CoinDetailsBottomSheet(
+            sheetState = sheetState,
+            onDismissRequest = { showCoinVaultSheet = false },
+            currentBalance = readyState?.currentWalletBalance ?: 0,
+            isDailyClaimed = isDailyClaimed,
+            isDailyAdBonusClaimed = isDailyAdClaimed,
+            remainingCoinAds = remainingAds,
+            recentTransactions = recentTx,
+            walletRepository = viewModel.walletRepository,
+            coinRewardedAdManager = viewModel.coinRewardedAdManager
         )
     }
 }
@@ -1747,6 +1893,7 @@ private fun GameplayPauseDialog(
                 }
             }
         },
+        modifier = Modifier.border(1.2.dp, GameElectricCyan.copy(alpha = 0.45f), RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
         containerColor = Color(0xF20D1630)
     )
@@ -1878,6 +2025,7 @@ private fun formatTime(timeMs: Long): String {
     return String.format("%02d:%02d", minutes, seconds)
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, backgroundColor = 0xFF0B132B)
 @Composable
 private fun GameplayShellPreview() {

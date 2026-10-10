@@ -2,6 +2,7 @@ package com.zynpath.game.core.puzzle.catalog
 
 import com.zynpath.game.core.puzzle.generator.PuzzleFingerprint
 import com.zynpath.game.core.puzzle.model.PuzzleDefinition
+import com.zynpath.game.core.puzzle.policy.PuzzleConstraintPolicy
 import com.zynpath.game.core.puzzle.validator.DefinitionValidationResult
 import com.zynpath.game.core.puzzle.validator.PuzzleDefinitionValidator
 
@@ -25,15 +26,18 @@ sealed interface PuzzleAssetValidationResult {
 /**
  * Authoritative validator for offline puzzle assets.
  *
- * Implements Prompt 11 Section 15:
- * Validates schema, parsing, structural invariants, fingerprint integrity, and world bounds.
+ * Implements Prompt 11 Section 15 and Systemic Puzzle Asset Integrity Fix:
+ * Validates schema, parsing, structural invariants, fingerprint integrity,
+ * authoritative [PuzzleConstraintPolicy] bounds (wall counts, checkpoint ranges, grid dimensions),
+ * full cell coverage (zero blocked cells), and wall topology (anti-cage invariants).
  */
 object PuzzleAssetValidator {
 
     fun validate(
         json: String,
         expectedLevel: LevelDefinition? = null,
-        expectedWorld: WorldDefinition? = null
+        expectedWorld: WorldDefinition? = null,
+        policyOverride: PuzzleConstraintPolicy? = null
     ): PuzzleAssetValidationResult {
         val errors = ArrayList<String>()
 
@@ -74,16 +78,42 @@ object PuzzleAssetValidator {
             }
         }
 
-        // 6. Match against expected WorldDefinition if provided
-        if (expectedWorld != null) {
-            if (asset.gridDimensions != expectedWorld.gridDimensions) {
-                errors.add("Dimension mismatch: asset is ${asset.gridDimensions} but world requires ${expectedWorld.gridDimensions}")
+        // 6. Authoritative Policy Verification (Dimensions, Checkpoints, Walls, Anti-Cage Topology, Full Coverage)
+        val inferredLevelId = expectedLevel?.levelId ?: run {
+            val match = Regex("""(?:w(\d+)_)?lvl(\d+)""").find(asset.puzzleId)
+            val w = match?.groupValues?.get(1)?.toIntOrNull()
+            val num = match?.groupValues?.get(2)?.toIntOrNull()
+            if (w != null && num != null) {
+                com.zynpath.game.core.puzzle.model.WorldConfiguration.toGlobalLevel(w, num)
+            } else {
+                num
             }
-            if (asset.checkpoints.size !in expectedWorld.checkpointRange) {
-                errors.add("Checkpoint count ${asset.checkpoints.size} outside world bounds ${expectedWorld.checkpointRange}")
+        }
+        val resolvedWorld = expectedWorld
+            ?: inferredLevelId?.let { WorldDefinition.forLevel(it) }
+
+        val policy = policyOverride
+            ?: inferredLevelId?.let { PuzzleConstraintPolicy.forSoloLevel(it) }
+            ?: resolvedWorld?.let { PuzzleConstraintPolicy.forWorld(it.worldId) }
+
+        if (policy != null) {
+            val policyErrors = policy.validate(definition)
+            errors.addAll(policyErrors)
+        } else if (resolvedWorld != null) {
+            val effectiveWallRange = if (resolvedWorld.hasWalls && resolvedWorld.wallRange == 0..0) {
+                // Never use default 0..0 wall range when a level belongs to a world that permits walls
+                PuzzleConstraintPolicy.forWorld(resolvedWorld.worldId).allowedWallCountRange
+            } else {
+                resolvedWorld.wallRange
             }
-            if (asset.blockedEdges.size !in expectedWorld.wallRange) {
-                errors.add("Wall count ${asset.blockedEdges.size} outside world bounds ${expectedWorld.wallRange}")
+            if (asset.gridDimensions != resolvedWorld.gridDimensions) {
+                errors.add("Dimension mismatch: asset is ${asset.gridDimensions} but world requires ${resolvedWorld.gridDimensions}")
+            }
+            if (asset.checkpoints.size !in resolvedWorld.checkpointRange) {
+                errors.add("Checkpoint count ${asset.checkpoints.size} outside world bounds ${resolvedWorld.checkpointRange}")
+            }
+            if (asset.blockedEdges.size !in effectiveWallRange) {
+                errors.add("Wall count ${asset.blockedEdges.size} outside world bounds $effectiveWallRange")
             }
         }
 

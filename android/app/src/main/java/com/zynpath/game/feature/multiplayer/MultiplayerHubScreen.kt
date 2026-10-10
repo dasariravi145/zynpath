@@ -248,20 +248,20 @@ private fun MultiplayerHomeContent(
             }
         }
 
-        // Authentication status card
+        // Authentication status card (Friends Arena / Social features)
         if (!state.isAuthenticated) {
             GuestNoticeCard(onNavigateToSignIn = onNavigateToSignIn)
         } else {
             PlayerProfileHeader(session = state.authSession!!)
         }
 
-        // Mode 1: Quick Duel (1v1 Matchmaking)
+        // Mode 1: Quick Duel (1v1 Matchmaking) - Instant guest entry, no Facebook sign-in required
         QuickDuelCard(
-            enabled = state.isAuthenticated,
+            enabled = true,
             onStartQuickDuel = onStartQuickDuel
         )
 
-        // Mode 2: Friend Duel (Invited 1v1)
+        // Mode 2: Friend Duel (Invited 1v1 - Requires Sign-In)
         FriendDuelCard(
             enabled = state.isAuthenticated,
             targetId = state.friendTargetIdInput,
@@ -269,7 +269,7 @@ private fun MultiplayerHomeContent(
             onChallenge = onCreateFriendDuel
         )
 
-        // Mode 3: Mini League (2-5 Players Room)
+        // Mode 3: Mini League (2-5 Players Room - Requires Sign-In)
         MiniLeagueCard(
             enabled = state.isAuthenticated,
             roomName = state.miniLeagueRoomNameInput,
@@ -293,7 +293,7 @@ private fun GuestNoticeCard(onNavigateToSignIn: () -> Unit) {
                 Icon(Icons.Default.Lock, contentDescription = null, tint = AccentGold)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Account Sign-In Required",
+                    text = "Sign In for Friends Arena",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = AccentGold
@@ -301,7 +301,7 @@ private fun GuestNoticeCard(onNavigateToSignIn: () -> Unit) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Online multiplayer matches require an authenticated Zynpath account to safeguard competitive fairness. Solo Play and Daily Challenges remain 100% offline.",
+                text = "Sign in to create private rooms and invite friends. Quick Duel is open to everyone with instant guest matchmaking!",
                 style = MaterialTheme.typography.bodySmall,
                 color = MutedSlate
             )
@@ -311,7 +311,7 @@ private fun GuestNoticeCard(onNavigateToSignIn: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = PathNeonCyan),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Sign In / Create Account", color = DeepIndigo, fontWeight = FontWeight.Bold)
+                Text("Sign In with Google", color = DeepIndigo, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -392,7 +392,7 @@ private fun QuickDuelCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Get matched instantly with an opponent. Both players receive the exact same solver-verified continuous puzzle. First to complete the dual-win route wins!",
+                text = "Race another player on the same puzzle.",
                 style = MaterialTheme.typography.bodySmall,
                 color = OffWhiteText.copy(alpha = 0.8f)
             )
@@ -403,7 +403,7 @@ private fun QuickDuelCard(
                 colors = ButtonDefaults.buttonColors(containerColor = PathNeonCyan),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Find Quick Duel Match", color = DeepIndigo, fontWeight = FontWeight.Bold)
+                Text("Play Quick Duel", color = DeepIndigo, fontWeight = FontWeight.Bold)
             }
         }
     }

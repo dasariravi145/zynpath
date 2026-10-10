@@ -512,7 +512,11 @@ private class CheckpointTextCache {
             textMeasurer.measure(
                 text = "$number",
                 style = TextStyle(
-                    fontSize = (cellSize * 0.30f).coerceAtLeast(10f).sp,
+                    fontSize = if (number >= 10) {
+                        (cellSize * 0.25f).coerceAtLeast(8f).sp
+                    } else {
+                        (cellSize * 0.30f).coerceAtLeast(10f).sp
+                    },
                     fontWeight = FontWeight.Bold,
                     color = color
                 )

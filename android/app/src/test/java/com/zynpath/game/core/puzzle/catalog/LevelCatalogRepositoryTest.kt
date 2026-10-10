@@ -18,10 +18,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+import java.io.File
+
 /**
  * Unit tests for [LevelCatalogRepository] and its integration with player progression.
  *
- * Implements Prompt 11 Section 19, 20, 21, 25, and 34:
+ * Implements Prompt 11 Section 19, 20, 21, 25, and 34 & Prompt 2 1800 levels:
  * - Clean repository API contract.
  * - Reactive [LevelAvailability] state emissions (LOCKED, UNLOCKED_AND_AVAILABLE, COMPLETED, ASSET_UNAVAILABLE).
  * - Safe puzzle loading and structured load results.
@@ -29,14 +31,40 @@ import org.junit.Test
  */
 class LevelCatalogRepositoryTest {
 
-    private lateinit var assetLoader: InMemoryAssetLoader
+    private lateinit var assetLoader: PuzzleAssetLoader
     private lateinit var fakeProgressRepository: FakeProgressRepository
     private lateinit var catalogRepository: LevelCatalogRepository
 
+    private class FileSystemAssetLoader(private val baseDir: File) : PuzzleAssetLoader {
+        override fun loadAsset(path: String): String? {
+            val file = File(baseDir, path)
+            return if (file.exists() && file.isFile) file.readText(Charsets.UTF_8) else null
+        }
+
+        override fun hasAsset(path: String): Boolean {
+            val file = File(baseDir, path)
+            return file.exists() && file.isFile
+        }
+
+        override fun listAssets(directory: String): List<String> {
+            val dir = File(baseDir, directory)
+            return if (dir.exists() && dir.isDirectory) {
+                dir.list()?.toList() ?: emptyList()
+            } else emptyList()
+        }
+    }
+
     @Before
     fun setUp() {
-        assetLoader = InMemoryAssetLoader()
-        CatalogAssetGenerator.populateLoader(assetLoader)
+        val candidateDirs = listOf(
+            File("d:/Zynpath/android/app/src/main/assets"),
+            File("src/main/assets"),
+            File("app/src/main/assets"),
+            File("../app/src/main/assets")
+        )
+        val assetsDir = candidateDirs.firstOrNull { it.exists() && it.isDirectory }
+            ?: File("d:/Zynpath/android/app/src/main/assets")
+        assetLoader = FileSystemAssetLoader(assetsDir)
         fakeProgressRepository = FakeProgressRepository()
         catalogRepository = LevelCatalogRepositoryImpl(assetLoader, fakeProgressRepository)
     }
@@ -47,14 +75,14 @@ class LevelCatalogRepositoryTest {
         assertEquals(6, worlds.size)
 
         val w1Levels = catalogRepository.getLevelsForWorld(1)
-        assertEquals(20, w1Levels.size)
+        assertEquals(300, w1Levels.size)
         assertEquals(1, w1Levels.first().levelId)
-        assertEquals(20, w1Levels.last().levelId)
+        assertEquals(300, w1Levels.last().levelId)
 
         val w2Levels = catalogRepository.getLevelsForWorld(2)
-        assertEquals(30, w2Levels.size)
-        assertEquals(21, w2Levels.first().levelId)
-        assertEquals(50, w2Levels.last().levelId)
+        assertEquals(300, w2Levels.size)
+        assertEquals(301, w2Levels.first().levelId)
+        assertEquals(600, w2Levels.last().levelId)
     }
 
     @Test
@@ -64,9 +92,9 @@ class LevelCatalogRepositoryTest {
 
         val success = result as CatalogLoadResult.Success
         assertEquals(1, success.level.levelId)
-        assertEquals(4, success.definition.gridDimensions.rows)
-        assertEquals(4, success.definition.gridDimensions.columns)
-        assertEquals(5, success.definition.checkpoints.size)
+        assertEquals(6, success.definition.gridDimensions.rows)
+        assertEquals(6, success.definition.gridDimensions.columns)
+        assertEquals(CuratedFirst50Levels.LEVEL_1.checkpoints.size, success.definition.checkpoints.size)
         assertEquals(0, success.definition.blockedEdges.size)
     }
 
@@ -81,8 +109,8 @@ class LevelCatalogRepositoryTest {
 
     @Test
     fun `test loadPuzzle returns LevelNotFound for out of bounds level`() = runBlocking {
-        val result = catalogRepository.loadPuzzle(999)
-        assertTrue("Level 999 is out of bounds", result is CatalogLoadResult.LevelNotFound || result is CatalogLoadResult.AssetUnavailable)
+        val result = catalogRepository.loadPuzzle(9999)
+        assertTrue("Level 9999 is out of bounds", result is CatalogLoadResult.LevelNotFound || result is CatalogLoadResult.AssetUnavailable)
     }
 
     @Test

@@ -275,7 +275,7 @@ class FriendsArenaRoomViewModel @Inject constructor(
     fun onInvitePlayers() {
         showNotice(
             title = "Player Invitations Pending",
-            details = "Direct 6-character room codes, shareable invitation links, and Facebook friend invitations will be activated in upcoming prompts. No fake invitation URLs or sent confirmations are generated."
+            details = "Direct 6-character room codes, shareable invitation links, and friend invitations are supported. No fake invitation URLs or sent confirmations are generated."
         )
     }
 

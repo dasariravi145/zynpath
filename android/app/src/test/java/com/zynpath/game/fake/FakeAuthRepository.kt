@@ -28,7 +28,10 @@ class FakeAuthRepository(
 
     override fun isProviderConfigured(provider: AuthProvider): Boolean = true
 
+    var authResultToReturn: AuthResult? = null
+
     override suspend fun signInWithGoogle(context: Context): AuthResult {
+        authResultToReturn?.let { return it }
         val session = AuthSession(
             playerId = "player_google_1",
             publicZynpathId = "ZYN-GOOG",
@@ -40,6 +43,8 @@ class FakeAuthRepository(
         setAuthState(AuthState.AUTHENTICATED, session)
         return AuthResult.Success(session)
     }
+
+    override suspend fun connectWithGoogle(context: Context): AuthResult = signInWithGoogle(context)
 
     override suspend fun signInWithFacebook(context: Context): AuthResult {
         val session = AuthSession(
@@ -64,6 +69,21 @@ class FakeAuthRepository(
 
     override suspend fun refreshSession(): Boolean {
         return _currentSession.value != null
+    }
+
+    override suspend fun ensureGuestSession(): AuthSession {
+        val existing = _currentSession.value
+        if (existing != null) return existing
+        val session = AuthSession(
+            playerId = "guest_player_1",
+            publicZynpathId = "ZYN-GST1",
+            displayName = "Guest_4821",
+            accountType = "GUEST",
+            provider = AuthProvider.GUEST,
+            expiresAt = System.currentTimeMillis() + 86400000L
+        )
+        _currentSession.value = session
+        return session
     }
 
     override suspend fun signOut() {

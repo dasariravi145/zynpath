@@ -18,5 +18,7 @@ enum class QualityRejectionReason(val description: String) {
     UNIQUENESS_NOT_PROVEN("Puzzle is non-unique or uniqueness could not be proven"),
     EXACT_DUPLICATE("Puzzle is an exact topological duplicate of an already accepted level"),
     EXCESSIVE_SIMILARITY("Puzzle is excessively similar to recently accepted levels"),
-    DIFFICULTY_OUT_OF_RANGE("Puzzle estimated difficulty score is outside target acceptable band")
+    DIFFICULTY_OUT_OF_RANGE("Puzzle estimated difficulty score is outside target acceptable band"),
+    TRIVIAL_ROUTE("Puzzle has insufficient meaningful route decisions or look-ahead depth"),
+    AMBIGUOUS_SOLUTIONS("Puzzle has multiple distinct valid solutions")
 }

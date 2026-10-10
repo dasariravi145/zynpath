@@ -92,7 +92,8 @@ class PuzzleHintEngine(
                     nextMove = startPos,
                     fullSolution = fullSolution,
                     totalSolutionLength = fullSolution.length,
-                    isCached = false
+                    isCached = false,
+                    deductionMessage = "Start at checkpoint 1 to begin the continuous path."
                 )
             } else if (solveResult.status == SolverStatus.SEARCH_LIMIT_REACHED) {
                 HintResult.SearchInconclusive(
@@ -144,11 +145,13 @@ class PuzzleHintEngine(
             if (cachedSol != null && cachedSol.length > request.currentOrderedPath.size) {
                 val nextCandidate = cachedSol.positions[request.currentOrderedPath.size]
                 if (isLegalStep(request.definition, currentHead, nextCandidate)) {
+                    val deduction = computeDeductionMessage(request, nextCandidate, cachedSol)
                     return HintResult.NextMove(
                         nextMove = nextCandidate,
                         fullSolution = cachedSol,
                         totalSolutionLength = cachedSol.length,
-                        isCached = true
+                        isCached = true,
+                        deductionMessage = deduction
                     )
                 }
             }
@@ -178,11 +181,13 @@ class PuzzleHintEngine(
                 }
 
                 val nextMove = fullSolution.positions[request.currentOrderedPath.size]
+                val deduction = computeDeductionMessage(request, nextMove, fullSolution)
                 HintResult.NextMove(
                     nextMove = nextMove,
                     fullSolution = fullSolution,
                     totalSolutionLength = fullSolution.length,
-                    isCached = false
+                    isCached = false,
+                    deductionMessage = deduction
                 )
             }
 
@@ -274,7 +279,7 @@ class PuzzleHintEngine(
                     recommendedRollbackIndex = prefixLen - 1,
                     recommendedRollbackPosition = prefixPositions.last(),
                     stepsToRetract = steps,
-                    explanation = "Current path reached a dead end. Undo $steps ${if (steps == 1) "step" else "steps"} to resume a solvable path.",
+                    explanation = "Backtrack — this route closes the remaining cells. Undo $steps ${if (steps == 1) "step" else "steps"}.",
                     verifiedPrefix = prefixPositions
                 )
             }
@@ -295,7 +300,7 @@ class PuzzleHintEngine(
                     recommendedRollbackIndex = 0,
                     recommendedRollbackPosition = startCheckpoint.position,
                     stepsToRetract = steps,
-                    explanation = "Current path reached a dead end. Reset to start checkpoint #1 to resume a solvable path.",
+                    explanation = "Backtrack — this route closes the remaining cells. Reset to start checkpoint #1.",
                     verifiedPrefix = listOf(startCheckpoint.position)
                 )
             }
@@ -326,5 +331,100 @@ class PuzzleHintEngine(
             }
         )
         computeHint(request.copy(configuration = coroutineConfig))
+    }
+
+    private fun computeDeductionMessage(
+        request: HintRequest,
+        nextMove: GridPosition,
+        fullSolution: PuzzlePath
+    ): String {
+        val rawNum = Regex("""\d+""").find(request.definition.puzzleId)?.value?.toIntOrNull() ?: 1
+        val world = com.zynpath.game.core.puzzle.model.WorldConfiguration.getWorldForLevel(rawNum)
+        val worldId = world.worldId
+        val nextCpNum = request.nextRequiredCheckpoint
+        val nextCp = request.definition.checkpoints.find { it.number == nextCpNum }
+        val currPos = request.currentOrderedPath.lastOrNull()
+
+        if (nextCp != null) {
+            val cpPos = nextCp.position
+            if (nextMove == cpPos) {
+                return when (worldId) {
+                    1 -> "Step to checkpoint $nextCpNum."
+                    else -> "Reach checkpoint $nextCpNum now that this area is secured."
+                }
+            }
+
+            val manhattanToNext = kotlin.math.abs(nextMove.row - cpPos.row) + kotlin.math.abs(nextMove.column - cpPos.column)
+            val currManhattan = if (currPos != null) {
+                kotlin.math.abs(currPos.row - cpPos.row) + kotlin.math.abs(currPos.column - cpPos.column)
+            } else manhattanToNext
+
+            // Deceptive shortest route / Proximity trap
+            if (manhattanToNext > currManhattan) {
+                return when (worldId) {
+                    1 -> "Going directly to $nextCpNum traps unused cells. Loop around."
+                    2 -> "Save these cells for later; do not rush to $nextCpNum."
+                    3 -> "Think about later numbers before reaching $nextCpNum."
+                    else -> "The shortest route to $nextCpNum is deceptive; reserve perimeter cells."
+                }
+            }
+
+            // Corridor / bridge preservation
+            val unvisited = request.definition.requiredCells.filter { cell ->
+                cell !in request.currentOrderedPath && cell != nextMove
+            }.toSet()
+
+            val unvisitedNeighbors = request.definition.graph.getTraversableNeighbors(nextMove)
+                .filter { it in unvisited }
+            if (unvisitedNeighbors.size <= 2) {
+                return when (worldId) {
+                    1 -> "Follow this safe next step."
+                    2 -> "Keep this corridor open for later passage."
+                    else -> "This is your only way back; preserve the connector."
+                }
+            }
+
+            // Region entry / exit
+            val dims = request.definition.gridDimensions
+            val isNextPerimeter = nextMove.row == 0 || nextMove.row == dims.rows - 1 ||
+                    nextMove.column == 0 || nextMove.column == dims.columns - 1
+            val isCurrPerimeter = currPos != null && (currPos.row == 0 || currPos.row == dims.rows - 1 ||
+                    currPos.column == 0 || currPos.column == dims.columns - 1)
+            if (isNextPerimeter && !isCurrPerimeter) {
+                return when (worldId) {
+                    1 -> "Clear the edge cells first."
+                    2 -> "Keep the outer edge open."
+                    3 -> "Finish this side later."
+                    else -> "Enter this region from another side to preserve an exit route."
+                }
+            }
+
+            // Future checkpoint dependencies
+            val laterCps = request.definition.checkpoints.filter { it.number > nextCpNum }
+            if (laterCps.isNotEmpty() && worldId >= 3) {
+                val futureTarget = laterCps.minByOrNull {
+                    kotlin.math.abs(it.position.row - nextMove.row) + kotlin.math.abs(it.position.column - nextMove.column)
+                }
+                if (futureTarget != null) {
+                    return "Think about checkpoint ${futureTarget.number} before reaching $nextCpNum."
+                }
+            }
+
+            // Cell reservation
+            val nbrsOfCp = listOf(cpPos.up(), cpPos.down(), cpPos.left(), cpPos.right())
+            if (nbrsOfCp.any { neighbor -> neighbor in unvisited && neighbor != nextMove }) {
+                return when (worldId) {
+                    1 -> "Follow this path to preserve future connectivity."
+                    2 -> "Save these cells for later."
+                    else -> "Reserve these cells for future checkpoint returns."
+                }
+            }
+        }
+
+        return when (worldId) {
+            1 -> "Follow this safe step forward."
+            2 -> "Keep this area open for later passage."
+            else -> "Follow this path to preserve future connectivity."
+        }
     }
 }

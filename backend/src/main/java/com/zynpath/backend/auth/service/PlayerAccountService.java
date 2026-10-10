@@ -104,6 +104,50 @@ public class PlayerAccountService {
     }
 
     /**
+     * Resolves or creates an opaque server-recognized guest account.
+     * Ensures real Quick Duel matchmaking without requiring third-party authentication.
+     */
+    public PlayerAccount getOrCreateGuestAccount(String optionalGuestUuid, String optionalDisplayName) {
+        synchronized (this) {
+            String guestUuid = (optionalGuestUuid != null && !optionalGuestUuid.isBlank())
+                    ? optionalGuestUuid
+                    : UUID.randomUUID().toString();
+
+            String existingPlayerId = playerIdsByGuestUuid.get(guestUuid);
+            if (existingPlayerId != null) {
+                PlayerAccount account = playerAccountsById.get(existingPlayerId);
+                if (account != null) {
+                    return account;
+                }
+            }
+
+            String playerId = (existingPlayerId != null) ? existingPlayerId : UUID.randomUUID().toString();
+            String publicZynpathId = generateUniquePublicZynpathId();
+            String displayName = (optionalDisplayName != null && !optionalDisplayName.isBlank())
+                    ? optionalDisplayName
+                    : "Guest_" + publicZynpathId.substring(4, 8);
+
+            long now = System.currentTimeMillis();
+            PlayerAccount newAccount = new PlayerAccount(
+                    playerId,
+                    publicZynpathId,
+                    displayName,
+                    "GUEST",
+                    now,
+                    now
+            );
+
+            playerAccountsById.put(playerId, newAccount);
+            playerAccountsByPublicId.put(publicZynpathId, newAccount);
+            playerIdsByGuestUuid.put(guestUuid, playerId);
+
+            log.info("Resolved guest player account: playerId={}, publicZynpathId={}, displayName={}",
+                    playerId, publicZynpathId, displayName);
+            return newAccount;
+        }
+    }
+
+    /**
      * Links an existing guest identity to an external provider identity.
      * Throws ACCOUNT_LINK_CONFLICT if provider identity is already linked to another Zynpath account.
      */

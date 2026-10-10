@@ -24,6 +24,8 @@ data class CosmeticsUiState(
     val isReducedMotion: Boolean = false,
     val currentAvatar: AvatarOption = AvatarCatalog.AVATARS.first(),
     val isEquipping: Boolean = false,
+    val walletBalance: Int = 0,
+    val purchasedCosmeticIds: Set<String> = emptySet(),
     val snackbarMessage: String? = null
 ) {
     val currentCategoryItems: List<Pair<CosmeticItem, CosmeticAccessDecision>>

@@ -193,4 +193,25 @@ class PuzzleDifficultyAnalyzerTest {
         assertEquals(UniquenessStatus.NON_UNIQUE, result.uniquenessStatus)
         assertTrue(result.metrics.solutionCount >= 2)
     }
+
+    @Test
+    fun `test 11 - advanced difficulty metrics decisions lookahead isolation`() {
+        val def = CuratedDifficultyFixtures.constrained4x4
+        val path = CuratedDifficultyFixtures.constrained4x4Solution
+        val solverRes = solver.solve(def, SolverConfiguration.CHECK_UNIQUENESS)
+
+        val metrics = analyzer.computeMetrics(def, path, solverRes)
+        assertTrue("Forced moves must be >= 0", metrics.forcedMovesCount >= 0)
+        assertTrue("Optional moves must be >= 0", metrics.optionalMovesCount >= 0)
+        assertEquals("Total moves must equal pathLength - 1", metrics.pathLength - 1, metrics.forcedMovesCount + metrics.optionalMovesCount)
+        assertTrue("Meaningful decisions should be non-negative", metrics.meaningfulRouteDecisions >= 0)
+        assertTrue("Required lookahead depth should be non-negative", metrics.requiredLookAheadDepth >= 0)
+        assertTrue("Remaining cell isolation risks should be non-negative", metrics.remainingCellIsolationRisks >= 0)
+
+        val analysisResult = analyzer.analyze(def, path, solverRes)
+        assertTrue(analysisResult.componentScores.containsKey("decisions"))
+        assertTrue(analysisResult.componentScores.containsKey("lookahead"))
+        assertTrue(analysisResult.componentScores.containsKey("isolation"))
+    }
 }
+

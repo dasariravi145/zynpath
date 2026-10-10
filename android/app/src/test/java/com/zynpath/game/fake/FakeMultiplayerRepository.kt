@@ -198,6 +198,13 @@ class FakeMultiplayerRepository : MultiplayerRepository {
     override fun sendReaction(reactionCode: String) {}
 
     override fun leaveMatch() {
+        _currentSession.value = null
+        _ticketStatus.value = null
+        _opponentProgress.value = emptyMap()
+        _countdownSeconds.value = null
+        _matchResults.value = emptyList()
+        _incomingReaction.value = null
+        _rematchStatus.value = null
         _clientMatchState.value = ClientMatchState.IDLE
     }
 
@@ -336,7 +343,24 @@ class FakeMultiplayerRepository : MultiplayerRepository {
 
     override suspend fun getFriendsArenaRoomByCode(roomCode: String): FriendsArenaRoomDto? = _currentFriendsArenaRoom.value
 
-    override suspend fun joinFriendsArenaRoom(roomCode: String): FriendsArenaRoomDto? = _currentFriendsArenaRoom.value
+    override suspend fun joinFriendsArenaRoom(roomCode: String): FriendsArenaRoomDto? {
+        val current = _currentFriendsArenaRoom.value
+        if (current != null) return current
+        if (roomCode.length in 4..8) {
+            val room = FriendsArenaRoomDto(
+                roomId = "fake_joined_room_1",
+                roomCode = roomCode,
+                hostPlayerId = "host_1",
+                status = "WAITING",
+                currentOccupancy = 2,
+                maxCapacity = 5,
+                members = emptyList()
+            )
+            _currentFriendsArenaRoom.value = room
+            return room
+        }
+        return null
+    }
 
     override suspend fun leaveFriendsArenaRoom(roomId: String): Boolean {
         _currentFriendsArenaRoom.value = null

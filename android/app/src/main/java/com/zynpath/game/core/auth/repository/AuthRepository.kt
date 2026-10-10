@@ -21,6 +21,8 @@ interface AuthRepository {
 
     suspend fun signInWithGoogle(context: Context): AuthResult
 
+    suspend fun connectWithGoogle(context: Context): AuthResult
+
     suspend fun signInWithFacebook(context: Context): AuthResult
 
     suspend fun linkGuestWithGoogle(context: Context): AuthResult
@@ -30,6 +32,8 @@ interface AuthRepository {
     suspend fun restoreSession(): Boolean
 
     suspend fun refreshSession(): Boolean
+
+    suspend fun ensureGuestSession(): AuthSession
 
     suspend fun signOut()
 }

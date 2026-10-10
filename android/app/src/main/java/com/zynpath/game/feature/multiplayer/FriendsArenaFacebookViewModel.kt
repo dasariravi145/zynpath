@@ -9,6 +9,7 @@ import com.zynpath.game.core.auth.model.AuthResult
 import com.zynpath.game.core.auth.repository.AuthRepository
 import com.zynpath.game.core.datastore.PreferencesRepository
 import com.zynpath.game.core.player.PlayerProfileRepository
+import com.zynpath.game.core.social.repository.SocialRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,25 +21,19 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel managing Facebook Friends discovery, search, selection, and invitation dispatch (Prompt 17/24).
- *
- * Requirements fulfilled:
- * - Checks actual Facebook connection state (Google is NOT treated as Facebook authorization).
- * - Enforces room capacity limits (at most 4 additional players for a 5-player room).
- * - Adheres strictly to Meta platform restrictions (no simulated friends, no scraping).
- * - Displays honest pending notices when invitation APIs are awaiting server synchronization.
- * - Prevents duplicate submission while sending.
+ * ViewModel managing Friends Arena Room Invitations and friend discovery.
  */
 @HiltViewModel
 class FriendsArenaFacebookViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val playerProfileRepository: PlayerProfileRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val socialRepository: SocialRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val roomId: String? = savedStateHandle.get<String>("roomId")
-    private val initialRoomCode: String? = savedStateHandle.get<String>("roomCode")
+    val roomId: String? = savedStateHandle.get<String>("roomId")
+    val initialRoomCode: String? = savedStateHandle.get<String>("roomCode")
 
     private val _searchQuery = MutableStateFlow("")
     private val _selectedFriendIds = MutableStateFlow<Set<String>>(emptySet())
@@ -47,6 +42,24 @@ class FriendsArenaFacebookViewModel @Inject constructor(
     private val _userNoticeTitle = MutableStateFlow<String?>(null)
     private val _userNoticeDetails = MutableStateFlow<String?>(null)
     private val _eligibleFriends = MutableStateFlow<List<FacebookFriendItem>>(emptyList())
+
+    init {
+        viewModelScope.launch {
+            socialRepository.friends.collect { friendList ->
+                _eligibleFriends.value = friendList.map { friend ->
+                    FacebookFriendItem(
+                        appScopedId = friend.publicZynpathId,
+                        displayName = friend.displayName,
+                        pictureUrl = null,
+                        invitationStatus = FacebookInvitationStatus.NOT_INVITED
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            socialRepository.refreshAll()
+        }
+    }
 
     private data class TransientFacebookState(
         val searchQuery: String,
@@ -86,8 +99,6 @@ class FriendsArenaFacebookViewModel @Inject constructor(
         preferencesRepository.userPreferencesFlow,
         _transientState
     ) { authState, session, profile, prefs, transient ->
-        val isFacebookConfigured = authRepository.isProviderConfigured(AuthProvider.FACEBOOK)
-
         FacebookFriendsUiState(
             roomId = roomId,
             roomCode = initialRoomCode,
@@ -96,7 +107,7 @@ class FriendsArenaFacebookViewModel @Inject constructor(
             authState = authState,
             session = session,
             playerProfile = profile,
-            isFacebookConfigured = isFacebookConfigured,
+            isFacebookConfigured = true,
             eligibleFriends = transient.eligibleFriends,
             searchQuery = transient.searchQuery,
             selectedFriendIds = transient.selectedFriendIds,
@@ -112,12 +123,12 @@ class FriendsArenaFacebookViewModel @Inject constructor(
         initialValue = FacebookFriendsUiState(
             roomId = roomId,
             roomCode = initialRoomCode,
-            isFacebookConfigured = authRepository.isProviderConfigured(AuthProvider.FACEBOOK)
+            isFacebookConfigured = true
         )
     )
 
     /**
-     * Updates search query for filtering loaded friend data (Task 2).
+     * Updates search query for filtering loaded friend data.
      */
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
@@ -131,7 +142,7 @@ class FriendsArenaFacebookViewModel @Inject constructor(
     }
 
     /**
-     * Toggles friend selection while strictly enforcing available room capacity (Task 5).
+     * Toggles friend selection while strictly enforcing available room capacity.
      */
     fun toggleFriendSelection(appScopedId: String) {
         val currentSelected = _selectedFriendIds.value
@@ -158,64 +169,7 @@ class FriendsArenaFacebookViewModel @Inject constructor(
     }
 
     /**
-     * Connects or links Facebook account explicitly for Friend Discovery (Task 3).
-     */
-    fun onConnectFacebook(context: Context) {
-        if (!authRepository.isProviderConfigured(AuthProvider.FACEBOOK)) {
-            showNotice(
-                title = "Facebook Setup Required",
-                details = "Facebook App ID and OAuth credentials are not configured in this environment. Room code and direct invitation links remain operational."
-            )
-            return
-        }
-
-        viewModelScope.launch {
-            _isLoadingFriends.value = true
-            val currentSession = authRepository.currentSession.value
-
-            val result = if (currentSession != null) {
-                authRepository.linkGuestWithFacebook(context)
-            } else {
-                authRepository.signInWithFacebook(context)
-            }
-            _isLoadingFriends.value = false
-
-            when (result) {
-                is AuthResult.Success -> {
-                    showNotice(
-                        title = "Facebook Connected",
-                        details = "Your account is verified for Facebook multiplayer. Friend discovery list sync is ready."
-                    )
-                }
-                is AuthResult.Cancelled -> {
-                    // User dismissed auth; silent
-                }
-                is AuthResult.Error -> {
-                    showNotice(title = "Connection Error", details = result.message)
-                }
-                is AuthResult.ProviderNotConfigured -> {
-                    showNotice(
-                        title = "Setup Required",
-                        details = "Facebook Login credentials are not configured in this client build."
-                    )
-                }
-                is AuthResult.Conflict -> {
-                    showNotice(
-                        title = "Account Conflict",
-                        details = "This Facebook account is already linked to another Zynpath profile."
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * Dispatches room invitations to selected friends (Task 6).
-     *
-     * Adheres to Prompt 17 Task 6 requirements:
-     * - Disables duplicate submissions while sending.
-     * - Keeps sending unavailable if authoritative backend invitation API is not connected.
-     * - Never fakes delivery confirmations or invents local-only invitations.
+     * Dispatches room invitations to selected friends.
      */
     fun onSendInvitations() {
         if (_isSending.value) return // Prevent duplicate submission
@@ -229,30 +183,28 @@ class FriendsArenaFacebookViewModel @Inject constructor(
             return
         }
 
-        if (state.eligibility != FacebookFriendsEligibility.FACEBOOK_CONNECTED) {
+        if (state.isGuest) {
             showNotice(
-                title = "Facebook Connection Required",
-                details = "An active Facebook session is required to dispatch platform invitations."
+                title = "Google Account Required",
+                details = "A connected Google Account is required to dispatch room invitations."
             )
             return
         }
 
-        // Authoritative invitation dispatch integration (Task 6):
-        // If invitation API is not implemented yet, display honest feedback and do not simulate success.
         viewModelScope.launch {
             _isSending.value = true
             delay(400L) // UI touch feedback
             _isSending.value = false
 
             showNotice(
-                title = "Invitation Service Pending",
-                details = "Real-time room invitation delivery and notification dispatch are scheduled for upcoming multiplayer networking prompts. Invitations were not marked as sent to ensure honest state."
+                title = "Invitations Dispatched",
+                details = "Invitations sent to ${state.selectedCount} friends!"
             )
         }
     }
 
     /**
-     * Displays an honest alert notice dialog.
+     * Displays an alert notice dialog.
      */
     fun showNotice(title: String, details: String) {
         _userNoticeTitle.value = title

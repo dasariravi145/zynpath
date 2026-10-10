@@ -153,213 +153,200 @@ fun FriendsScreen(
     // Confirmation dialog states
     var friendToRemove by remember { mutableStateOf<FriendItem?>(null) }
     var friendToBlock by remember { mutableStateOf<FriendItem?>(null) }
-    var selectedTopTab by remember { mutableStateOf(0) } // 0: Facebook Friends, 1: Invitations
-    var invitedFriends by remember { mutableStateOf(setOf<String>()) }
+    var selectedTopTab by remember { mutableStateOf(0) } // 0: FRIENDS, 1: INVITATIONS
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = com.zynpath.game.core.designsystem.theme.RefNavyDark,
-        topBar = {
-            com.zynpath.game.core.designsystem.components.ZynpathMasterHeaderBar(
-                title = "FRIENDS",
-                onBackClick = onBackClick
-            )
+    // Auto-prompt compact Google Connect modal over screen when guest enters
+    LaunchedEffect(uiState.isAuthenticated) {
+        if (!uiState.isAuthenticated) {
+            viewModel.openGoogleConnectModal()
         }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Reference Panel 08 Segmented Tabs: "Facebook Friends" / "Invitations"
-            com.zynpath.game.core.designsystem.components.ZynpathMasterSegmentedTabs(
-                tabs = listOf("Facebook Friends", "Invitations"),
-                selectedIndex = selectedTopTab,
-                onTabSelected = { selectedTopTab = it },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-            )
+    }
 
-            if (selectedTopTab == 0) {
-                // PANEL 08: Facebook Friends & Suggested Friends
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // Connect with Facebook Card
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = com.zynpath.game.core.designsystem.theme.RefNavySurface),
-                            shape = RoundedCornerShape(16.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, com.zynpath.game.core.designsystem.theme.RefNavyBorder)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                            ) {
-                                Row(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = com.zynpath.game.core.designsystem.theme.RefNavyDark,
+            topBar = {
+                com.zynpath.game.core.designsystem.components.ZynpathMasterHeaderBar(
+                    title = "FRIENDS",
+                    onBackClick = onBackClick
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Provider-neutral Segmented Tabs: "FRIENDS" / "INVITATIONS"
+                com.zynpath.game.core.designsystem.components.ZynpathMasterSegmentedTabs(
+                    tabs = listOf("FRIENDS", "INVITATIONS"),
+                    selectedIndex = selectedTopTab,
+                    onTabSelected = { selectedTopTab = it },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                )
+
+                if (selectedTopTab == 0) {
+                    // TAB 0: Real Friends List / Clean Empty State
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // Unconnected Guest Banner (if modal was dismissed)
+                        if (!uiState.isAuthenticated) {
+                            item {
+                                Card(
                                     modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    colors = CardDefaults.cardColors(containerColor = com.zynpath.game.core.designsystem.theme.RefNavySurface),
+                                    shape = RoundedCornerShape(16.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, com.zynpath.game.core.designsystem.theme.RefNavyBorder)
                                 ) {
-                                    // Facebook Logo Circle
-                                    Box(
+                                    Column(
                                         modifier = Modifier
-                                            .size(46.dp)
-                                            .clip(CircleShape)
-                                            .background(com.zynpath.game.core.designsystem.theme.RefFacebookBlue),
-                                        contentAlignment = Alignment.Center
+                                            .fillMaxWidth()
+                                            .padding(16.dp)
                                     ) {
-                                        Text(
-                                            text = "f",
-                                            color = Color.White,
-                                            fontSize = 28.sp,
-                                            fontWeight = FontWeight.Black
-                                        )
-                                    }
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFF0F224D))
+                                                    .border(
+                                                        androidx.compose.foundation.BorderStroke(1.dp, PathCyanGlow.copy(alpha = 0.5f)),
+                                                        CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                androidx.compose.foundation.Image(
+                                                    painter = androidx.compose.ui.res.painterResource(id = com.zynpath.game.R.drawable.ic_brand_google),
+                                                    contentDescription = "Google",
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
 
-                                    Spacer(modifier = Modifier.width(14.dp))
+                                            Spacer(modifier = Modifier.width(14.dp))
 
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Connect with Facebook",
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = "Play with your friends in Friends Arena",
-                                            fontSize = 12.sp,
-                                            color = com.zynpath.game.core.designsystem.theme.RefTextMuted
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = "CONNECT WITH GOOGLE",
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = "Play with friends and keep your online progress connected.",
+                                                    fontSize = 12.sp,
+                                                    color = com.zynpath.game.core.designsystem.theme.RefTextMuted
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(14.dp))
+
+                                        com.zynpath.game.core.designsystem.components.ZynpathMasterPillButton(
+                                            text = "Connect Google",
+                                            style = com.zynpath.game.core.designsystem.components.ZynpathPillStyle.BLUE,
+                                            height = 42.dp,
+                                            fontSize = 14,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            onClick = { viewModel.openGoogleConnectModal() }
                                         )
                                     }
                                 }
-
-                                Spacer(modifier = Modifier.height(14.dp))
-
-                                com.zynpath.game.core.designsystem.components.ZynpathMasterPillButton(
-                                    text = "Connect Facebook",
-                                    style = com.zynpath.game.core.designsystem.components.ZynpathPillStyle.FACEBOOK,
-                                    height = 42.dp,
-                                    fontSize = 14,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    onClick = {
-                                        Toast.makeText(context, "Connecting to Facebook...", Toast.LENGTH_SHORT).show()
-                                    }
-                                )
                             }
                         }
-                    }
 
-                    // Suggested Friends Header
-                    item {
-                        Text(
-                            text = "Suggested Friends",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF8E9BB0),
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                    }
-
-                    // 4 Reference Suggested Friends (Panel 08)
-                    val referenceSuggestedFriends = listOf(
-                        Triple("Rahul Sharma", "Play together!", com.zynpath.game.R.drawable.avatar_rahul),
-                        Triple("Priya Verma", "Challenge now!", com.zynpath.game.R.drawable.avatar_priya),
-                        Triple("Amit Kumar", "Join my game!", com.zynpath.game.R.drawable.avatar_amit),
-                        Triple("Neha Reddy", "Let's play!", com.zynpath.game.R.drawable.avatar_neha)
-                    )
-
-                    items(referenceSuggestedFriends) { (name, mutuals, avatarRes) ->
-                        val isInvited = invitedFriends.contains(name)
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = com.zynpath.game.core.designsystem.theme.RefNavySurface),
-                            shape = RoundedCornerShape(14.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, com.zynpath.game.core.designsystem.theme.RefNavyBorder)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                androidx.compose.foundation.Image(
-                                    painter = androidx.compose.ui.res.painterResource(id = avatarRes),
-                                    contentDescription = name,
-                                    modifier = Modifier
-                                        .size(46.dp)
-                                        .clip(CircleShape)
+                        // Connected Friends (if any exist in repository)
+                        if (uiState.friends.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Connected Friends (${uiState.friends.size})",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF8E9BB0),
+                                    modifier = Modifier.padding(top = 10.dp)
                                 )
+                            }
 
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
+                            items(uiState.friends, key = { it.playerId }) { friend ->
+                                FriendCard(
+                                    friend = friend,
+                                    onDuel = { onNavigateToFriendDuel(friend.publicZynpathId) },
+                                    onRemove = { friendToRemove = friend },
+                                    onBlock = { friendToBlock = friend }
+                                )
+                            }
+                        } else {
+                            // Section 23: Clean Empty State (no fake suggested friends)
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 40.dp, horizontal = 16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0x2200E5FF)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = PathCyanGlow,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
                                     Text(
-                                        text = name,
-                                        fontSize = 15.sp,
+                                        text = "NO FRIENDS YET",
+                                        fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
                                     )
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
-                                        text = mutuals,
-                                        fontSize = 12.sp,
-                                        color = com.zynpath.game.core.designsystem.theme.RefTextMuted
+                                        text = "Invite a friend to play Zynpath.",
+                                        fontSize = 13.sp,
+                                        color = com.zynpath.game.core.designsystem.theme.RefTextMuted,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    com.zynpath.game.core.designsystem.components.ZynpathMasterPillButton(
+                                        text = "INVITE FRIEND",
+                                        style = com.zynpath.game.core.designsystem.components.ZynpathPillStyle.GOLD,
+                                        height = 42.dp,
+                                        fontSize = 14,
+                                        modifier = Modifier.width(180.dp),
+                                        onClick = {
+                                            val publicId = uiState.myPublicId ?: "ZYN-PLAYER"
+                                            val displayName = uiState.myDisplayName ?: "Zynpath Player"
+                                            val shareIntent = InvitationLinkHelper.createShareIntent(context, publicId, displayName)
+                                            context.startActivity(shareIntent)
+                                        }
                                     )
                                 }
-
-                                com.zynpath.game.core.designsystem.components.ZynpathMasterPillButton(
-                                    text = if (isInvited) "Invited" else "Invite",
-                                    style = if (isInvited) com.zynpath.game.core.designsystem.components.ZynpathPillStyle.SILVER else com.zynpath.game.core.designsystem.components.ZynpathPillStyle.BLUE,
-                                    height = 34.dp,
-                                    fontSize = 13,
-                                    modifier = Modifier.width(84.dp),
-                                    onClick = {
-                                        if (!isInvited) {
-                                            invitedFriends = invitedFriends + name
-                                            Toast.makeText(context, "Invitation sent to $name!", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                )
                             }
                         }
-                    }
 
-                    // Active Connected Friends (if any exist in DB)
-                    if (uiState.friends.isNotEmpty()) {
                         item {
-                            Text(
-                                text = "Connected Friends (${uiState.friends.size})",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF8E9BB0),
-                                modifier = Modifier.padding(top = 10.dp)
-                            )
-                        }
-
-                        items(uiState.friends, key = { it.playerId }) { friend ->
-                            FriendCard(
-                                friend = friend,
-                                onDuel = { onNavigateToFriendDuel(friend.publicZynpathId) },
-                                onRemove = { friendToRemove = friend },
-                                onBlock = { friendToBlock = friend }
-                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
-
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                }
-            } else {
-                // TAB 2: Invitations & Exact Search (Original Social Functionality)
-                if (!uiState.isAuthenticated) {
-                    GuestNoticeBanner(onNavigateToSignIn = onNavigateToSignIn)
                 } else {
+                    // TAB 1: Invitations & Exact Search
+                    if (!uiState.isAuthenticated) {
+                        GuestConnectBanner(onConnectGoogle = { viewModel.openGoogleConnectModal() })
+                    } else {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
@@ -492,10 +479,21 @@ fun FriendsScreen(
             }
         )
     }
+
+    if (uiState.showGoogleConnectModal) {
+            com.zynpath.game.core.designsystem.components.GoogleConnectModal(
+                onDismiss = { viewModel.dismissGoogleConnectModal() },
+                onContinueWithGoogle = { viewModel.connectWithGoogle(context) },
+                isLoading = uiState.isGoogleConnecting,
+                errorMessage = uiState.googleConnectError,
+                onRetry = { viewModel.connectWithGoogle(context) }
+            )
+        }
+    }
 }
 
 @Composable
-private fun GuestNoticeBanner(onNavigateToSignIn: () -> Unit) {
+private fun GuestConnectBanner(onConnectGoogle: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -505,54 +503,50 @@ private fun GuestNoticeBanner(onNavigateToSignIn: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(64.dp)
                 .clip(CircleShape)
-                .background(BackgroundCard),
+                .background(Color(0xFF0F224D))
+                .border(androidx.compose.foundation.BorderStroke(1.dp, PathCyanGlow.copy(alpha = 0.5f)), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = null,
-                tint = ForestMint,
-                modifier = Modifier.size(36.dp)
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = com.zynpath.game.R.drawable.ic_brand_google),
+                contentDescription = "Google",
+                modifier = Modifier.size(32.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
         Text(
-            text = "Sign In to Connect",
-            fontSize = 22.sp,
+            text = "CONNECT WITH GOOGLE",
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = Color.White
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Online friends, exact player discovery, and presence require a verified Zynpath account.\n\nYour guest puzzle progress and Solo gameplay will be safely preserved when linking!",
-            fontSize = 14.sp,
-            color = TextMuted,
+            text = "Play with friends and keep your\nonline progress connected.",
+            fontSize = 13.sp,
+            color = com.zynpath.game.core.designsystem.theme.RefTextMuted,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = onNavigateToSignIn,
+        com.zynpath.game.core.designsystem.components.ZynpathMasterPillButton(
+            text = "Connect Google",
+            style = com.zynpath.game.core.designsystem.components.ZynpathPillStyle.BLUE,
+            height = 46.dp,
+            fontSize = 15,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ForestMint),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "Sign In / Link Account",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = BackgroundDark
-            )
-        }
+                .padding(horizontal = 24.dp),
+            onClick = onConnectGoogle
+        )
     }
 }
 

@@ -8,7 +8,7 @@ sealed class Screen(val route: String) {
     data object WorldSelection : Screen("world_selection")
 
     data object LevelSelection : Screen("level_selection/{worldId}") {
-        fun createRoute(worldId: Int = 1): String = "level_selection/$worldId"
+        fun createRoute(worldId: Int = 0): String = "level_selection/$worldId"
     }
 
     data object Gameplay : Screen("gameplay/{worldId}/{levelId}") {
@@ -81,6 +81,7 @@ sealed class Screen(val route: String) {
         fun createRoute(packId: String, levelIndex: Int): String = "pack_gameplay/$packId/$levelIndex"
     }
 
+    data object Rewards : Screen("rewards")
     data object Cosmetics : Screen("cosmetics")
     data object Statistics : Screen("statistics")
     data object Notifications : Screen("notifications")

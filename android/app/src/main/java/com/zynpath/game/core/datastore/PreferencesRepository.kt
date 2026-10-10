@@ -15,6 +15,7 @@ import com.zynpath.game.core.error.ZynpathDiagnostics
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import java.util.UUID
@@ -56,6 +57,10 @@ interface PreferencesRepository {
     suspend fun setAllowFriendRequests(allow: Boolean)
     suspend fun setHighContrast(enabled: Boolean)
     suspend fun setTouchSensitivity(sensitivity: Float)
+    suspend fun getOrCreateGuestUuid(): String
+    suspend fun setGuestUuid(uuid: String)
+    suspend fun getLastHandledInterstitialMilestone(): Int
+    suspend fun setLastHandledInterstitialMilestone(milestone: Int)
     suspend fun clearAllPreferences()
 }
 
@@ -63,6 +68,8 @@ interface PreferencesRepository {
 class PreferencesRepositoryImpl @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) : PreferencesRepository {
+
+    private val memoryFallbackGuestUuid = UUID.randomUUID().toString()
 
     private object PreferencesKeys {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
@@ -97,6 +104,7 @@ class PreferencesRepositoryImpl @Inject constructor(
         val TUTORIAL_STAGE = intPreferencesKey("tutorial_stage")
         val TUTORIAL_SKIPPED = booleanPreferencesKey("tutorial_skipped")
         val SEEN_FEATURE_TIPS = stringSetPreferencesKey("seen_feature_tips")
+        val LAST_HANDLED_INTERSTITIAL_MILESTONE = intPreferencesKey("last_handled_interstitial_milestone")
     }
 
     override val userPreferencesFlow: Flow<UserPreferences> = dataStore.data
@@ -108,7 +116,8 @@ class PreferencesRepositoryImpl @Inject constructor(
             }
         }
         .map { preferences ->
-            val guestId = preferences[PreferencesKeys.GUEST_UUID] ?: UUID.randomUUID().toString()
+            val storedGuest = preferences[PreferencesKeys.GUEST_UUID]
+            val guestId = if (!storedGuest.isNullOrBlank()) storedGuest else memoryFallbackGuestUuid
             UserPreferences(
                 isOnboardingCompleted = preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false,
                 isTutorialCompleted = preferences[PreferencesKeys.TUTORIAL_COMPLETED] ?: false,
@@ -141,7 +150,8 @@ class PreferencesRepositoryImpl @Inject constructor(
                 touchSensitivity = preferences[PreferencesKeys.TOUCH_SENSITIVITY] ?: 1.0f,
                 tutorialStage = preferences[PreferencesKeys.TUTORIAL_STAGE] ?: 1,
                 isTutorialSkipped = preferences[PreferencesKeys.TUTORIAL_SKIPPED] ?: false,
-                seenFeatureTips = preferences[PreferencesKeys.SEEN_FEATURE_TIPS] ?: emptySet()
+                seenFeatureTips = preferences[PreferencesKeys.SEEN_FEATURE_TIPS] ?: emptySet(),
+                lastHandledInterstitialMilestone = preferences[PreferencesKeys.LAST_HANDLED_INTERSTITIAL_MILESTONE] ?: 0
             )
         }.distinctUntilChanged()
 
@@ -358,6 +368,38 @@ class PreferencesRepositoryImpl @Inject constructor(
     override suspend fun setTouchSensitivity(sensitivity: Float) {
         safeEdit { preferences ->
             preferences[PreferencesKeys.TOUCH_SENSITIVITY] = sensitivity.coerceIn(0.5f, 2.0f)
+        }
+    }
+
+    override suspend fun getOrCreateGuestUuid(): String {
+        val prefs = dataStore.data.first()
+        val existing = prefs[PreferencesKeys.GUEST_UUID]
+        if (!existing.isNullOrBlank()) {
+            return existing
+        }
+        val generated = memoryFallbackGuestUuid
+        safeEdit { preferences ->
+            if (preferences[PreferencesKeys.GUEST_UUID].isNullOrBlank()) {
+                preferences[PreferencesKeys.GUEST_UUID] = generated
+            }
+        }
+        return generated
+    }
+
+    override suspend fun setGuestUuid(uuid: String) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.GUEST_UUID] = uuid
+        }
+    }
+
+    override suspend fun getLastHandledInterstitialMilestone(): Int {
+        val prefs = dataStore.data.first()
+        return prefs[PreferencesKeys.LAST_HANDLED_INTERSTITIAL_MILESTONE] ?: 0
+    }
+
+    override suspend fun setLastHandledInterstitialMilestone(milestone: Int) {
+        safeEdit { preferences ->
+            preferences[PreferencesKeys.LAST_HANDLED_INTERSTITIAL_MILESTONE] = milestone
         }
     }
 

@@ -5,19 +5,17 @@ import com.zynpath.game.core.auth.model.AuthSession
 import com.zynpath.game.core.auth.model.AuthState
 import com.zynpath.game.core.player.PlayerProfile
 
+import com.zynpath.game.core.social.model.FriendItem
+
 /**
- * UI State for the Friends Arena Entry & Eligibility screen.
+ * UI State for Friends Arena Entry & Compact Popups.
  *
- * Implements Prompt 14/24:
+ * Implements Google-Only Authentication & Compact Popup Flow:
  * - Total room capacity: 1–5 players (including the host).
- * - Single player room creation / waiting allowed.
+ * - Single player room creation / waiting allowed (host can wait alone).
  * - Match start condition: Minimum 2 connected players.
- * - Supports 4 distinct authentication & Facebook eligibility states:
- *   A. Guest player
- *   B. Google-authenticated player without Facebook connection
- *   C. Facebook-connected player
- *   D. Missing/pending Facebook configuration
- * - Strict adherence to Meta platform privacy rules (no simulated friends).
+ * - Google authentication gate for Friends Arena.
+ * - Compact popup states: Connect Google, Create Room, Join Room, Friend Picker.
  */
 data class FriendsArenaUiState(
     val authState: AuthState = AuthState.GUEST,
@@ -27,13 +25,28 @@ data class FriendsArenaUiState(
     val isGoogleConfigured: Boolean = false,
     val isReducedMotion: Boolean = false,
     val isLoading: Boolean = false,
-    val userNotice: String? = null
+    val userNotice: String? = null,
+    val showGoogleConnectModal: Boolean = false,
+    val isGoogleConnecting: Boolean = false,
+    val googleConnectError: String? = null,
+    val showCreateRoomModal: Boolean = false,
+    val isCreatingRoom: Boolean = false,
+    val createRoomError: String? = null,
+    val selectedPlayerCount: Int = 3,
+    val selectedFriendIds: Set<String> = emptySet(),
+    val selectedPuzzleDescription: String = "Random Expert",
+    val showFriendPickerModal: Boolean = false,
+    val showJoinRoomModal: Boolean = false,
+    val isJoiningRoom: Boolean = false,
+    val joinRoomCode: String = "",
+    val joinRoomError: String? = null,
+    val eligibleFriends: List<FriendItem> = emptyList()
 ) {
     /**
      * Whether the current user is an unauthenticated guest.
      */
     val isGuest: Boolean
-        get() = session == null || authState == AuthState.GUEST || (playerProfile?.isGuest == true && session == null)
+        get() = session == null || authState == AuthState.GUEST
 
     /**
      * Whether the current session is explicitly authenticated via Facebook.

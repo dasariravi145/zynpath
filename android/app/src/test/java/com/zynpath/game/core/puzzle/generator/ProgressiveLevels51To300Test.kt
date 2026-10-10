@@ -65,7 +65,7 @@ class ProgressiveLevels51To300Test {
             val puzzle = levelProvider.getLevel(levelId)
             assertNotNull("Level $levelId must resolve to a valid PuzzleDefinition", puzzle)
             assertTrue("Level $levelId must have puzzleId starting with w", puzzle!!.puzzleId.startsWith("w"))
-            assertEquals("Level $levelId version must be at least 1", 1, puzzle.puzzleVersion)
+            assertTrue("Level $levelId version must be at least 1", puzzle.puzzleVersion >= 1)
         }
     }
 

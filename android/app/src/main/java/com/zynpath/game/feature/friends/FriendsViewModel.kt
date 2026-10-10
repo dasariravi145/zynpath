@@ -30,19 +30,24 @@ class FriendsViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(FriendsUiState())
+    private val isInitialGuest: Boolean
+        get() = authRepository.currentSession.value == null ||
+                authRepository.currentSession.value?.provider == com.zynpath.game.core.auth.model.AuthProvider.GUEST
+
+    private val _uiState = MutableStateFlow(FriendsUiState(showGoogleConnectModal = isInitialGuest))
     val uiState: StateFlow<FriendsUiState> = _uiState.asStateFlow()
 
     init {
         // Observe authentication state
         viewModelScope.launch {
             authRepository.currentSession.collect { session ->
-                val isAuth = session != null && !session.isExpired
+                val isAuth = session != null && !session.isExpired && session.provider != com.zynpath.game.core.auth.model.AuthProvider.GUEST
                 _uiState.update { current ->
                     current.copy(
                         isAuthenticated = isAuth,
                         myPublicId = session?.publicZynpathId,
-                        myDisplayName = session?.displayName
+                        myDisplayName = session?.displayName,
+                        showGoogleConnectModal = if (isAuth) false else current.showGoogleConnectModal
                     )
                 }
                 if (isAuth) {
@@ -297,5 +302,52 @@ class FriendsViewModel @Inject constructor(
 
     fun clearUserMessage() {
         _uiState.update { it.copy(userMessage = null) }
+    }
+
+    fun openGoogleConnectModal() {
+        _uiState.update { it.copy(showGoogleConnectModal = true, googleConnectError = null) }
+    }
+
+    fun dismissGoogleConnectModal() {
+        _uiState.update { it.copy(showGoogleConnectModal = false, googleConnectError = null) }
+    }
+
+    fun connectWithGoogle(context: android.content.Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGoogleConnecting = true, googleConnectError = null) }
+            when (val result = authRepository.connectWithGoogle(context)) {
+                is com.zynpath.game.core.auth.model.AuthResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isGoogleConnecting = false,
+                            showGoogleConnectModal = false,
+                            googleConnectError = null
+                        )
+                    }
+                }
+                is com.zynpath.game.core.auth.model.AuthResult.Cancelled -> {
+                    _uiState.update {
+                        it.copy(isGoogleConnecting = false)
+                    }
+                }
+                is com.zynpath.game.core.auth.model.AuthResult.ProviderNotConfigured -> {
+                    _uiState.update {
+                        it.copy(
+                            isGoogleConnecting = false,
+                            googleConnectError = "Google Sign-In is not configured on this environment."
+                        )
+                    }
+                }
+                is com.zynpath.game.core.auth.model.AuthResult.Error,
+                is com.zynpath.game.core.auth.model.AuthResult.Conflict -> {
+                    _uiState.update {
+                        it.copy(
+                            isGoogleConnecting = false,
+                            googleConnectError = "Couldn't connect. Try again."
+                        )
+                    }
+                }
+            }
+        }
     }
 }

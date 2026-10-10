@@ -75,7 +75,6 @@ import com.zynpath.game.core.designsystem.theme.GameShapes
 import com.zynpath.game.core.designsystem.theme.GameTypography
 import com.zynpath.game.core.designsystem.theme.GameWhite
 import com.zynpath.game.feature.auth.components.AnimatedPuzzlePathIllustration
-import com.zynpath.game.feature.auth.components.FacebookSignInButton
 import com.zynpath.game.feature.auth.components.GoogleSignInButton
 import com.zynpath.game.feature.splash.components.ZynpathCinematicLogo
 
@@ -284,22 +283,14 @@ fun SignInScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // 1. CONTINUE WITH FACEBOOK BUTTON (Solid Blue Pill)
-                    com.zynpath.game.core.designsystem.components.ZynpathMasterPillButton(
-                        text = "Continue with Facebook",
-                        onClick = { viewModel.signInWithFacebook(context) },
-                        style = com.zynpath.game.core.designsystem.components.ZynpathPillStyle.FACEBOOK,
+                    // 1. CONTINUE WITH GOOGLE BUTTON
+                    GoogleSignInButton(
+                        text = "Continue with Google",
+                        onClick = { viewModel.signInWithGoogle(context) },
+                        isLoading = uiState.isLoading,
                         enabled = !uiState.isLoading,
                         height = 52.dp,
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_brand_facebook),
-                                contentDescription = "Facebook",
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     // 2. PLAY AS GUEST BUTTON (White / Silver Pill)

@@ -43,7 +43,6 @@ class SignInViewModel @Inject constructor(
             authState = state,
             currentSession = session,
             isGoogleAvailable = authRepository.isProviderConfigured(AuthProvider.GOOGLE),
-            isFacebookAvailable = authRepository.isProviderConfigured(AuthProvider.FACEBOOK),
             isLoading = state == AuthState.SIGNING_IN || state == AuthState.LINKING,
             isReducedMotion = prefs.isReducedMotion,
             errorMessage = transient.errorMessage,
@@ -55,8 +54,7 @@ class SignInViewModel @Inject constructor(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = SignInUiState(
-            isGoogleAvailable = authRepository.isProviderConfigured(AuthProvider.GOOGLE),
-            isFacebookAvailable = authRepository.isProviderConfigured(AuthProvider.FACEBOOK)
+            isGoogleAvailable = authRepository.isProviderConfigured(AuthProvider.GOOGLE)
         )
     )
 
@@ -68,26 +66,10 @@ class SignInViewModel @Inject constructor(
         }
     }
 
-    fun signInWithFacebook(context: Context) {
-        _transientState.update { it.copy(activeProvider = AuthProvider.FACEBOOK, errorMessage = null, unconfiguredProviderNotice = null) }
-        viewModelScope.launch {
-            val result = authRepository.signInWithFacebook(context)
-            handleResult(result)
-        }
-    }
-
     fun linkWithGoogle(context: Context) {
         _transientState.update { it.copy(activeProvider = AuthProvider.GOOGLE, errorMessage = null, unconfiguredProviderNotice = null) }
         viewModelScope.launch {
             val result = authRepository.linkGuestWithGoogle(context)
-            handleResult(result)
-        }
-    }
-
-    fun linkWithFacebook(context: Context) {
-        _transientState.update { it.copy(activeProvider = AuthProvider.FACEBOOK, errorMessage = null, unconfiguredProviderNotice = null) }
-        viewModelScope.launch {
-            val result = authRepository.linkGuestWithFacebook(context)
             handleResult(result)
         }
     }

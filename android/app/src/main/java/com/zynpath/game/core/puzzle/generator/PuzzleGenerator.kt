@@ -2,6 +2,7 @@ package com.zynpath.game.core.puzzle.generator
 
 import com.zynpath.game.core.puzzle.engine.CompletionCheckResult
 import com.zynpath.game.core.puzzle.engine.CompletionValidator
+import com.zynpath.game.core.puzzle.model.NumberedCheckpoint
 import com.zynpath.game.core.puzzle.model.PuzzleDefinition
 import com.zynpath.game.core.puzzle.solver.PuzzleSolver
 import com.zynpath.game.core.puzzle.solver.SolverConfiguration
@@ -183,7 +184,7 @@ class PuzzleGenerator(
                 continue
             }
 
-            // Step G: Solver verification
+            // Step G: Solver verification with CEGAR discrepancy refinement
             val solverConfig = SolverConfiguration(
                 maxSolutions = if (config.requireUniqueness) 2 else 1,
                 nodeLimit = config.solverNodeBudget,
@@ -192,9 +193,58 @@ class PuzzleGenerator(
                 cancellationSignal = cancellationSignal
             )
 
-            val solverResult = solver.solve(candidate, solverConfig)
+            var activeCandidate = candidate
+            var activeCheckpoints = checkpoints
+            var solverResult = solver.solve(activeCandidate, solverConfig)
             totalSolverNodes += solverResult.statistics.nodesExplored
             totalSolverTimeMs += solverResult.statistics.elapsedMs
+
+            // CEGAR refinement: if multiple solutions exist, resolve discrepancies by adding checkpoints
+            if (config.requireUniqueness && (solverResult.status == SolverStatus.MULTIPLE_SOLUTIONS || solverResult.solutions.size >= 2)) {
+                val maxCps = when (config.dimensions.rows) {
+                    6 -> 10
+                    7 -> 12
+                    else -> 14
+                }
+                var cegarTries = 0
+                while (activeCheckpoints.size < maxCps && cegarTries < 8 &&
+                    (solverResult.status == SolverStatus.MULTIPLE_SOLUTIONS || solverResult.solutions.size >= 2)
+                ) {
+                    cegarTries++
+                    val alt = solverResult.solutions.find { it.positions != route } ?: solverResult.solutions.getOrNull(1)
+                    if (alt != null) {
+                        var divergedIdx = -1
+                        for (i in route.indices) {
+                            if (i >= alt.positions.size || alt.positions[i] != route[i]) {
+                                divergedIdx = i
+                                break
+                            }
+                        }
+                        if (divergedIdx != -1) {
+                            val existingIndices = activeCheckpoints.map { route.indexOf(it.position) }.toMutableSet()
+                            val newIdx = divergedIdx.coerceIn(1, route.size - 2)
+                            if (!existingIndices.contains(newIdx)) {
+                                existingIndices.add(newIdx)
+                                val sortedIndices = existingIndices.sorted()
+                                activeCheckpoints = sortedIndices.mapIndexed { idx, routeIdx ->
+                                    NumberedCheckpoint(number = idx + 1, position = route[routeIdx])
+                                }
+                                activeCandidate = activeCandidate.copy(checkpoints = activeCheckpoints)
+                                solverResult = solver.solve(activeCandidate, solverConfig)
+                                totalSolverNodes += solverResult.statistics.nodesExplored
+                                totalSolverTimeMs += solverResult.statistics.elapsedMs
+                                if (solverResult.isUnique) break
+                            } else {
+                                break
+                            }
+                        } else {
+                            break
+                        }
+                    } else {
+                        break
+                    }
+                }
+            }
 
             if (solverResult.status == SolverStatus.CANCELLED) {
                 val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L
@@ -236,17 +286,19 @@ class PuzzleGenerator(
                 continue
             }
 
-            val completionCheck = CompletionValidator.validate(candidate, verifiedPath)
+            val completionCheck = CompletionValidator.validate(activeCandidate, verifiedPath)
             if (completionCheck !is CompletionCheckResult.Success) {
                 recordRejection("COMPLETION_VALIDATION_FAILED")
                 continue
             }
 
             // Step I: Candidate ACCEPTED!
-            seenFingerprints?.add(fingerprint)
+            val acceptedCandidate = activeCandidate
+            val finalFingerprint = PuzzleFingerprint.canonicalRepresentation(acceptedCandidate)
+            seenFingerprints?.add(finalFingerprint)
             val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L
             val routeTurns = routeConstructor.countTurns(verifiedPath.positions)
-            val sha256 = PuzzleFingerprint.computeSha256(candidate)
+            val sha256 = PuzzleFingerprint.computeSha256(acceptedCandidate)
 
             val stats = GenerationStatistics(
                 totalAttempts = attempts,

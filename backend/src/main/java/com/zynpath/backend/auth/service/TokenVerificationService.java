@@ -97,6 +97,7 @@ public class TokenVerificationService {
         return switch (provider) {
             case GOOGLE -> verifyGoogleIdToken(providerToken);
             case FACEBOOK -> verifyFacebookToken(providerToken);
+            case GUEST -> throw AuthException.invalidCredential("Guest authentication does not use external provider tokens");
         };
     }
 

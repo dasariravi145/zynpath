@@ -36,5 +36,8 @@ data class FriendsUiState(
     val isLoading: Boolean = false,
     val userMessage: String? = null,
     val selectedTab: FriendsTab = FriendsTab.FRIENDS,
-    val pendingDeepLinkInviterId: String? = null
+    val pendingDeepLinkInviterId: String? = null,
+    val showGoogleConnectModal: Boolean = false,
+    val isGoogleConnecting: Boolean = false,
+    val googleConnectError: String? = null
 )

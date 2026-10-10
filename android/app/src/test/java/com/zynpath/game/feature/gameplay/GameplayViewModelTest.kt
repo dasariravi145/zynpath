@@ -69,9 +69,9 @@ class GameplayViewModelTest {
         val ready = state as GameplayUiState.Ready
         assertEquals(1, ready.levelId)
         assertEquals(1, ready.worldId)
-        assertEquals(4, ready.definition.gridDimensions.rows)
-        assertEquals(4, ready.definition.gridDimensions.columns)
-        assertEquals(5, ready.definition.checkpoints.size)
+        assertEquals(6, ready.definition.gridDimensions.rows)
+        assertEquals(6, ready.definition.gridDimensions.columns)
+        assertTrue(ready.definition.checkpoints.size in 6..10)
         assertEquals(0, ready.definition.blockedEdges.size)
     }
 
@@ -90,7 +90,7 @@ class GameplayViewModelTest {
     }
 
     @Test
-    fun `test loading unlocked unpackaged Level 6 produces ContentUnavailable`() = runTest(testDispatcher) {
+    fun `test loading unlocked packaged Level 6 produces Ready state`() = runTest(testDispatcher) {
         // Unlock levels 1..5
         for (i in 1..5) {
             fakeProgressRepo.completeLevel(i)
@@ -103,9 +103,21 @@ class GameplayViewModelTest {
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertTrue("State must be ContentUnavailable for unpackaged level 6, got $state", state is GameplayUiState.ContentUnavailable)
-        val unavailable = state as GameplayUiState.ContentUnavailable
-        assertEquals(6, unavailable.levelId)
+        assertTrue("State must be Ready for packaged level 6, got $state", state is GameplayUiState.Ready)
+        val ready = state as GameplayUiState.Ready
+        assertEquals(6, ready.levelId)
+    }
+
+    @Test
+    fun `test loading out of bounds Level 999 produces Error`() = runTest(testDispatcher) {
+        val savedStateHandle = SavedStateHandle(mapOf("worldId" to 1, "levelId" to 999))
+        val catalogRepo = LevelCatalogRepositoryImpl(assetLoader, fakeProgressRepo)
+        val viewModel = GameplayViewModel(catalogRepo, fakeProgressRepo, savedStateHandle)
+
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue("State must be Error for non-existent level 999, got $state", state is GameplayUiState.Error)
     }
 
     @Test

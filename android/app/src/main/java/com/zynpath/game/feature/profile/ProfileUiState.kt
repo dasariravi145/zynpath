@@ -28,11 +28,12 @@ data class ProfileUiState(
     val accountLinkingState: AccountLinkingState = AccountLinkingState(),
     val isLinkingLoading: Boolean = false,
     val isGoogleAvailable: Boolean = false,
-    val isFacebookAvailable: Boolean = false,
     val conflictDialogMessage: String? = null,
     val unconfiguredNotice: String? = null,
     val isSaving: Boolean = false,
     val snackbarMessage: String? = null,
     val competitiveStats: com.zynpath.game.core.multiplayer.model.CompetitiveStats? = null,
-    val equippedAvatarFrameId: String = "frame_default_slate"
+    val equippedAvatarFrameId: String = "frame_default_slate",
+    val isGoogleConnecting: Boolean = false,
+    val googleConnectError: String? = null
 )

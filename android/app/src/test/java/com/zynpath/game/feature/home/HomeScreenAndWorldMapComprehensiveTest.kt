@@ -163,38 +163,38 @@ class HomeScreenAndWorldMapComprehensiveTest {
     }
 
     @Test
-    fun testWorldConfigurationHasSixWorldsAnd300Levels() {
+    fun testWorldConfigurationHasSixWorldsAnd1800Levels() {
         assertEquals("Must configure exactly 6 worlds", 6, WorldConfiguration.TOTAL_WORLDS)
-        assertEquals("Must configure exactly 300 levels total", 300, WorldConfiguration.TOTAL_LEVELS)
+        assertEquals("Must configure exactly 1800 levels total", 1800, WorldConfiguration.TOTAL_LEVELS)
 
         val worlds = WorldConfiguration.WORLDS
         assertEquals(6, worlds.size)
 
-        // World 1: 1..20
+        // World 1: 1..300
         assertEquals(1, worlds[0].startLevel)
-        assertEquals(20, worlds[0].endLevel)
+        assertEquals(300, worlds[0].endLevel)
         assertEquals(0, worlds[0].minPreviousWorldCompletedToUnlock)
 
-        // World 2: 21..50
-        assertEquals(21, worlds[1].startLevel)
-        assertEquals(50, worlds[1].endLevel)
+        // World 2: 301..600
+        assertEquals(301, worlds[1].startLevel)
+        assertEquals(600, worlds[1].endLevel)
         assertEquals(20, worlds[1].minPreviousWorldCompletedToUnlock)
 
-        // World 3: 51..100
-        assertEquals(51, worlds[2].startLevel)
-        assertEquals(100, worlds[2].endLevel)
+        // World 3: 601..900
+        assertEquals(601, worlds[2].startLevel)
+        assertEquals(900, worlds[2].endLevel)
 
-        // World 4: 101..150
-        assertEquals(101, worlds[3].startLevel)
-        assertEquals(150, worlds[3].endLevel)
+        // World 4: 901..1200
+        assertEquals(901, worlds[3].startLevel)
+        assertEquals(1200, worlds[3].endLevel)
 
-        // World 5: 151..200
-        assertEquals(151, worlds[4].startLevel)
-        assertEquals(200, worlds[4].endLevel)
+        // World 5: 1201..1500
+        assertEquals(1201, worlds[4].startLevel)
+        assertEquals(1500, worlds[4].endLevel)
 
-        // World 6: 201..300
-        assertEquals(201, worlds[5].startLevel)
-        assertEquals(300, worlds[5].endLevel)
+        // World 6: 1501..1800
+        assertEquals(1501, worlds[5].startLevel)
+        assertEquals(1800, worlds[5].endLevel)
     }
 
     @Test

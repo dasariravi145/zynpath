@@ -146,9 +146,27 @@ class FakePreferencesRepository(
     }
 
     override suspend fun markFeatureTipSeen(tipId: String) {}
+    override suspend fun resetTutorialProgress() {}
 
-    override suspend fun resetTutorialProgress() {
-        _preferences.value = _preferences.value.copy(tutorialStage = 0, isTutorialCompleted = false)
+    override suspend fun getOrCreateGuestUuid(): String {
+        if (_preferences.value.guestUuid.isBlank()) {
+            val generated = "guest_${java.util.UUID.randomUUID()}"
+            _preferences.value = _preferences.value.copy(guestUuid = generated)
+            return generated
+        }
+        return _preferences.value.guestUuid
+    }
+
+    override suspend fun setGuestUuid(uuid: String) {
+        _preferences.value = _preferences.value.copy(guestUuid = uuid)
+    }
+
+    override suspend fun getLastHandledInterstitialMilestone(): Int {
+        return _preferences.value.lastHandledInterstitialMilestone
+    }
+
+    override suspend fun setLastHandledInterstitialMilestone(milestone: Int) {
+        _preferences.value = _preferences.value.copy(lastHandledInterstitialMilestone = milestone)
     }
 
     override suspend fun clearAllPreferences() {

@@ -76,25 +76,26 @@ class LevelCatalogRepositoryImpl @Inject constructor(
     override fun getLevel(levelId: Int): LevelDefinition? = manifest.getLevel(levelId)
 
     override suspend fun loadPuzzle(levelId: Int): CatalogLoadResult {
-        if (levelId !in 1..300) {
+        if (levelId !in 1..WorldConfiguration.TOTAL_LEVELS) {
             return CatalogLoadResult.LevelNotFound(levelId)
         }
         loadedPuzzleCache[levelId]?.let { return it }
 
         val level = manifest.getLevel(levelId)
             ?: WorldDefinition.forLevel(levelId).let { world ->
+                val localLevel = WorldConfiguration.toLocalLevel(levelId)
                 LevelDefinition(
                     levelId = levelId,
                     worldId = world.worldId,
-                    puzzleId = "w${world.worldId}_lvl$levelId",
+                    puzzleId = "w${world.worldId}_lvl$localLevel",
                     puzzleVersion = 1,
-                    assetPath = "puzzles/w${world.worldId}/lvl$levelId.json",
+                    assetPath = "puzzles/w${world.worldId}/lvl$localLevel.json",
                     difficultyEstimate = 0.0,
                     difficultyBand = com.zynpath.game.core.puzzle.curation.DifficultyBand.BEGINNER,
                     uniquenessStatus = com.zynpath.game.core.puzzle.solver.UniquenessStatus.UNIQUE,
                     fingerprint = "",
                     hasPackagedAsset = false,
-                    displayName = "Level $levelId"
+                    displayName = "Level $localLevel"
                 )
             }
 
@@ -118,9 +119,13 @@ class LevelCatalogRepositoryImpl @Inject constructor(
             }
         }
 
-        // 2. Seamless fallback to verified in-memory PackagedPuzzles and CuratedFirst50Levels
+        // 2. Seamless fallback to verified in-memory PackagedPuzzles and Curated levels
         val packagedDef = PackagedPuzzles.ALL_PACKAGED[levelId]
             ?: CuratedFirst50Levels.LEVELS[levelId]
+            ?: CuratedWorld3Levels.LEVELS[levelId]
+            ?: CuratedWorld4Levels.LEVELS[levelId]
+            ?: CuratedWorld5Levels.LEVELS[levelId]
+            ?: CuratedWorld6Levels.LEVELS[levelId]
             ?: CuratedAnchorLevels.ANCHOR_LEVELS[levelId]
         if (packagedDef != null) {
             val result = CatalogLoadResult.Success(level, packagedDef)
@@ -129,8 +134,8 @@ class LevelCatalogRepositoryImpl @Inject constructor(
             return result
         }
 
-        // 3. Fallback to deterministic level provider for all 300 levels (1..300)
-        if (levelId in 1..300) {
+        // 3. Fallback to deterministic level provider for all levels
+        if (levelId in 1..WorldConfiguration.TOTAL_LEVELS) {
             val deterministicDef = deterministicLevelProvider.getLevel(levelId)
             if (deterministicDef != null) {
                 val result = CatalogLoadResult.Success(level, deterministicDef)
@@ -188,8 +193,12 @@ class LevelCatalogRepositoryImpl @Inject constructor(
             // In-memory packaged puzzles, curated levels, anchor levels, or deterministic level provider availability
             if (PackagedPuzzles.ALL_PACKAGED.containsKey(levelId) ||
                 CuratedFirst50Levels.LEVELS.containsKey(levelId) ||
+                CuratedWorld3Levels.LEVELS.containsKey(levelId) ||
+                CuratedWorld4Levels.LEVELS.containsKey(levelId) ||
+                CuratedWorld5Levels.LEVELS.containsKey(levelId) ||
+                CuratedWorld6Levels.LEVELS.containsKey(levelId) ||
                 CuratedAnchorLevels.ANCHOR_LEVELS.containsKey(levelId) ||
-                (levelId in 1..300 && deterministicLevelProvider.getLevel(levelId) != null)) {
+                (levelId in 1..WorldConfiguration.TOTAL_LEVELS && deterministicLevelProvider.getLevel(levelId) != null)) {
                 assetValidationCache[levelId] = true
                 return@map LevelAvailability.UNLOCKED_AND_AVAILABLE
             }

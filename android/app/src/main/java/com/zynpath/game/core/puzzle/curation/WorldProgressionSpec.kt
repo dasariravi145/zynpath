@@ -31,44 +31,44 @@ data class WorldProgressionSpec(
             worldId = 1,
             name = "Learn the Path",
             levelRange = 1..20,
-            gridSize = 4,
-            checkpointRange = 4..6,
+            gridSize = 6,
+            checkpointRange = 6..10,
             wallRange = 0..0,
-            targetDifficultyRange = 0.00..0.22,
-            targetDifficultyBand = DifficultyBand.BEGINNER
+            targetDifficultyRange = 0.35..0.75,
+            targetDifficultyBand = DifficultyBand.EASY
         )
 
         val WORLD_2 = WorldProgressionSpec(
             worldId = 2,
             name = "Longer Connections",
             levelRange = 21..50,
-            gridSize = 5,
-            checkpointRange = 4..7,
+            gridSize = 7,
+            checkpointRange = 8..12,
             wallRange = 0..0,
-            targetDifficultyRange = 0.18..0.38,
-            targetDifficultyBand = DifficultyBand.EASY
+            targetDifficultyRange = 0.50..0.80,
+            targetDifficultyBand = DifficultyBand.HARD
         )
 
         val WORLD_3 = WorldProgressionSpec(
             worldId = 3,
             name = "Wall Challenge",
             levelRange = 51..100,
-            gridSize = 5,
-            checkpointRange = 4..7,
-            wallRange = 1..5,
-            targetDifficultyRange = 0.32..0.55,
-            targetDifficultyBand = DifficultyBand.MEDIUM
+            gridSize = 8,
+            checkpointRange = 10..18,
+            wallRange = 0..8,
+            targetDifficultyRange = 0.60..0.85,
+            targetDifficultyBand = DifficultyBand.HARD
         )
 
         val WORLD_4 = WorldProgressionSpec(
             worldId = 4,
             name = "Complex Routes",
             levelRange = 101..150,
-            gridSize = 6,
-            checkpointRange = 4..8,
-            wallRange = 2..8,
-            targetDifficultyRange = 0.45..0.68,
-            targetDifficultyBand = DifficultyBand.MEDIUM
+            gridSize = 9,
+            checkpointRange = 12..20,
+            wallRange = 0..10,
+            targetDifficultyRange = 0.75..0.92,
+            targetDifficultyBand = DifficultyBand.VERY_HARD
         )
 
         val WORLD_5 = WorldProgressionSpec(
@@ -78,8 +78,8 @@ data class WorldProgressionSpec(
             gridSize = 7,
             checkpointRange = 4..10,
             wallRange = 4..12,
-            targetDifficultyRange = 0.60..0.82,
-            targetDifficultyBand = DifficultyBand.HARD
+            targetDifficultyRange = 0.75..0.95,
+            targetDifficultyBand = DifficultyBand.EXPERT
         )
 
         val WORLD_6 = WorldProgressionSpec(
@@ -89,7 +89,7 @@ data class WorldProgressionSpec(
             gridSize = 8,
             checkpointRange = 4..12,
             wallRange = 6..18,
-            targetDifficultyRange = 0.75..1.00,
+            targetDifficultyRange = 0.80..1.00,
             targetDifficultyBand = DifficultyBand.EXPERT
         )
 

@@ -242,4 +242,49 @@ class PuzzleQualityEvaluatorTest {
         assertEquals(result1.softQualityScore, result2.softQualityScore, 0.0001)
         assertEquals(result1.softSignals, result2.softSignals)
     }
+
+    @Test
+    fun `test hard rejection - ambiguous solutions`() {
+        val def = CuratedDifficultyFixtures.multiSolution4x4
+        val solverRes = solver.solve(def, SolverConfiguration(maxSolutions = 2))
+        assertTrue(solverRes.isSolved)
+        val diff = analyzer.analyze(def, solverRes.firstSolution, solverRes)
+
+        val criteria = PuzzleQualityEvaluator.QualityCriteria(requireUnique = false)
+        val result = PuzzleQualityEvaluator.evaluate(
+            definition = def,
+            solution = solverRes.firstSolution!!,
+            solverResult = solverRes,
+            difficulty = diff,
+            criteria = criteria
+        )
+
+        assertFalse(result.isAccepted)
+        assertTrue(result.rejectionReasons.contains(QualityRejectionReason.AMBIGUOUS_SOLUTIONS))
+    }
+
+    @Test
+    fun `test hard rejection - trivial route decisions`() {
+        val def = CuratedDifficultyFixtures.beginner4x4
+        val path = CuratedDifficultyFixtures.beginner4x4Solution
+        val solverRes = solver.solve(def)
+        val diff = analyzer.analyze(def, path, solverRes)
+
+        // Set strict criteria requiring min 20 meaningful route decisions (impossible on 4x4)
+        val criteria = PuzzleQualityEvaluator.QualityCriteria(
+            minMeaningfulRouteDecisions = 20
+        )
+
+        val result = PuzzleQualityEvaluator.evaluate(
+            definition = def,
+            solution = path,
+            solverResult = solverRes,
+            difficulty = diff,
+            criteria = criteria
+        )
+
+        assertFalse(result.isAccepted)
+        assertTrue(result.rejectionReasons.contains(QualityRejectionReason.TRIVIAL_ROUTE))
+    }
 }
+

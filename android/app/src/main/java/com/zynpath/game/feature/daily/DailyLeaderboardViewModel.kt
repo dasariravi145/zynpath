@@ -23,7 +23,7 @@ import javax.inject.Inject
 class DailyLeaderboardViewModel @Inject constructor(
     private val dailyChallengeRepository: DailyChallengeRepository,
     private val clock: DailyChallengeClock,
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
 
     private val initialDateKey: String = savedStateHandle.get<String>("dateKey")
@@ -73,6 +73,10 @@ class DailyLeaderboardViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun retry() {
+        loadLeaderboard(currentDateKey)
     }
 
     fun refresh() {

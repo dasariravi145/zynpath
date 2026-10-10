@@ -9,23 +9,28 @@ package com.zynpath.game.core.puzzle.curation
  * - Resource limits for solver search during difficulty evaluation.
  */
 data class DifficultyAnalysisConfiguration(
-    val weightSize: Double = 0.20,
-    val weightWalls: Double = 0.20,
-    val weightCheckpoints: Double = 0.15,
-    val weightTurns: Double = 0.15,
-    val weightGaps: Double = 0.15,
-    val weightSolverNodes: Double = 0.15,
+    val weightSize: Double = 0.10,
+    val weightWalls: Double = 0.10,
+    val weightCheckpoints: Double = 0.10,
+    val weightTurns: Double = 0.10,
+    val weightGaps: Double = 0.10,
+    val weightSolverNodes: Double = 0.10,
+    val weightDecisions: Double = 0.20,
+    val weightLookahead: Double = 0.10,
+    val weightIsolation: Double = 0.10,
     val solverNodeBudget: Long = 50_000L,
     val solverTimeBudgetMs: Long = 2_000L,
     val configVersion: String = CONFIG_VERSION,
     val analyzerVersion: String = ANALYZER_VERSION
 ) {
     init {
-        val totalWeight = weightSize + weightWalls + weightCheckpoints + weightTurns + weightGaps + weightSolverNodes
+        val totalWeight = weightSize + weightWalls + weightCheckpoints + weightTurns +
+            weightGaps + weightSolverNodes + weightDecisions + weightLookahead + weightIsolation
         require(totalWeight in 0.99..1.01) {
             "Difficulty scoring weights must sum to approximately 1.0 (got $totalWeight)"
         }
     }
+
 
     companion object {
         const val CONFIG_VERSION = "1.0.0"

@@ -143,7 +143,7 @@ object ProgressionPlan {
      * Resolves the presentation chapter for any level in 1..300.
      */
     fun getChapterForLevel(levelId: Int): ChapterDefinition {
-        return ALL_CHAPTERS.firstOrNull { it.containsLevel(levelId) } ?: CHAPTER_1
+        return ALL_CHAPTERS.firstOrNull { it.containsLevel(levelId) } ?: CHAPTER_7
     }
 
     /**
@@ -160,14 +160,15 @@ object ProgressionPlan {
         val chapter = getChapterForLevel(levelId)
         val world = WorldConfiguration.getWorldForLevel(levelId)
         val milestone = resolveMilestone(levelId, chapter)
+        val localLvl = WorldConfiguration.toLocalLevel(levelId)
 
         val difficulty = when {
-            levelId <= 15 -> ExperienceDifficultyCategory.INTRODUCTORY
-            levelId <= 40 -> ExperienceDifficultyCategory.CASUAL
-            levelId <= 80 -> ExperienceDifficultyCategory.BALANCED
-            levelId <= 140 -> ExperienceDifficultyCategory.STRATEGIC
-            levelId <= 190 -> ExperienceDifficultyCategory.ADVANCED
-            levelId <= 250 -> ExperienceDifficultyCategory.EXPERT
+            world.worldId == 1 && localLvl <= 15 -> ExperienceDifficultyCategory.INTRODUCTORY
+            world.worldId == 1 && localLvl <= 40 -> ExperienceDifficultyCategory.CASUAL
+            world.worldId == 2 -> ExperienceDifficultyCategory.BALANCED
+            world.worldId == 3 -> ExperienceDifficultyCategory.STRATEGIC
+            world.worldId == 4 -> ExperienceDifficultyCategory.ADVANCED
+            world.worldId == 5 -> ExperienceDifficultyCategory.EXPERT
             else -> ExperienceDifficultyCategory.MASTER
         }
 
@@ -175,9 +176,9 @@ object ProgressionPlan {
             levelId = levelId,
             chapterId = chapter.chapterId,
             chapterTitle = chapter.title,
-            displayTitle = "Level $levelId",
+            displayTitle = "Level $localLvl",
             difficultyCategory = difficulty,
-            puzzleId = "w${world.worldId}_lvl$levelId",
+            puzzleId = "w${world.worldId}_lvl$localLvl",
             worldId = world.worldId,
             themeReference = chapter.theme,
             milestoneIndicator = milestone,

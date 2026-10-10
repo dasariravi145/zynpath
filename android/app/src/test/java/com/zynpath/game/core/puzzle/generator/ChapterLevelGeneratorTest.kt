@@ -50,7 +50,7 @@ class ChapterLevelGeneratorTest {
     @Test
     fun `generated puzzle checkpoints strictly follow ascending sequence starting at 1`() {
         val result = generator.generateLevel(1)
-        assertTrue("Level 1 generation should succeed", result is ChapterLevelGenerationResult.Success)
+        assertTrue("Level 1 generation should succeed, got: $result", result is ChapterLevelGenerationResult.Success)
         val success = result as ChapterLevelGenerationResult.Success
         val checkpoints = success.puzzle.checkpoints.sortedBy { it.number }
 
@@ -156,7 +156,7 @@ class ChapterLevelGeneratorTest {
         assertTrue("Level 7 should be designated as a recovery level", ChapterLevelConfigFactory.isRecoveryLevel(recoveryLevelId))
 
         val config = ChapterLevelConfigFactory.createConfig(recoveryLevelId)
-        assertEquals("Recovery levels in Chapter 1 should provide maximum clues", 6, config.checkpointCount)
+        assertEquals("Recovery levels in Chapter 1 should provide generous clues", 9, config.checkpointCount)
         assertEquals("Recovery levels in Chapter 1 should have zero walls", 0, config.maxWalls)
     }
 
@@ -195,12 +195,12 @@ class ChapterLevelGeneratorTest {
         assertTrue("Hint move must be start checkpoint or adjacent to start checkpoint", nextMove == startPos || startPos.isOrthogonalNeighbor(nextMove))
     }
 
-    // 10. Existing 300-level catalog preservation
+    // 10. Existing 1,800-level catalog preservation
     @Test
-    fun `all 300 level IDs map to valid worlds, chapters, and packaged puzzle definitions`() {
-        assertEquals("WorldConfiguration must define 300 total levels", 300, WorldConfiguration.TOTAL_LEVELS)
+    fun `all 1800 level IDs map to valid worlds, chapters, and packaged puzzle definitions`() {
+        assertEquals("WorldConfiguration must define 1800 total levels", 1800, WorldConfiguration.TOTAL_LEVELS)
 
-        for (lvl in 1..300) {
+        for (lvl in 1..1800) {
             val world = WorldConfiguration.getWorldForLevel(lvl)
             assertTrue("World ID must be in 1..6 for level $lvl", world.worldId in 1..6)
 

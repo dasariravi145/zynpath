@@ -122,6 +122,7 @@ fun GamePrimaryButton(
                     Modifier
                         .background(if (isPressed) GameBrushes.primaryButtonPressed else GameBrushes.primaryButton)
                         .border(GameBorders.primaryButton, shape)
+                        .glossyTopHighlight(cornerRadius = 16.dp, highlightAlpha = 0.22f)
                 } else {
                     Modifier
                         .background(Color(0xFF142344))

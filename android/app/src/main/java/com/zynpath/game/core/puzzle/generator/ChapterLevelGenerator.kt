@@ -14,6 +14,7 @@ import com.zynpath.game.core.puzzle.hint.HintResult
 import com.zynpath.game.core.puzzle.hint.PuzzleHintEngine
 import com.zynpath.game.core.puzzle.model.PuzzleDefinition
 import com.zynpath.game.core.puzzle.model.PuzzlePath
+import com.zynpath.game.core.puzzle.model.WorldConfiguration
 import com.zynpath.game.core.puzzle.solver.PuzzleSolver
 import com.zynpath.game.core.puzzle.solver.UniquenessStatus
 import java.util.concurrent.ConcurrentHashMap
@@ -86,7 +87,7 @@ class ChapterLevelGenerator(
         levelId: Int,
         cancellationSignal: () -> Boolean = { false }
     ): ChapterLevelGenerationResult {
-        require(levelId in 1..300) { "levelId must be in 1..300 (got $levelId)" }
+        require(levelId in 1..WorldConfiguration.TOTAL_LEVELS) { "levelId must be in 1..${WorldConfiguration.TOTAL_LEVELS} (got $levelId)" }
 
         val experience = ProgressionPlan.getLevelExperience(levelId)
         val isRecovery = ChapterLevelConfigFactory.isRecoveryLevel(levelId)

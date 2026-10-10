@@ -55,11 +55,12 @@ enum class FacebookFriendsEligibility {
     GUEST,
     GOOGLE_WITHOUT_FACEBOOK,
     FACEBOOK_CONNECTED,
-    NOT_CONFIGURED
+    NOT_CONFIGURED,
+    CONNECTED
 }
 
 /**
- * Complete UI state for the Facebook Friends Discovery & Invitation screen (Prompt 17/24).
+ * Complete UI state for the Friends Discovery & Invitation screen.
  */
 data class FacebookFriendsUiState(
     val roomId: String? = null,
@@ -87,17 +88,8 @@ data class FacebookFriendsUiState(
             session == null || authState == AuthState.GUEST || (playerProfile?.isGuest == true && session == null) -> {
                 FacebookFriendsEligibility.GUEST
             }
-            !isFacebookConfigured -> {
-                FacebookFriendsEligibility.NOT_CONFIGURED
-            }
-            session.provider == AuthProvider.FACEBOOK && !session.isExpired -> {
-                FacebookFriendsEligibility.FACEBOOK_CONNECTED
-            }
-            session.provider == AuthProvider.GOOGLE && !session.isExpired -> {
-                FacebookFriendsEligibility.GOOGLE_WITHOUT_FACEBOOK
-            }
             else -> {
-                FacebookFriendsEligibility.GUEST
+                FacebookFriendsEligibility.CONNECTED
             }
         }
 
@@ -133,7 +125,7 @@ data class FacebookFriendsUiState(
     val canSubmitInvitations: Boolean
         get() = selectedCount in 1..availableCapacity &&
                 !isSendingInvitations &&
-                eligibility == FacebookFriendsEligibility.FACEBOOK_CONNECTED
+                eligibility != FacebookFriendsEligibility.GUEST
 
     /**
      * Filtered list of eligible friends matching the search query.

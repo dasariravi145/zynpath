@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -238,13 +239,21 @@ fun FriendsArenaResultsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.width(92.dp)
                 ) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = rank2Avatar),
-                        contentDescription = rank2Name,
+                    Box(
                         modifier = Modifier
                             .size(50.dp)
                             .clip(CircleShape)
-                    )
+                            .background(Color(0xFF0F1A36))
+                            .border(1.5.dp, Color(0xFF64B5F6), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = rank2Avatar),
+                            contentDescription = rank2Name,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(38.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = rank2Name,
@@ -306,12 +315,15 @@ fun FriendsArenaResultsScreen(
                         modifier = Modifier
                             .size(60.dp)
                             .clip(CircleShape)
-                            .border(2.5.dp, com.zynpath.game.core.designsystem.theme.RefGoldPrimary, CircleShape)
+                            .background(Color(0xFF0F1A36))
+                            .border(2.5.dp, com.zynpath.game.core.designsystem.theme.RefGoldPrimary, CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
                         androidx.compose.foundation.Image(
                             painter = androidx.compose.ui.res.painterResource(id = rank1Avatar),
                             contentDescription = rank1Name,
-                            modifier = Modifier.fillMaxSize()
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(46.dp)
                         )
                     }
                     Spacer(modifier = Modifier.height(6.dp))
@@ -364,13 +376,21 @@ fun FriendsArenaResultsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.width(92.dp)
                 ) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = rank3Avatar),
-                        contentDescription = rank3Name,
+                    Box(
                         modifier = Modifier
                             .size(50.dp)
                             .clip(CircleShape)
-                    )
+                            .background(Color(0xFF0F1A36))
+                            .border(1.5.dp, Color(0xFFCD7F32), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = rank3Avatar),
+                            contentDescription = rank3Name,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(38.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = rank3Name,
@@ -464,13 +484,21 @@ fun FriendsArenaResultsScreen(
                                 modifier = Modifier.width(24.dp)
                             )
 
-                            androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = avatarRes),
-                                contentDescription = name,
+                            Box(
                                 modifier = Modifier
                                     .size(38.dp)
                                     .clip(CircleShape)
-                            )
+                                    .background(Color(0xFF0F1A36))
+                                    .border(1.dp, Color(0x4421D4FD), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                androidx.compose.foundation.Image(
+                                    painter = androidx.compose.ui.res.painterResource(id = avatarRes),
+                                    contentDescription = name,
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
 
                             Spacer(modifier = Modifier.width(14.dp))
 

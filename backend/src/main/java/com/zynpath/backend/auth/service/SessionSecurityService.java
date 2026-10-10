@@ -70,6 +70,14 @@ public class SessionSecurityService implements AuthenticationBoundaryService {
         String cleanToken = cleanBearerToken(token);
         PlayerSession session = activeSessionsByToken.get(cleanToken);
 
+        if (session == null && (cleanToken.startsWith("zyn_guest_") || cleanToken.startsWith("guest_session_") || cleanToken.startsWith("guest_"))) {
+            String guestUuid = cleanToken.substring(cleanToken.indexOf('_') + 1);
+            PlayerAccount account = playerAccountService.getOrCreateGuestAccount(guestUuid, "Guest_" + (Math.abs(guestUuid.hashCode() % 9000) + 1000));
+            long now = System.currentTimeMillis();
+            session = new PlayerSession(cleanToken, account.playerId(), now, now + sessionTtlMillis);
+            activeSessionsByToken.put(cleanToken, session);
+        }
+
         if (session == null) {
             throw AuthException.sessionExpired("Invalid session token");
         }

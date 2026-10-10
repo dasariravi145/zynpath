@@ -164,16 +164,14 @@ class QuickDuelViewModel @Inject constructor(
                 val assignedPuzzle = session.puzzle
                 if (assignedPuzzle != null && _puzzleDefinition.value?.fingerprint != assignedPuzzle.fingerprint) {
                     val parsedDef = assignedPuzzle.toPuzzleDefinition()
-                    if (parsedDef != null) {
-                        _puzzleDefinition.value = parsedDef
-                        val engine = PuzzleEngine(parsedDef)
-                        localEngine = engine
-                        val initialState = engine.currentState
-                        _puzzleGameState.value = initialState
-                        _boardState.value = initialState.toBoardState()
-                        lastReportedCoveredCells = 0
-                        lastReportedCheckpoint = 0
-                    }
+                    _puzzleDefinition.value = parsedDef
+                    val engine = PuzzleEngine(parsedDef)
+                    localEngine = engine
+                    val initialState = engine.currentState
+                    _puzzleGameState.value = initialState
+                    _boardState.value = initialState.toBoardState()
+                    lastReportedCoveredCells = 0
+                    lastReportedCheckpoint = 0
                 }
             }
         }
@@ -269,6 +267,13 @@ class QuickDuelViewModel @Inject constructor(
                         stopMatchTimer()
                         audioManager.playEvent(ZynpathAudioEvent.MATCH_READY)
                     }
+                    ClientMatchState.MATCH_FOUND,
+                    ClientMatchState.WAITING,
+                    ClientMatchState.READY -> {
+                        _isInputEnabled.value = false
+                        stopMatchTimer()
+                        audioManager.playEvent(ZynpathAudioEvent.MATCH_READY)
+                    }
                     else -> {
                         _isInputEnabled.value = false
                     }
@@ -307,14 +312,14 @@ class QuickDuelViewModel @Inject constructor(
 
     /**
      * Start Quick Duel matchmaking queue.
+     * Decoupled from Facebook auth: guest players matchmake seamlessly with opaque guest identity.
      */
     fun startSearching() {
-        val auth = authRepository.currentSession.value
-        if (auth == null) {
-            return
-        }
         resetLocalGameplay()
         viewModelScope.launch {
+            if (authRepository.currentSession.value == null) {
+                authRepository.ensureGuestSession()
+            }
             multiplayerRepository.startQuickDuelSearch()
         }
     }
@@ -331,6 +336,27 @@ class QuickDuelViewModel @Inject constructor(
     }
 
     fun onCancelMatchmaking() = cancelSearching()
+
+    /**
+     * Safely cancel matchmaking regardless of whether searching, match found, or countdown.
+     * Prevents any delayed events from starting a cancelled match.
+     */
+    fun cancelMatchmakingFlow() {
+        val currentState = uiState.value.clientMatchState
+        if (currentState in listOf(ClientMatchState.MATCH_FOUND, ClientMatchState.WAITING, ClientMatchState.READY, ClientMatchState.COUNTDOWN)) {
+            leaveMatch()
+        } else {
+            cancelSearching()
+        }
+    }
+
+    /**
+     * Retry matchmaking after failure or timeout.
+     */
+    fun retrySearching() {
+        clearError()
+        startSearching()
+    }
 
     /**
      * Confirm ready status in lobby.

@@ -91,18 +91,22 @@ class ProgressRepositoryImpl @Inject constructor(
     override suspend fun isLevelUnlocked(levelId: Int): Boolean {
         if (levelId == 1) return true
         val completed = getCompletedLevelIds()
-        return WorldConfiguration.isLevelUnlocked(levelId, completed)
+        if (com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.isUnlocked(levelId, completed)) {
+            return true
+        }
+        val entity = levelProgressDao.getLevelProgress(levelId)
+        return entity?.isUnlocked == true
     }
 
     override suspend fun isWorldUnlocked(worldId: Int): Boolean {
         if (worldId == 1) return true
         val completed = getCompletedLevelIds()
-        return WorldConfiguration.isWorldUnlocked(worldId, completed)
+        return com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.isWorldUnlocked(worldId, completed)
     }
 
     override suspend fun getNextPlayableLevel(): Int {
         val completed = getCompletedLevelIds()
-        return WorldConfiguration.getNextPlayableLevel(completed)
+        return com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.resolveContinueDestination(completed)
     }
 
     override suspend fun recordValidatedCompletion(result: ValidatedCompletionResult): LevelProgressEntity {
@@ -146,32 +150,21 @@ class ProgressRepositoryImpl @Inject constructor(
         // Save current level progress
         levelProgressDao.atomicUpsertProgress(updatedEntity)
 
-        // Automatically unlock the next sequential level if in range
-        val nextLevelId = result.levelId + 1
-        if (nextLevelId <= WorldConfiguration.TOTAL_LEVELS) {
-            val currentWorld = WorldConfiguration.getWorldForLevel(result.levelId)
-            val nextWorld = WorldConfiguration.getWorldForLevel(nextLevelId)
-
-            val canUnlockNext = if (nextWorld.worldId == currentWorld.worldId) {
-                true
-            } else {
-                val allCompleted = getCompletedLevelIds() + result.levelId
-                WorldConfiguration.isWorldUnlocked(nextWorld.worldId, allCompleted)
-            }
-
-            if (canUnlockNext) {
-                val nextExisting = levelProgressDao.getLevelProgress(nextLevelId)
-                if (nextExisting == null) {
-                    levelProgressDao.upsertLevelProgress(
-                        LevelProgressEntity(
-                            levelId = nextLevelId,
-                            worldId = nextWorld.worldId,
-                            isUnlocked = true
-                        )
+        // Automatically unlock the next sequential level in the catalog (Completing N unlocks N+1)
+        val nextLevelId = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getNextLevel(result.levelId)
+        if (nextLevelId != null) {
+            val nextWorld = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getWorld(nextLevelId)
+            val nextExisting = levelProgressDao.getLevelProgress(nextLevelId)
+            if (nextExisting == null) {
+                levelProgressDao.upsertLevelProgress(
+                    LevelProgressEntity(
+                        levelId = nextLevelId,
+                        worldId = nextWorld.worldId,
+                        isUnlocked = true
                     )
-                } else if (!nextExisting.isUnlocked) {
-                    levelProgressDao.upsertLevelProgress(nextExisting.copy(isUnlocked = true))
-                }
+                )
+            } else if (!nextExisting.isUnlocked) {
+                levelProgressDao.upsertLevelProgress(nextExisting.copy(isUnlocked = true))
             }
         }
 
@@ -269,9 +262,38 @@ class ProgressRepositoryImpl @Inject constructor(
     override suspend fun reconcilePrematureUnlocks() {
         val allProgress = levelProgressDao.getAllProgressList()
         val completedIds = allProgress.filter { it.isCompleted }.map { it.levelId }.toSet()
-        for (entity in allProgress) {
+
+        // 1. Ensure Level 1 is always unlocked
+        val level1 = levelProgressDao.getLevelProgress(1)
+        if (level1 == null) {
+            levelProgressDao.upsertLevelProgress(
+                LevelProgressEntity(levelId = 1, worldId = 1, isUnlocked = true)
+            )
+        } else if (!level1.isUnlocked) {
+            levelProgressDao.upsertLevelProgress(level1.copy(isUnlocked = true))
+        }
+
+        // 2. Self-healing: For every completed level N, guarantee N + 1 is unlocked in database
+        for (completedId in completedIds) {
+            val nextId = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getNextLevel(completedId)
+            if (nextId != null) {
+                val nextWorld = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getWorld(nextId)
+                val existingNext = levelProgressDao.getLevelProgress(nextId)
+                if (existingNext == null) {
+                    levelProgressDao.upsertLevelProgress(
+                        LevelProgressEntity(levelId = nextId, worldId = nextWorld.worldId, isUnlocked = true)
+                    )
+                } else if (!existingNext.isUnlocked) {
+                    levelProgressDao.upsertLevelProgress(existingNext.copy(isUnlocked = true))
+                }
+            }
+        }
+
+        // 3. Reconcile existing records with authoritative unlock rules without relocking legitimate progress
+        val refreshedProgress = levelProgressDao.getAllProgressList()
+        for (entity in refreshedProgress) {
             if (!entity.isCompleted) {
-                val shouldBeUnlocked = WorldConfiguration.isLevelUnlocked(entity.levelId, completedIds)
+                val shouldBeUnlocked = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.isUnlocked(entity.levelId, completedIds)
                 if (entity.isUnlocked != shouldBeUnlocked) {
                     levelProgressDao.upsertLevelProgress(entity.copy(isUnlocked = shouldBeUnlocked))
                 }

@@ -45,134 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zynpath.game.R
 import com.zynpath.game.core.designsystem.theme.GameDeepNavy
-import com.zynpath.game.core.designsystem.theme.GameGoldHighlight
 import com.zynpath.game.core.designsystem.theme.GameShapes
-import com.zynpath.game.core.designsystem.theme.GameWhite
-
-/**
- * Premium Facebook Login Button matching Zynpath mobile game UI styling.
- * Uses official Facebook blue (#1877F2), white 'f' icon, tactile spring press dynamics,
- * and clear "Setup Pending" badge when unconfigured.
- */
-@Composable
-fun FacebookSignInButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isConfigured: Boolean = true,
-    isLoading: Boolean = false,
-    isReducedMotion: Boolean = false,
-    height: Dp = 50.dp
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale = remember { Animatable(1f) }
-
-    LaunchedEffect(isPressed, isReducedMotion) {
-        if (isReducedMotion) {
-            scale.snapTo(1f)
-        } else {
-            scale.animateTo(
-                targetValue = if (isPressed && !isLoading) 0.96f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            )
-        }
-    }
-
-    val shape = GameShapes.buttonSecondary
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height)
-            .graphicsLayer {
-                scaleX = scale.value
-                scaleY = scale.value
-            }
-            .alpha(if (isConfigured) 1f else 0.65f)
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF1E88E5),
-                        Color(0xFF1877F2),
-                        Color(0xFF0D47A1)
-                    )
-                )
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF90CAF9),
-                        Color(0xFF1565C0)
-                    )
-                ),
-                shape = shape
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = !isLoading,
-                role = Role.Button,
-                onClick = onClick
-            )
-            .semantics {
-                role = Role.Button
-                contentDescription = "Continue with Facebook"
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                color = Color.White,
-                strokeWidth = 2.5.dp
-            )
-        } else {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_brand_facebook),
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp)
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Text(
-                    text = "CONTINUE WITH FACEBOOK",
-                    fontFamily = FontFamily.Default,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    letterSpacing = 0.5.sp,
-                    color = Color.White
-                )
-
-                if (!isConfigured) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = Color.White.copy(alpha = 0.22f)
-                    ) {
-                        Text(
-                            text = "Setup Pending",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 /**
  * Premium Google Sign-In Button matching Zynpath mobile game UI styling.
@@ -183,6 +56,8 @@ fun FacebookSignInButton(
 fun GoogleSignInButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    text: String = "Continue with Google",
+    enabled: Boolean = true,
     isConfigured: Boolean = true,
     isLoading: Boolean = false,
     isReducedMotion: Boolean = false,
@@ -197,7 +72,7 @@ fun GoogleSignInButton(
             scale.snapTo(1f)
         } else {
             scale.animateTo(
-                targetValue = if (isPressed && !isLoading) 0.96f else 1f,
+                targetValue = if (isPressed && !isLoading && enabled) 0.96f else 1f,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
                     stiffness = Spring.StiffnessLow
@@ -216,7 +91,7 @@ fun GoogleSignInButton(
                 scaleX = scale.value
                 scaleY = scale.value
             }
-            .alpha(if (isConfigured) 1f else 0.65f)
+            .alpha(if (isConfigured && enabled) 1f else 0.65f)
             .clip(shape)
             .background(
                 Brush.verticalGradient(
@@ -240,13 +115,13 @@ fun GoogleSignInButton(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                enabled = !isLoading,
+                enabled = !isLoading && enabled,
                 role = Role.Button,
                 onClick = onClick
             )
             .semantics {
                 role = Role.Button
-                contentDescription = "Continue with Google"
+                contentDescription = text
             },
         contentAlignment = Alignment.Center
     ) {
@@ -271,7 +146,7 @@ fun GoogleSignInButton(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Text(
-                    text = "CONTINUE WITH GOOGLE",
+                    text = text.uppercase(),
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,

@@ -55,7 +55,7 @@ class LevelSelectionViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(1, state.worldId)
-        assertEquals(20, state.levels.size)
+        assertEquals(300, state.levels.size)
         assertEquals(0, state.completedCount)
         assertEquals(0, state.totalStars)
 

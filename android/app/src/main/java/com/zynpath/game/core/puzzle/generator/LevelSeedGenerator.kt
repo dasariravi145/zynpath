@@ -24,7 +24,9 @@ object LevelSeedGenerator {
      * @return Deterministic 64-bit seed.
      */
     fun computeSeed(levelId: Int, salt: Long = DEFAULT_CATALOG_SALT): Long {
-        require(levelId in 1..300) { "levelId must be in 1..300 (got $levelId)" }
+        require(levelId in 1..com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS) {
+            "levelId must be in 1..${com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS} (got $levelId)"
+        }
         var z = (levelId.toLong() + 1000L) * MULT_1 xor salt
         z = (z xor (z ushr 30)) * MULT_2
         z = (z xor (z ushr 27)) * MULT_3

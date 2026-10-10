@@ -44,26 +44,26 @@ class ProgressionDestinationResolverTest {
         assertEquals(ProgressionDestination.NextLevel(worldId = 1, levelId = 3), resolution.destination)
     }
 
-    // 3. World 1, Level 19 -> World 1, Level 20
+    // 3. World 1, Level 299 -> World 1, Level 300
     @Test
-    fun test03_world1_level19_resolvesTo_world1_level20() {
-        val resolution = ProgressionDestinationResolver.resolve(worldId = 1, completedLevelOrLocal = 19)
+    fun test03_world1_level299_resolvesTo_world1_level300() {
+        val resolution = ProgressionDestinationResolver.resolve(worldId = 1, completedLevelOrLocal = 299)
         assertEquals(1, resolution.currentWorld)
-        assertEquals(19, resolution.completedLevel)
+        assertEquals(299, resolution.completedLevel)
         assertEquals(LevelCompletionState.LEVEL_COMPLETED, resolution.completionState)
         assertTrue(resolution.hasNextLevelInCurrentWorld)
-        assertEquals(20, resolution.nextLevelId)
+        assertEquals(300, resolution.nextLevelId)
         assertEquals("NEXT LEVEL", resolution.buttonLabel)
-        assertEquals(ProgressionDestination.NextLevel(worldId = 1, levelId = 20), resolution.destination)
+        assertEquals(ProgressionDestination.NextLevel(worldId = 1, levelId = 300), resolution.destination)
     }
 
-    // 4. World 1, Level 20 -> World 2
+    // 4. World 1, Level 300 -> World 2
     @Test
-    fun test04_world1_level20_resolvesTo_world2() {
-        val completedW1 = (1..20).toSet()
-        val resolution = ProgressionDestinationResolver.resolve(worldId = 1, completedLevelOrLocal = 20, completedLevelIds = completedW1)
+    fun test04_world1_level300_resolvesTo_world2() {
+        val completedW1 = (1..300).toSet()
+        val resolution = ProgressionDestinationResolver.resolve(worldId = 1, completedLevelOrLocal = 300, completedLevelIds = completedW1)
         assertEquals(1, resolution.currentWorld)
-        assertEquals(20, resolution.completedLevel)
+        assertEquals(300, resolution.completedLevel)
         assertEquals(LevelCompletionState.WORLD_COMPLETED, resolution.completionState)
         assertFalse(resolution.hasNextLevelInCurrentWorld)
         assertTrue(resolution.isCurrentWorldComplete)
@@ -74,62 +74,62 @@ class ProgressionDestinationResolverTest {
         assertEquals(ProgressionDestination.NextWorldEntry(worldId = 2), resolution.destination)
     }
 
-    // 5. World 2, first level (21) -> World 2, second level (22)
+    // 5. World 2, first level (301) -> World 2, second level (302)
     @Test
     fun test05_world2_firstLevel_resolvesTo_world2_secondLevel() {
-        val resolution = ProgressionDestinationResolver.resolve(worldId = 2, completedLevelOrLocal = 21)
+        val resolution = ProgressionDestinationResolver.resolve(worldId = 2, completedLevelOrLocal = 301)
         assertEquals(2, resolution.currentWorld)
-        assertEquals(21, resolution.completedLevel)
+        assertEquals(301, resolution.completedLevel)
         assertEquals(LevelCompletionState.LEVEL_COMPLETED, resolution.completionState)
         assertTrue(resolution.hasNextLevelInCurrentWorld)
-        assertEquals(22, resolution.nextLevelId)
+        assertEquals(302, resolution.nextLevelId)
         assertEquals("NEXT LEVEL", resolution.buttonLabel)
-        assertEquals(ProgressionDestination.NextLevel(worldId = 2, levelId = 22), resolution.destination)
+        assertEquals(ProgressionDestination.NextLevel(worldId = 2, levelId = 302), resolution.destination)
 
         // Also test with local level index 1 in World 2
         val localResolution = ProgressionDestinationResolver.resolve(worldId = 2, completedLevelOrLocal = 1)
         assertEquals(2, localResolution.currentWorld)
-        assertEquals(21, localResolution.completedLevel)
+        assertEquals(301, localResolution.completedLevel)
         assertEquals(LevelCompletionState.LEVEL_COMPLETED, localResolution.completionState)
-        assertEquals(22, localResolution.nextLevelId)
-        assertEquals(ProgressionDestination.NextLevel(worldId = 2, levelId = 22), localResolution.destination)
+        assertEquals(302, localResolution.nextLevelId)
+        assertEquals(ProgressionDestination.NextLevel(worldId = 2, levelId = 302), localResolution.destination)
     }
 
     // 6. Every configured World boundary
     @Test
     fun test06_everyConfiguredWorldBoundary() {
-        // World 1: 1..20
-        val resW1 = ProgressionDestinationResolver.resolve(completedLevelId = 20)
+        // World 1: 1..300
+        val resW1 = ProgressionDestinationResolver.resolve(completedLevelId = 300)
         assertEquals(LevelCompletionState.WORLD_COMPLETED, resW1.completionState)
         assertEquals("NEXT WORLD", resW1.buttonLabel)
         assertEquals(ProgressionDestination.NextWorldEntry(2), resW1.destination)
 
-        // World 2: 21..50
-        val resW2 = ProgressionDestinationResolver.resolve(completedLevelId = 50)
+        // World 2: 301..600
+        val resW2 = ProgressionDestinationResolver.resolve(completedLevelId = 600)
         assertEquals(LevelCompletionState.WORLD_COMPLETED, resW2.completionState)
         assertEquals("NEXT WORLD", resW2.buttonLabel)
         assertEquals(ProgressionDestination.NextWorldEntry(3), resW2.destination)
 
-        // World 3: 51..100
-        val resW3 = ProgressionDestinationResolver.resolve(completedLevelId = 100)
+        // World 3: 601..900
+        val resW3 = ProgressionDestinationResolver.resolve(completedLevelId = 900)
         assertEquals(LevelCompletionState.WORLD_COMPLETED, resW3.completionState)
         assertEquals("NEXT WORLD", resW3.buttonLabel)
         assertEquals(ProgressionDestination.NextWorldEntry(4), resW3.destination)
 
-        // World 4: 101..150
-        val resW4 = ProgressionDestinationResolver.resolve(completedLevelId = 150)
+        // World 4: 901..1200
+        val resW4 = ProgressionDestinationResolver.resolve(completedLevelId = 1200)
         assertEquals(LevelCompletionState.WORLD_COMPLETED, resW4.completionState)
         assertEquals("NEXT WORLD", resW4.buttonLabel)
         assertEquals(ProgressionDestination.NextWorldEntry(5), resW4.destination)
 
-        // World 5: 151..200
-        val resW5 = ProgressionDestinationResolver.resolve(completedLevelId = 200)
+        // World 5: 1201..1500
+        val resW5 = ProgressionDestinationResolver.resolve(completedLevelId = 1500)
         assertEquals(LevelCompletionState.WORLD_COMPLETED, resW5.completionState)
         assertEquals("NEXT WORLD", resW5.buttonLabel)
         assertEquals(ProgressionDestination.NextWorldEntry(6), resW5.destination)
 
-        // World 6: 201..300 (Final World)
-        val resW6 = ProgressionDestinationResolver.resolve(completedLevelId = 300)
+        // World 6: 1501..1800 (Final World)
+        val resW6 = ProgressionDestinationResolver.resolve(completedLevelId = 1800)
         assertEquals(LevelCompletionState.JOURNEY_COMPLETED, resW6.completionState)
         assertEquals("JOURNEY COMPLETE", resW6.buttonLabel)
         assertEquals(ProgressionDestination.JourneyComplete, resW6.destination)
@@ -138,10 +138,10 @@ class ProgressionDestinationResolverTest {
     // 7. Final World, final level -> Journey Complete
     @Test
     fun test07_finalWorld_finalLevel_resolvesTo_journeyComplete() {
-        val completedAll = (1..300).toSet()
-        val resolution = ProgressionDestinationResolver.resolve(worldId = 6, completedLevelOrLocal = 300, completedLevelIds = completedAll)
+        val completedAll = (1..1800).toSet()
+        val resolution = ProgressionDestinationResolver.resolve(worldId = 6, completedLevelOrLocal = 1800, completedLevelIds = completedAll)
         assertEquals(6, resolution.currentWorld)
-        assertEquals(300, resolution.completedLevel)
+        assertEquals(1800, resolution.completedLevel)
         assertEquals(LevelCompletionState.JOURNEY_COMPLETED, resolution.completionState)
         assertFalse(resolution.hasNextLevelInCurrentWorld)
         assertFalse(resolution.hasNextWorld)
@@ -155,18 +155,18 @@ class ProgressionDestinationResolverTest {
     // 8. Replaying a completed level
     @Test
     fun test08_replayingCompletedLevel_resolvesSequentialNextLevel() {
-        val completedLevels = (1..20).toSet()
-        // Replaying Level 1 when Level 1..20 are all already completed
+        val completedLevels = (1..300).toSet()
+        // Replaying Level 1 when Level 1..300 are all already completed
         val resReplayL1 = ProgressionDestinationResolver.resolve(worldId = 1, completedLevelOrLocal = 1, completedLevelIds = completedLevels)
         assertEquals("NEXT LEVEL", resReplayL1.buttonLabel)
         assertEquals(ProgressionDestination.NextLevel(worldId = 1, levelId = 2), resReplayL1.destination)
         assertEquals(LevelCompletionState.LEVEL_COMPLETED, resReplayL1.completionState)
 
-        // Replaying Level 20 when already complete
-        val resReplayL20 = ProgressionDestinationResolver.resolve(worldId = 1, completedLevelOrLocal = 20, completedLevelIds = completedLevels)
-        assertEquals("NEXT WORLD", resReplayL20.buttonLabel)
-        assertEquals(ProgressionDestination.NextWorldEntry(worldId = 2), resReplayL20.destination)
-        assertEquals(LevelCompletionState.WORLD_COMPLETED, resReplayL20.completionState)
+        // Replaying Level 300 when already complete
+        val resReplayL300 = ProgressionDestinationResolver.resolve(worldId = 1, completedLevelOrLocal = 300, completedLevelIds = completedLevels)
+        assertEquals("NEXT WORLD", resReplayL300.buttonLabel)
+        assertEquals(ProgressionDestination.NextWorldEntry(worldId = 2), resReplayL300.destination)
+        assertEquals(LevelCompletionState.WORLD_COMPLETED, resReplayL300.completionState)
     }
 
     // 9. App restart and resume progression check
@@ -176,7 +176,7 @@ class ProgressionDestinationResolverTest {
 
         // World 1 is always unlocked
         assertTrue(WorldConfiguration.isWorldUnlocked(1, completedLevels))
-        // World 2 requires all 20 levels of World 1
+        // World 2 requires World 1 unlock criteria
         assertFalse(WorldConfiguration.isWorldUnlocked(2, completedLevels))
 
         // Level 4 is unlocked because Level 3 is completed
@@ -198,16 +198,16 @@ class ProgressionDestinationResolverTest {
     fun test10_correctButtonText() {
         // Normal level: "NEXT LEVEL"
         assertEquals("NEXT LEVEL", ProgressionDestinationResolver.resolve(1, 1).buttonLabel)
-        assertEquals("NEXT LEVEL", ProgressionDestinationResolver.resolve(1, 19).buttonLabel)
+        assertEquals("NEXT LEVEL", ProgressionDestinationResolver.resolve(1, 299).buttonLabel)
         assertEquals("NEXT LEVEL", ProgressionDestinationResolver.resolve(2, 25).buttonLabel)
 
         // Final level of World: "NEXT WORLD"
-        assertEquals("NEXT WORLD", ProgressionDestinationResolver.resolve(1, 20).buttonLabel)
-        assertEquals("NEXT WORLD", ProgressionDestinationResolver.resolve(2, 50).buttonLabel)
-        assertEquals("NEXT WORLD", ProgressionDestinationResolver.resolve(5, 200).buttonLabel)
+        assertEquals("NEXT WORLD", ProgressionDestinationResolver.resolve(1, 300).buttonLabel)
+        assertEquals("NEXT WORLD", ProgressionDestinationResolver.resolve(2, 600).buttonLabel)
+        assertEquals("NEXT WORLD", ProgressionDestinationResolver.resolve(5, 1500).buttonLabel)
 
         // Final level of Game: "JOURNEY COMPLETE"
-        assertEquals("JOURNEY COMPLETE", ProgressionDestinationResolver.resolve(6, 300).buttonLabel)
+        assertEquals("JOURNEY COMPLETE", ProgressionDestinationResolver.resolve(6, 1800).buttonLabel)
     }
 
     // 11. Correct button destination
@@ -217,19 +217,19 @@ class ProgressionDestinationResolverTest {
         assertTrue(resNormal.destination is ProgressionDestination.NextLevel)
         assertEquals(6, (resNormal.destination as ProgressionDestination.NextLevel).levelId)
 
-        val resWorldFinal = ProgressionDestinationResolver.resolve(1, 20)
+        val resWorldFinal = ProgressionDestinationResolver.resolve(1, 300)
         assertTrue(resWorldFinal.destination is ProgressionDestination.NextWorldEntry)
         assertEquals(2, (resWorldFinal.destination as ProgressionDestination.NextWorldEntry).worldId)
 
-        val resGameFinal = ProgressionDestinationResolver.resolve(6, 300)
+        val resGameFinal = ProgressionDestinationResolver.resolve(6, 1800)
         assertTrue(resGameFinal.destination is ProgressionDestination.JourneyComplete)
     }
 
     // 12. No automatic World navigation on normal level completion
     @Test
     fun test12_noAutomaticWorldNavigation_onNormalLevelCompletion() {
-        // For levels 1..19 in World 1, destination MUST NOT be NextWorldEntry
-        for (lvl in 1..19) {
+        // For levels 1..299 in World 1, destination MUST NOT be NextWorldEntry
+        for (lvl in 1..299) {
             val res = ProgressionDestinationResolver.resolve(worldId = 1, completedLevelOrLocal = lvl)
             assertFalse("Level $lvl must not navigate to next world", res.destination is ProgressionDestination.NextWorldEntry)
             assertEquals("NEXT LEVEL", res.buttonLabel)
@@ -237,8 +237,8 @@ class ProgressionDestinationResolverTest {
             assertEquals(lvl + 1, res.nextLevelId)
         }
 
-        // For levels 21..49 in World 2, destination MUST NOT be NextWorldEntry
-        for (lvl in 21..49) {
+        // For levels 301..599 in World 2, destination MUST NOT be NextWorldEntry
+        for (lvl in 301..599) {
             val res = ProgressionDestinationResolver.resolve(worldId = 2, completedLevelOrLocal = lvl)
             assertFalse("Level $lvl must not navigate to next world", res.destination is ProgressionDestination.NextWorldEntry)
             assertEquals("NEXT LEVEL", res.buttonLabel)
@@ -253,10 +253,10 @@ class ProgressionDestinationResolverTest {
         val normal = ProgressionDestinationResolver.resolve(1, 10)
         assertEquals(LevelCompletionState.LEVEL_COMPLETED, normal.completionState)
 
-        val worldEnd = ProgressionDestinationResolver.resolve(1, 20)
+        val worldEnd = ProgressionDestinationResolver.resolve(1, 300)
         assertEquals(LevelCompletionState.WORLD_COMPLETED, worldEnd.completionState)
 
-        val journeyEnd = ProgressionDestinationResolver.resolve(6, 300)
+        val journeyEnd = ProgressionDestinationResolver.resolve(6, 1800)
         assertEquals(LevelCompletionState.JOURNEY_COMPLETED, journeyEnd.completionState)
     }
 
@@ -265,16 +265,16 @@ class ProgressionDestinationResolverTest {
     fun test14_existingSavedGuestProgress_compatibility() {
         // Exactly 6 worlds configured
         assertEquals(6, WorldConfiguration.WORLDS.size)
-        assertEquals(300, WorldConfiguration.TOTAL_LEVELS)
+        assertEquals(1800, WorldConfiguration.TOTAL_LEVELS)
 
         // Verify each world's level range and total count
         val expectedRanges = listOf(
-            1 to (1..20),
-            2 to (21..50),
-            3 to (51..100),
-            4 to (101..150),
-            5 to (151..200),
-            6 to (201..300)
+            1 to (1..300),
+            2 to (301..600),
+            3 to (601..900),
+            4 to (901..1200),
+            5 to (1201..1500),
+            6 to (1501..1800)
         )
 
         for ((worldId, expectedRange) in expectedRanges) {

@@ -98,6 +98,7 @@ fun GameSecondaryButton(
                     Modifier
                         .background(GameBrushes.secondaryButton)
                         .border(GameBorders.secondaryButton, shape)
+                        .glossyTopHighlight(cornerRadius = 16.dp, highlightAlpha = 0.16f)
                 } else {
                     Modifier
                         .background(Color(0xFF0F1A35))

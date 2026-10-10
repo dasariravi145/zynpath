@@ -194,10 +194,10 @@ fun CoinDetailsBottomSheet(
                     letterSpacing = 1.sp
                 )
 
-                // 1. Daily Free Login Claim (+20 Coins)
+                // 1. Daily Free Login Claim (+50 Coins)
                 DailyRewardActionRow(
-                    title = "Daily Free Gift",
-                    amount = "+20",
+                    title = "Daily Login Reward",
+                    amount = "+${com.zynpath.game.core.economy.EconomyConfig.DAILY_LOGIN_CLAIM_REWARD}",
                     isClaimed = isDailyClaimed,
                     buttonText = if (isDailyClaimed) "CLAIMED" else "CLAIM",
                     style = ZynpathPillStyle.GREEN,
@@ -208,35 +208,15 @@ fun CoinDetailsBottomSheet(
                     }
                 )
 
-                // 2. Daily Login Ad Bonus (+20 Coins)
-                DailyRewardActionRow(
-                    title = "Daily Video Bonus",
-                    amount = "+20",
-                    isClaimed = isDailyAdBonusClaimed,
-                    buttonText = if (isDailyAdBonusClaimed) "CLAIMED" else "WATCH AD",
-                    style = ZynpathPillStyle.GOLD,
-                    onClick = {
-                        activity?.let { act ->
-                            coinRewardedAdManager.showCoinRewardedAd(
-                                activity = act,
-                                onRewarded = {
-                                    coroutineScope.launch {
-                                        walletRepository.claimDailyLoginAdBonus(todayUtc)
-                                    }
-                                },
-                                onFailed = {}
-                            )
-                        }
-                    }
-                )
-
-                // 3. Rewarded Video Ad Claim (+15 Coins, max 2/day)
+                // 2. Rewarded Video Ad Claim (+150 Coins, max 3/day)
+                val maxAds = com.zynpath.game.core.economy.EconomyConfig.MAX_DAILY_COIN_ADS
                 val adsExhausted = remainingCoinAds <= 0
+                val claimedCount = (maxAds - remainingCoinAds).coerceIn(0, maxAds)
                 DailyRewardActionRow(
-                    title = "Bonus Video Ad ($remainingCoinAds/2 left)",
-                    amount = "+15",
+                    title = "Bonus Video Ad ($claimedCount/$maxAds claimed)",
+                    amount = "+${com.zynpath.game.core.economy.EconomyConfig.REWARDED_COIN_AD_REWARD}",
                     isClaimed = adsExhausted,
-                    buttonText = if (adsExhausted) "LIMIT REACHED" else "WATCH AD",
+                    buttonText = if (adsExhausted) "ALL CLAIMED" else "WATCH AD",
                     style = ZynpathPillStyle.GOLD,
                     onClick = {
                         activity?.let { act ->
@@ -321,20 +301,26 @@ private fun DailyRewardActionRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
                     text = "$amount Coins",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = RefGoldPrimary
+                    color = RefGoldPrimary,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             ZynpathMasterPillButton(
                 text = buttonText,

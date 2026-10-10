@@ -50,7 +50,6 @@ class SignInViewModelTest {
         assertEquals(AuthState.GUEST, state.authState)
         assertTrue(state.isReducedMotion)
         assertTrue(state.isGoogleAvailable)
-        assertTrue(state.isFacebookAvailable)
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
     }
@@ -73,20 +72,20 @@ class SignInViewModelTest {
     }
 
     @Test
-    fun signInWithFacebook_triggersAuthentication_andSucceeds() = runTest {
+    fun linkWithGoogle_triggersGuestLinking_andSucceeds() = runTest {
         val authRepo = FakeAuthRepository(initialState = AuthState.GUEST)
         val prefRepo = FakePreferencesRepository()
 
         val viewModel = SignInViewModel(authRepo, prefRepo)
         advanceUntilIdle()
 
-        viewModel.signInWithFacebook(mockContext)
+        viewModel.linkWithGoogle(mockContext)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals(AuthState.AUTHENTICATED, state.authState)
-        assertEquals("player_fb_1", state.currentSession?.playerId)
-        assertEquals(AuthProvider.FACEBOOK, state.currentSession?.provider)
+        assertEquals("player_google_1", state.currentSession?.playerId)
+        assertEquals(AuthProvider.GOOGLE, state.currentSession?.provider)
     }
 
     @Test

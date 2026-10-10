@@ -24,7 +24,7 @@ class CatalogManifestTest {
         assertEquals(CatalogVersion.CATALOG_VERSION, manifest.catalogVersion)
         assertEquals(CatalogVersion.MANIFEST_SCHEMA_VERSION, manifest.schemaVersion)
         assertEquals(6, manifest.worlds.size)
-        assertEquals(300, manifest.levels.size)
+        assertEquals(1800, manifest.levels.size)
         assertTrue(manifest.integrityHash.isNotBlank())
 
         // Check each world's level bounds
@@ -34,7 +34,7 @@ class CatalogManifestTest {
             assertTrue(world.lastLevelId >= world.firstLevelId)
             expectedStart = world.lastLevelId + 1
         }
-        assertEquals(301, expectedStart)
+        assertEquals(1801, expectedStart)
     }
 
     @Test

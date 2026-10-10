@@ -127,6 +127,7 @@ fun ZynpathMasterPillButton(
             .shadow(elevation = 6.dp, shape = RoundedCornerShape(height / 2), spotColor = shadowColor)
             .clip(RoundedCornerShape(height / 2))
             .background(if (enabled) bgBrush else Brush.verticalGradient(listOf(Color(0xFF4A5568), Color(0xFF2D3748))))
+            .glossyTopHighlight(cornerRadius = height / 2, highlightAlpha = 0.20f)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

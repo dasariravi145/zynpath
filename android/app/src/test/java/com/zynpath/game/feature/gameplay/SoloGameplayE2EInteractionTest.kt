@@ -29,10 +29,10 @@ class SoloGameplayE2EInteractionTest {
     fun testLevel1LoadsWithValidDimensionsAndCheckpoints() {
         val def = PackagedPuzzles.LEVEL_1
         assertEquals("w1_lvl1", def.puzzleId)
-        assertEquals(4, def.gridDimensions.rows)
-        assertEquals(4, def.gridDimensions.columns)
-        assertEquals(16, def.gridDimensions.totalCells)
-        assertEquals(5, def.checkpoints.size)
+        assertEquals(6, def.gridDimensions.rows)
+        assertEquals(6, def.gridDimensions.columns)
+        assertEquals(36, def.gridDimensions.totalCells)
+        assertTrue(def.checkpoints.size in 6..10)
         // Checkpoint 1 at (0, 0)
         val cp1 = def.checkpoints.firstOrNull { it.position == GridPosition(0, 0) }
         assertNotNull(cp1)
@@ -89,7 +89,17 @@ class SoloGameplayE2EInteractionTest {
 
     @Test
     fun testInvalidMovementRejectedWithoutPathCorruption() {
-        val def = PackagedPuzzles.LEVEL_1
+        val def = PuzzleDefinition(
+            puzzleId = "test_loop_3x3",
+            puzzleVersion = 1,
+            gridDimensions = GridDimensions(3, 3),
+            requiredCells = (0..2).flatMap { r -> (0..2).map { c -> GridPosition(r, c) } }.toSet(),
+            checkpoints = listOf(
+                NumberedCheckpoint(1, GridPosition(0, 0)),
+                NumberedCheckpoint(2, GridPosition(2, 2))
+            ),
+            blockedEdges = emptySet()
+        )
         val engine = PuzzleEngine(def)
         engine.process(PuzzleAction.StartPath(GridPosition(0, 0)))
         engine.process(PuzzleAction.ExtendPath(GridPosition(0, 1)))
@@ -99,20 +109,18 @@ class SoloGameplayE2EInteractionTest {
         assertFalse(diag.isAccepted)
         assertEquals(MoveRejectionReason.NON_ADJACENT, (diag as PuzzleEngineResult.Rejected).reason)
 
-        // Continue along valid path to reach Checkpoint 2 at (0, 3) then turn into row 1
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 2)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(0, 3))) // CP2 visited
-        engine.process(PuzzleAction.ExtendPath(GridPosition(1, 3)))
-        engine.process(PuzzleAction.ExtendPath(GridPosition(1, 2)))
+        // Continue along valid path to (1, 1) then (1, 0)
+        engine.process(PuzzleAction.ExtendPath(GridPosition(1, 1)))
+        engine.process(PuzzleAction.ExtendPath(GridPosition(1, 0)))
 
-        // 2. Self-intersection: move from (1, 2) up to (0, 2) which is already visited and not the immediate predecessor (1, 3)
-        val loop = engine.process(PuzzleAction.ExtendPath(GridPosition(0, 2)))
+        // 2. Self-intersection: move from (1, 0) up to (0, 0) which is adjacent, already visited, and not predecessor (1, 1)
+        val loop = engine.process(PuzzleAction.ExtendPath(GridPosition(0, 0)))
         assertFalse(loop.isAccepted)
         assertEquals(MoveRejectionReason.CELL_ALREADY_VISITED, (loop as PuzzleEngineResult.Rejected).reason)
 
-        // Ensure path remains exactly 6 cells ending at (1, 2)
-        assertEquals(6, engine.currentState.coveredCellCount)
-        assertEquals(GridPosition(1, 2), engine.currentState.currentEndpoint)
+        // Ensure path remains exactly 4 cells ending at (1, 0)
+        assertEquals(4, engine.currentState.coveredCellCount)
+        assertEquals(GridPosition(1, 0), engine.currentState.currentEndpoint)
     }
 
     @Test
@@ -232,9 +240,9 @@ class SoloGameplayE2EInteractionTest {
             }
         }
 
-        assertEquals(16, engine.currentState.coveredCellCount)
+        assertEquals(36, engine.currentState.coveredCellCount)
         assertEquals(GameStatus.SOLVED, engine.currentState.gameStatus)
         assertTrue("Board must be fully covered", engine.currentState.isFullyCovered)
-        assertEquals(5, engine.currentState.highestCheckpointVisited)
+        assertEquals(def.checkpoints.size, engine.currentState.highestCheckpointVisited)
     }
 }

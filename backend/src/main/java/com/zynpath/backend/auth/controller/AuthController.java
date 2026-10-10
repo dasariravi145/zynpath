@@ -4,6 +4,9 @@ import com.zynpath.backend.auth.model.AuthException;
 import com.zynpath.backend.auth.model.AuthLinkRequest;
 import com.zynpath.backend.auth.model.AuthResponse;
 import com.zynpath.backend.auth.model.AuthTokenExchangeRequest;
+import com.zynpath.backend.auth.model.GuestAuthRequest;
+import com.zynpath.backend.auth.model.AuthProvider;
+import com.zynpath.backend.auth.model.GoogleAuthRequest;
 import com.zynpath.backend.auth.model.PlayerAccount;
 import com.zynpath.backend.auth.model.PlayerSession;
 import com.zynpath.backend.auth.model.VerifiedProviderIdentity;
@@ -90,6 +93,70 @@ public class AuthController {
 
         auditLogger.logEvent(SecurityEventType.LOGIN_SUCCESS, account.playerId(),
                 Map.of("provider", request.provider().name(), "accountType", String.valueOf(account.accountType())));
+
+        AuthResponse response = new AuthResponse(
+                session.sessionToken(),
+                account.playerId(),
+                account.publicZynpathId(),
+                account.displayName(),
+                account.accountType(),
+                session.expiresAt()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Direct endpoint to authenticate via Google Credential Manager ID token.
+     */
+    @PostMapping("/google")
+    @RequireAccess(EndpointAccessTier.PUBLIC)
+    @RateLimited(RateLimitPolicy.AUTH)
+    public ResponseEntity<AuthResponse> authenticateWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
+        log.info("Processing direct Google auth exchange");
+
+        VerifiedProviderIdentity verifiedIdentity = tokenVerificationService.verifyProviderToken(
+                AuthProvider.GOOGLE,
+                request.idToken()
+        );
+
+        PlayerAccount account = playerAccountService.getOrCreateForExternalIdentity(
+                verifiedIdentity,
+                request.guestUuid()
+        );
+
+        PlayerSession session = sessionSecurityService.createSession(account.playerId());
+
+        auditLogger.logEvent(SecurityEventType.LOGIN_SUCCESS, account.playerId(),
+                Map.of("provider", "GOOGLE", "accountType", String.valueOf(account.accountType())));
+
+        AuthResponse response = new AuthResponse(
+                session.sessionToken(),
+                account.playerId(),
+                account.publicZynpathId(),
+                account.displayName(),
+                account.accountType(),
+                session.expiresAt()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Issues an opaque server-recognized guest session for Quick Duel matchmaking without requiring social login.
+     */
+    @PostMapping("/guest")
+    @RequireAccess(EndpointAccessTier.PUBLIC)
+    @RateLimited(RateLimitPolicy.AUTH)
+    public ResponseEntity<AuthResponse> createGuestSession(@RequestBody(required = false) GuestAuthRequest request) {
+        String guestUuid = request != null ? request.guestUuid() : null;
+        String displayName = request != null ? request.displayName() : null;
+
+        PlayerAccount account = playerAccountService.getOrCreateGuestAccount(guestUuid, displayName);
+        PlayerSession session = sessionSecurityService.createSession(account.playerId());
+
+        auditLogger.logEvent(SecurityEventType.LOGIN_SUCCESS, account.playerId(),
+                Map.of("provider", "GUEST", "accountType", String.valueOf(account.accountType())));
 
         AuthResponse response = new AuthResponse(
                 session.sessionToken(),

@@ -219,4 +219,122 @@ class MultiplayerUiAndFlowTest {
         assertEquals("Network connection lost. Reconnecting...", viewModel.uiState.value.errorMessage)
         assertTrue("Disconnection must never report victory results", viewModel.uiState.value.matchResults.isEmpty())
     }
+
+    @Test
+    fun testGuestCanEnterQuickDuelWithoutFacebookSignIn() = runTest(testDispatcher) {
+        // Start as an unauthenticated guest
+        val unauthRepo = FakeAuthRepository(
+            initialState = AuthState.GUEST,
+            initialSession = null
+        )
+        val viewModel = QuickDuelViewModel(multiplayerRepo, unauthRepo, prefsRepo)
+        val job = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        // Verify initial state is unauthenticated
+        assertNull(viewModel.uiState.value.authSession)
+        assertEquals(ClientMatchState.IDLE, viewModel.uiState.value.clientMatchState)
+
+        // Starting search as guest automatically provisions guest identity and begins matchmaking immediately
+        viewModel.startSearching()
+        advanceUntilIdle()
+
+        assertEquals(ClientMatchState.SEARCHING, viewModel.uiState.value.clientMatchState)
+        assertNotNull("Guest session must be established for matchmaking", viewModel.uiState.value.authSession)
+        assertEquals(AuthProvider.GUEST, viewModel.uiState.value.authSession?.provider)
+        assertEquals("Guest_4821", viewModel.uiState.value.authSession?.displayName)
+        assertNotNull(viewModel.uiState.value.ticketStatus)
+    }
+
+    @Test
+    fun testPlayAgainRestartsSearchImmediatelyWithoutAuthGates() = runTest(testDispatcher) {
+        val viewModel = QuickDuelViewModel(multiplayerRepo, authRepo, prefsRepo)
+        val job = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        // Simulate completed match state
+        multiplayerRepo.setClientMatchState(ClientMatchState.COMPLETED)
+        advanceUntilIdle()
+        assertEquals(ClientMatchState.COMPLETED, viewModel.uiState.value.clientMatchState)
+
+        // Tapping Play Again must immediately re-enter search state
+        viewModel.playAgain()
+        advanceUntilIdle()
+
+        assertEquals(ClientMatchState.SEARCHING, viewModel.uiState.value.clientMatchState)
+        assertNotNull(viewModel.uiState.value.ticketStatus)
+    }
+
+    @Test
+    fun testFriendsArenaRequiresGoogleConnection_showsModalForGuest() = runTest(testDispatcher) {
+        val guestAuthRepo = FakeAuthRepository(
+            initialState = AuthState.GUEST,
+            initialSession = null
+        )
+        val profileRepo = com.zynpath.game.fake.FakePlayerProfileRepository()
+        val viewModel = FriendsArenaViewModel(guestAuthRepo, profileRepo, prefsRepo)
+        val job = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        // 1. Initial State: Player is Guest
+        assertTrue("Player must be guest initially", viewModel.uiState.value.isGuest)
+        assertFalse("Modal not shown initially", viewModel.uiState.value.showGoogleConnectModal)
+
+        // 2. Action requiring account (e.g., Create Room) triggers compact Google modal
+        var actionExecuted = false
+        viewModel.openGoogleConnectModal(onSuccess = { actionExecuted = true })
+        advanceUntilIdle()
+
+        assertTrue("Modal must appear over current screen", viewModel.uiState.value.showGoogleConnectModal)
+        assertFalse("Action must not execute before connection", actionExecuted)
+
+        // 3. Dismissing modal leaves player on same screen without executing action
+        viewModel.dismissGoogleConnectModal()
+        advanceUntilIdle()
+        assertFalse("Modal dismissed", viewModel.uiState.value.showGoogleConnectModal)
+        assertFalse("Action still not executed", actionExecuted)
+
+        // 4. Opening modal and connecting via Google succeeds and executes pending action
+        viewModel.openGoogleConnectModal(onSuccess = { actionExecuted = true })
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.showGoogleConnectModal)
+
+        val mockContext = android.content.ContextWrapper(null)
+        viewModel.connectWithGoogle(mockContext)
+        advanceUntilIdle()
+
+        assertFalse("Modal dismissed after successful connection", viewModel.uiState.value.showGoogleConnectModal)
+        assertTrue("Pending action resumed after authentication", actionExecuted)
+        assertFalse("Player is no longer a guest", viewModel.uiState.value.isGuest)
+    }
+
+    @Test
+    fun testFriendsArenaConnectedPlayerDoesNotSeeGoogleModal() = runTest(testDispatcher) {
+        val connectedAuthRepo = FakeAuthRepository(
+            initialState = AuthState.AUTHENTICATED,
+            initialSession = AuthSession(
+                playerId = "player_google_1",
+                publicZynpathId = "ZYN-GOOG",
+                displayName = "Google Player",
+                accountType = "REGISTERED",
+                provider = AuthProvider.GOOGLE,
+                expiresAt = System.currentTimeMillis() + 86400000L
+            )
+        )
+        val profileRepo = com.zynpath.game.fake.FakePlayerProfileRepository()
+        val viewModel = FriendsArenaViewModel(connectedAuthRepo, profileRepo, prefsRepo)
+        val job = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        advanceUntilIdle()
+
+        assertFalse("Connected player is not guest", viewModel.uiState.value.isGuest)
+        assertFalse("Modal must not be shown", viewModel.uiState.value.showGoogleConnectModal)
+    }
 }

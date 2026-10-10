@@ -35,7 +35,10 @@ object PuzzleQualityEvaluator {
         val targetDifficultyRange: ClosedFloatingPointRange<Double>? = null,
         val targetDifficultyBand: DifficultyBand? = null,
         val maxAllowedSimilarity: Double = 0.85,
-        val rejectSymmetricDuplicates: Boolean = true
+        val rejectSymmetricDuplicates: Boolean = true,
+        val minMeaningfulRouteDecisions: Int = 0,
+        val minLookAheadDepth: Int = 0,
+        val rejectAmbiguousSolutions: Boolean = true
     )
 
     /**
@@ -152,17 +155,42 @@ object PuzzleQualityEvaluator {
         }
 
         // 11. Difficulty band / range check
-        if (criteria.targetDifficultyRange != null &&
-            difficulty.estimatedScore !in criteria.targetDifficultyRange) {
-            rejectionReasons.add(QualityRejectionReason.DIFFICULTY_OUT_OF_RANGE)
-            rejectionDetails.add(
-                "Estimated difficulty score ${difficulty.estimatedScore} outside target range ${criteria.targetDifficultyRange}"
-            )
+        if (criteria.targetDifficultyRange != null) {
+            if (difficulty.estimatedScore !in criteria.targetDifficultyRange) {
+                rejectionReasons.add(QualityRejectionReason.DIFFICULTY_OUT_OF_RANGE)
+                rejectionDetails.add(
+                    "Estimated difficulty score ${difficulty.estimatedScore} outside target range ${criteria.targetDifficultyRange}"
+                )
+            }
         } else if (criteria.targetDifficultyBand != null &&
             difficulty.difficultyBand != criteria.targetDifficultyBand) {
             rejectionReasons.add(QualityRejectionReason.DIFFICULTY_OUT_OF_RANGE)
             rejectionDetails.add(
                 "Estimated difficulty band ${difficulty.difficultyBand} does not match target ${criteria.targetDifficultyBand}"
+            )
+        }
+
+        // 12. Check meaningful route decisions and look-ahead depth (Section 2)
+        if (criteria.minMeaningfulRouteDecisions > 0 &&
+            difficulty.metrics.meaningfulRouteDecisions < criteria.minMeaningfulRouteDecisions) {
+            rejectionReasons.add(QualityRejectionReason.TRIVIAL_ROUTE)
+            rejectionDetails.add(
+                "Meaningful route decisions (${difficulty.metrics.meaningfulRouteDecisions}) below required minimum (${criteria.minMeaningfulRouteDecisions})"
+            )
+        }
+        if (criteria.minLookAheadDepth > 0 &&
+            difficulty.metrics.requiredLookAheadDepth < criteria.minLookAheadDepth) {
+            rejectionReasons.add(QualityRejectionReason.TRIVIAL_ROUTE)
+            rejectionDetails.add(
+                "Look-ahead depth (${difficulty.metrics.requiredLookAheadDepth}) below required minimum (${criteria.minLookAheadDepth})"
+            )
+        }
+
+        // 13. Multiple / ambiguous solutions check (prefer/require unique)
+        if (criteria.rejectAmbiguousSolutions && (difficulty.metrics.solutionCount > 1 || solverResult.uniqueness == UniquenessStatus.NON_UNIQUE)) {
+            rejectionReasons.add(QualityRejectionReason.AMBIGUOUS_SOLUTIONS)
+            rejectionDetails.add(
+                "Puzzle has ${difficulty.metrics.solutionCount} valid solutions (expected exactly 1)"
             )
         }
 

@@ -24,6 +24,11 @@ interface AuthApiService {
         displayName: String?
     ): NetworkResult<AuthResponseDto>
 
+    suspend fun createGuestSession(
+        guestUuid: String?,
+        displayName: String?
+    ): NetworkResult<AuthResponseDto>
+
     suspend fun getCurrentPlayer(sessionToken: String): NetworkResult<AuthResponseDto>
 
     suspend fun refreshSession(sessionToken: String): NetworkResult<AuthResponseDto>

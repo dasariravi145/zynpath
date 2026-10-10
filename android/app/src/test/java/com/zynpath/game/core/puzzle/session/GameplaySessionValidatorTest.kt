@@ -191,8 +191,9 @@ class GameplaySessionValidatorTest {
 
     @Test
     fun `test illegal move with diagonal jump in path is rejected`() {
-        // (0,0) -> (1,1) is diagonal!
-        val diagonalPath = listOf(GridPosition(0, 0), GridPosition(1, 1))
+        val start = fullSolutionLevel1.first()
+        val diagonal = GridPosition((start.row + 1) % 6, (start.column + 1) % 6)
+        val diagonalPath = listOf(start, diagonal)
         val snapshot = GameplaySessionSnapshot(
             sessionId = "sess_diagonal",
             levelId = 1,
@@ -276,10 +277,7 @@ class GameplaySessionValidatorTest {
 
     @Test
     fun `test premature entry into final checkpoint is rejected`() {
-        // In Level 1, Checkpoint 1 is at (0, 0), Checkpoint 2 is at (0, 3), and Checkpoint 3 is at (1, 0).
-        // (0, 0) and (1, 0) are orthogonally adjacent. Moving directly from (0, 0) to (1, 0) visits
-        // Checkpoint 3 out of order (skipping Checkpoint 2), which must be rejected by the engine.
-        val prematurePath = listOf(GridPosition(0, 0), GridPosition(1, 0))
+        val prematurePath = listOf(fullSolutionLevel1.first(), fullSolutionLevel1.last())
         val snapshot = GameplaySessionSnapshot(
             sessionId = "sess_premature",
             levelId = 1,
@@ -306,7 +304,7 @@ class GameplaySessionValidatorTest {
             puzzleId = definitionLevel1.puzzleId,
             puzzleVersion = definitionLevel1.puzzleVersion,
             status = SessionStatus.ACTIVE,
-            path = listOf(GridPosition(0, 0)),
+            path = listOf(fullSolutionLevel1.first()),
             ownerIdentity = "user_account_a"
         )
 

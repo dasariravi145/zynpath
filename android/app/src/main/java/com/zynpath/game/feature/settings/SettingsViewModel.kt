@@ -62,7 +62,7 @@ class SettingsViewModel @Inject constructor(
     val userPreferences: StateFlow<UserPreferences> = preferencesRepository.userPreferencesFlow
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = UserPreferences()
         )
 
@@ -78,6 +78,38 @@ class SettingsViewModel @Inject constructor(
 
     private val _lastExportJson = MutableStateFlow<String?>(null)
     val lastExportJson: StateFlow<String?> = _lastExportJson.asStateFlow()
+
+    private val _isGoogleConnecting = MutableStateFlow(false)
+    val isGoogleConnecting: StateFlow<Boolean> = _isGoogleConnecting.asStateFlow()
+
+    private val _googleConnectError = MutableStateFlow<String?>(null)
+    val googleConnectError: StateFlow<String?> = _googleConnectError.asStateFlow()
+
+    fun connectWithGoogle(context: android.content.Context, onSuccess: (() -> Unit)? = null) {
+        viewModelScope.launch {
+            _isGoogleConnecting.value = true
+            _googleConnectError.value = null
+            when (val result = authRepository.connectWithGoogle(context)) {
+                is AuthResult.Success -> {
+                    _isGoogleConnecting.value = false
+                    _uiMessage.value = "Connected with Google as ${result.session.displayName}"
+                    onSuccess?.invoke()
+                }
+                is AuthResult.Cancelled -> {
+                    _isGoogleConnecting.value = false
+                }
+                is AuthResult.ProviderNotConfigured -> {
+                    _isGoogleConnecting.value = false
+                    _googleConnectError.value = "Google Sign-In is not configured on this environment."
+                }
+                is AuthResult.Error,
+                is AuthResult.Conflict -> {
+                    _isGoogleConnecting.value = false
+                    _googleConnectError.value = "Couldn't connect. Try again."
+                }
+            }
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -394,11 +426,20 @@ private fun createNoOpAuthRepository(): AuthRepository {
         override val currentSession = MutableStateFlow<AuthSession?>(null)
         override fun isProviderConfigured(provider: AuthProvider) = false
         override suspend fun signInWithGoogle(context: android.content.Context) = AuthResult.Cancelled
+        override suspend fun connectWithGoogle(context: android.content.Context) = AuthResult.Cancelled
         override suspend fun signInWithFacebook(context: android.content.Context) = AuthResult.Cancelled
         override suspend fun linkGuestWithGoogle(context: android.content.Context) = AuthResult.Cancelled
         override suspend fun linkGuestWithFacebook(context: android.content.Context) = AuthResult.Cancelled
         override suspend fun restoreSession() = false
         override suspend fun refreshSession() = false
+        override suspend fun ensureGuestSession(): AuthSession = AuthSession(
+            playerId = "guest_noop",
+            publicZynpathId = "ZYN-NOOP",
+            displayName = "Guest",
+            accountType = "GUEST",
+            provider = AuthProvider.GUEST,
+            expiresAt = System.currentTimeMillis() + 86400000L
+        )
         override suspend fun signOut() {}
     }
 }

@@ -59,13 +59,19 @@ class GridGraph(
         return position.orthogonalNeighbors().filter { isInsideGrid(it) }
     }
 
+    private val traversableNeighborsMap: Map<GridPosition, List<GridPosition>> by lazy {
+        requiredCells.associateWith { pos ->
+            pos.orthogonalNeighbors().filter { neighbor ->
+                canTraverse(pos, neighbor)
+            }
+        }
+    }
+
     /**
      * Returns legal, unblocked, traversable neighbor positions from [position] in deterministic order (UP, RIGHT, DOWN, LEFT).
      */
     fun getTraversableNeighbors(position: GridPosition): List<GridPosition> {
-        if (!isRequiredCell(position)) return emptyList()
-        return position.orthogonalNeighbors().filter { neighbor ->
-            canTraverse(position, neighbor)
-        }
+        return traversableNeighborsMap[position] ?: emptyList()
     }
 }
+

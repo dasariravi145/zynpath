@@ -2,6 +2,7 @@ package com.zynpath.game.core.puzzle.catalog
 
 import com.zynpath.game.core.puzzle.curation.DifficultyBand
 import com.zynpath.game.core.puzzle.model.GridDimensions
+import com.zynpath.game.core.puzzle.model.WorldConfiguration
 import com.zynpath.game.core.puzzle.solver.UniquenessStatus
 import java.security.MessageDigest
 
@@ -16,7 +17,7 @@ data class CatalogManifest(
     val catalogId: String = "zynpath_solo_campaign",
     val catalogVersion: String = CatalogVersion.CATALOG_VERSION,
     val schemaVersion: String = CatalogVersion.MANIFEST_SCHEMA_VERSION,
-    val totalPlannedLevels: Int = 300,
+    val totalPlannedLevels: Int = WorldConfiguration.TOTAL_LEVELS,
     val worlds: List<WorldDefinition> = WorldDefinition.ALL_WORLDS,
     val levels: List<LevelDefinition> = emptyList(),
     val integrityHash: String = ""
@@ -51,39 +52,44 @@ data class CatalogManifest(
         }
 
         fun createDefaultManifest(): CatalogManifest {
-            val levels = (1..300).map { lvlId ->
+            val levels = (1..WorldConfiguration.TOTAL_LEVELS).map { lvlId ->
                 val world = WorldDefinition.forLevel(lvlId)
+                val localLvl = com.zynpath.game.core.puzzle.model.WorldConfiguration.toLocalLevel(lvlId)
                 val packagedDef = PackagedPuzzles.ALL_PACKAGED[lvlId]
                 if (packagedDef != null) {
                     val fp = com.zynpath.game.core.puzzle.generator.PuzzleFingerprint.computeSha256(packagedDef)
+                    val parsedScore = packagedDef.difficultyMetadata?.let { Regex("score=([0-9.]+)").find(it)?.groupValues?.get(1)?.toDoubleOrNull() }
+                    val score = (parsedScore ?: when {
+                        lvlId <= 4 -> 0.10 + (lvlId - 1) * 0.01
+                        packagedDef.gridDimensions.rows == 4 -> 0.45
+                        packagedDef.gridDimensions.rows == 5 && !packagedDef.hasWalls -> 0.68
+                        packagedDef.gridDimensions.rows == 5 && packagedDef.hasWalls -> 0.72
+                        packagedDef.gridDimensions.rows == 6 -> 0.78
+                        else -> 0.85
+                    }).coerceIn(0.0, 1.0)
+                    val band = DifficultyBand.fromScore(score)
                     LevelDefinition(
                         levelId = lvlId,
                         worldId = world.worldId,
                         puzzleId = packagedDef.puzzleId,
                         puzzleVersion = packagedDef.puzzleVersion,
-                        assetPath = "puzzles/w${world.worldId}/lvl$lvlId.json",
-                        difficultyEstimate = when (world.worldId) {
-                            1 -> 0.10 + (lvlId - 1) * 0.01
-                            2 -> 0.25 + (lvlId - 21) * 0.01
-                            else -> 0.40 + (lvlId - 51) * 0.01
-                        },
-                        difficultyBand = when (world.worldId) {
-                            1 -> DifficultyBand.BEGINNER
-                            2 -> DifficultyBand.EASY
-                            3 -> DifficultyBand.MEDIUM
-                            4 -> DifficultyBand.MEDIUM
-                            5 -> DifficultyBand.HARD
-                            else -> DifficultyBand.EXPERT
-                        },
+                        assetPath = "puzzles/w${world.worldId}/lvl$localLvl.json",
+                        difficultyEstimate = score,
+                        difficultyBand = band,
                         uniquenessStatus = UniquenessStatus.UNIQUE,
                         fingerprint = fp,
                         hasPackagedAsset = true,
-                        displayName = "Level $lvlId"
+                        displayName = "Level $localLvl"
                     )
                 } else {
                     val curatedDef = CuratedFirst50Levels.LEVELS[lvlId]
+                        ?: CuratedWorld3Levels.LEVELS[lvlId]
+                        ?: CuratedWorld4Levels.LEVELS[lvlId]
+                        ?: CuratedWorld5Levels.LEVELS[lvlId]
+                        ?: CuratedWorld6Levels.LEVELS[lvlId]
                     val anchorDef = CuratedAnchorLevels.ANCHOR_LEVELS[lvlId]
-                    val puzzleId = curatedDef?.puzzleId ?: anchorDef?.puzzleId ?: "w${world.worldId}_lvl$lvlId"
+                    val puzzleId = curatedDef?.puzzleId ?: anchorDef?.puzzleId ?: "w${world.worldId}_lvl$localLvl"
+                    val pVer = curatedDef?.puzzleVersion ?: anchorDef?.puzzleVersion ?: 1
                     val fp = when {
                         curatedDef != null -> com.zynpath.game.core.puzzle.generator.PuzzleFingerprint.computeSha256(curatedDef)
                         anchorDef != null -> com.zynpath.game.core.puzzle.generator.PuzzleFingerprint.computeSha256(anchorDef)
@@ -93,25 +99,28 @@ data class CatalogManifest(
                         levelId = lvlId,
                         worldId = world.worldId,
                         puzzleId = puzzleId,
-                        puzzleVersion = 1,
-                        assetPath = "puzzles/w${world.worldId}/lvl$lvlId.json",
-                        difficultyEstimate = when (world.worldId) {
-                            1 -> 0.10 + (lvlId - 1) * 0.01
-                            2 -> 0.25 + (lvlId - 21) * 0.01
-                            else -> 0.40 + (lvlId - 51) * 0.002
-                        },
+                        puzzleVersion = pVer,
+                        assetPath = "puzzles/w${world.worldId}/lvl$localLvl.json",
+                        difficultyEstimate = (when (world.worldId) {
+                            1 -> 0.10 + (localLvl - 1) * 0.003
+                            2 -> 0.30 + (localLvl - 1) * 0.002
+                            3 -> 0.55 + (localLvl - 1) * 0.0015
+                            4 -> 0.70 + (localLvl - 1) * 0.001
+                            5 -> 0.85 + (localLvl - 1) * 0.0005
+                            else -> 0.95 + (localLvl - 1) * 0.0002
+                        }).coerceIn(0.0, 1.0),
                         difficultyBand = when (world.worldId) {
-                            1 -> DifficultyBand.BEGINNER
-                            2 -> DifficultyBand.EASY
-                            3 -> DifficultyBand.MEDIUM
-                            4 -> DifficultyBand.MEDIUM
-                            5 -> DifficultyBand.HARD
-                            else -> DifficultyBand.EXPERT
+                            1 -> if (localLvl <= 4) DifficultyBand.BEGINNER else DifficultyBand.EASY
+                            2 -> DifficultyBand.MEDIUM
+                            3 -> DifficultyBand.HARD
+                            4 -> DifficultyBand.VERY_HARD
+                            5 -> DifficultyBand.EXPERT
+                            else -> DifficultyBand.EXTREME
                         },
                         uniquenessStatus = UniquenessStatus.UNIQUE,
                         fingerprint = fp,
-                        hasPackagedAsset = false,
-                        displayName = "Level $lvlId"
+                        hasPackagedAsset = curatedDef != null,
+                        displayName = "Level $localLvl"
                     )
                 }
             }
@@ -120,7 +129,7 @@ data class CatalogManifest(
                 catalogId = "zynpath_solo_campaign",
                 catalogVersion = CatalogVersion.CATALOG_VERSION,
                 schemaVersion = CatalogVersion.MANIFEST_SCHEMA_VERSION,
-                totalPlannedLevels = 300,
+                totalPlannedLevels = WorldConfiguration.TOTAL_LEVELS,
                 worlds = WorldDefinition.ALL_WORLDS,
                 levels = levels,
                 integrityHash = hash

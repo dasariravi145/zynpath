@@ -7,7 +7,8 @@ package com.zynpath.backend.auth.model;
  */
 public enum AuthProvider {
     GOOGLE,
-    FACEBOOK;
+    FACEBOOK,
+    GUEST;
 
     public static AuthProvider fromString(String value) {
         if (value == null) {

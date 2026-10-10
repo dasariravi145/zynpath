@@ -99,15 +99,23 @@ fun PlayerAvatar(
                 .size(totalSize)
                 .clip(CircleShape)
                 .then(if (frameBorder != null) Modifier.border(frameBorder, CircleShape) else Modifier)
-                .background(GameMidnightBlue),
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF142B56),
+                            GameMidnightBlue
+                        )
+                    )
+                )
+                .glossyTopHighlight(cornerRadius = (totalSize.value / 2).dp, highlightAlpha = 0.22f),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
+            androidx.compose.foundation.Image(
                 painter = painterResource(id = avatarDrawableId),
                 contentDescription = null,
-                tint = Color.Unspecified,
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                 modifier = Modifier
-                    .size(totalSize * 0.90f)
+                    .size(totalSize * 0.82f)
                     .clip(CircleShape)
             )
         }

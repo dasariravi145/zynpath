@@ -3,23 +3,28 @@ package com.zynpath.game.core.puzzle.generator
 import com.zynpath.game.core.puzzle.model.GridPosition
 import com.zynpath.game.core.puzzle.model.NumberedCheckpoint
 import java.util.Random
+import kotlin.math.abs
 
 /**
  * Authoritative checkpoint placement strategy distributing numbered checkpoints strictly
  * along the verified solution route in ascending traversal order.
  *
- * Implements Prompt 9 Sections 12, 13, and 14:
+ * Implements Final Deep-Reasoning Puzzle Redesign Sections 8, 9, 10, and 18:
  * - Checkpoint #1 always occupies route index 0 (origin).
  * - Final checkpoint #N always occupies route index (route.size - 1) (terminal).
  * - Intermediate checkpoints are assigned to strictly ascending route indices.
  * - Enforces contiguous numbering (1, 2, ..., N).
- * - Spreading heuristic maximizes meaningful unnumbered path segments between checkpoints.
+ * - DECEPTIVE NUMBER PLACEMENT:
+ *   Next checkpoint appears visually close (Manhattan distance <= 2), but shortest path to it
+ *   is WRONG because taking it too early prevents full-board coverage.
+ * - CELL-RESERVATION REASONING:
+ *   Forces the player to recognize cells near the next checkpoint that must remain unused until later.
  */
 class CheckpointPlacementStrategy {
 
     /**
-     * Places [count] checkpoints along [route] using [random] for deterministic spacing variations.
-     * Returns the sorted list of [NumberedCheckpoint] instances.
+     * Places [count] checkpoints along [route] using [random] for deceptive and strategic placement.
+     * Evaluates multiple candidate partitions to select one with high deception and cell reservation.
      *
      * @throws IllegalArgumentException if [count] < 2 or [count] > route.size.
      */
@@ -36,36 +41,28 @@ class CheckpointPlacementStrategy {
         val totalRouteCells = route.size
         val intermediateCount = count - 2
 
-        val selectedIndices = ArrayList<Int>(count)
-        selectedIndices.add(0) // Checkpoint #1 at route start
+        if (intermediateCount == 0) {
+            return listOf(
+                NumberedCheckpoint(1, route.first()),
+                NumberedCheckpoint(2, route.last())
+            )
+        }
 
-        if (intermediateCount > 0) {
-            // Partition intermediate space into (intermediateCount + 1) segments
-            val segmentSize = (totalRouteCells - 1).toDouble() / (intermediateCount + 1)
+        // Generate multiple candidate index partitions and select the one with best deception & reasoning score
+        var bestIndices: List<Int>? = null
+        var bestScore = -1.0
 
-            var lastIndex = 0
-            for (i in 1..intermediateCount) {
-                val idealIndex = (i * segmentSize).toInt()
-                val minAllowed = lastIndex + 1
-                val maxAllowed = totalRouteCells - 1 - (intermediateCount - i + 1)
-
-                // Add deterministic jitter within bounds around idealIndex
-                val jitterWindow = maxOf(1, (segmentSize / 4.0).toInt())
-                val lower = maxOf(minAllowed, idealIndex - jitterWindow)
-                val upper = minOf(maxAllowed, idealIndex + jitterWindow)
-
-                val chosen = if (lower <= upper) {
-                    lower + random.nextInt(upper - lower + 1)
-                } else {
-                    minAllowed
-                }
-
-                selectedIndices.add(chosen)
-                lastIndex = chosen
+        val candidateTries = 25
+        for (attempt in 0 until candidateTries) {
+            val indices = sampleCandidateIndices(totalRouteCells, intermediateCount, random)
+            val score = scoreCheckpointIndices(indices, route)
+            if (score > bestScore) {
+                bestScore = score
+                bestIndices = indices
             }
         }
 
-        selectedIndices.add(totalRouteCells - 1) // Final checkpoint #N at route end
+        val selectedIndices = bestIndices ?: sampleCandidateIndices(totalRouteCells, intermediateCount, random)
 
         // Construct NumberedCheckpoints strictly matching ascending traversal order
         val checkpoints = ArrayList<NumberedCheckpoint>(count)
@@ -78,8 +75,88 @@ class CheckpointPlacementStrategy {
         return checkpoints
     }
 
+    private fun sampleCandidateIndices(
+        totalCells: Int,
+        intermediateCount: Int,
+        random: Random
+    ): List<Int> {
+        val indices = ArrayList<Int>(intermediateCount + 2)
+        indices.add(0)
+
+        val segmentSize = (totalCells - 1).toDouble() / (intermediateCount + 1)
+        var lastIndex = 0
+
+        for (i in 1..intermediateCount) {
+            val idealIndex = (i * segmentSize).toInt()
+            val minAllowed = lastIndex + 1
+            val maxAllowed = totalCells - 1 - (intermediateCount - i + 1)
+
+            val jitterWindow = maxOf(2, (segmentSize / 2.5).toInt())
+            val lower = maxOf(minAllowed, idealIndex - jitterWindow)
+            val upper = minOf(maxAllowed, idealIndex + jitterWindow)
+
+            val chosen = if (lower <= upper) {
+                lower + random.nextInt(upper - lower + 1)
+            } else {
+                minAllowed
+            }
+
+            indices.add(chosen)
+            lastIndex = chosen
+        }
+
+        indices.add(totalCells - 1)
+        return indices
+    }
+
     /**
-     * Validates that [checkpoints] strictly adhere to [route] and Sections 12-14 invariants.
+     * Evaluates a set of checkpoint indices for deceptive proximity, cell reservation, and route spacing.
+     */
+    private fun scoreCheckpointIndices(indices: List<Int>, route: List<GridPosition>): Double {
+        var score = 0.0
+
+        for (i in 0 until indices.size - 1) {
+            val idx1 = indices[i]
+            val idx2 = indices[i + 1]
+            val pos1 = route[idx1]
+            val pos2 = route[idx2]
+
+            val manhattanDist = abs(pos1.row - pos2.row) + abs(pos1.column - pos2.column)
+            val pathDist = idx2 - idx1
+
+            // Deception bonus: Checkpoints are close in grid space (<= 2) but require long traversal (>= 4)
+            if (manhattanDist <= 2 && pathDist >= 4) {
+                score += 3.0 + (pathDist - 4) * 0.5
+            } else if (manhattanDist <= 3 && pathDist >= 6) {
+                score += 2.0
+            }
+
+            // Cell reservation bonus:
+            // Check if pos2 has orthogonal neighbors that appear EARLIER or MUCH LATER in the route
+            // A player rushing to pos2 directly would consume or cut off those neighbor cells!
+            val neighborsOf2 = listOf(pos2.up(), pos2.down(), pos2.left(), pos2.right())
+            for (nbr in neighborsOf2) {
+                val nbrIdx = route.indexOf(nbr)
+                if (nbrIdx in (idx1 + 1) until idx2) {
+                    // Cell is visited in the middle of the segment between CP1 and CP2
+                    score += 1.5
+                } else if (nbrIdx > idx2) {
+                    // Cell is reserved for after CP2
+                    score += 1.0
+                }
+            }
+
+            // Penalty for trivial 1-cell hops (unless total board is very small)
+            if (pathDist <= 1 && route.size > 16) {
+                score -= 4.0
+            }
+        }
+
+        return score
+    }
+
+    /**
+     * Validates that [checkpoints] strictly adhere to [route] and ascending order invariants.
      */
     fun validateCheckpoints(
         checkpoints: List<NumberedCheckpoint>,

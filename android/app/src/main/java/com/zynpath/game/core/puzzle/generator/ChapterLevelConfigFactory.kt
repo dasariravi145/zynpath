@@ -32,7 +32,7 @@ object ChapterLevelConfigFactory {
      * Constructs the authoritative [GenerationConfiguration] for [levelId].
      */
     fun createConfig(levelId: Int, attemptIndex: Int = 0): GenerationConfiguration {
-        require(levelId in 1..300) { "levelId must be in 1..300 (got $levelId)" }
+        require(levelId in 1..WorldConfiguration.TOTAL_LEVELS) { "levelId must be in 1..${WorldConfiguration.TOTAL_LEVELS} (got $levelId)" }
 
         val chapter = ProgressionPlan.getChapterForLevel(levelId)
         val world = WorldConfiguration.getWorldForLevel(levelId)
@@ -43,42 +43,23 @@ object ChapterLevelConfigFactory {
             LevelSeedGenerator.computeCandidateSeed(levelId, attemptIndex)
         }
 
-        val dimensions = when (world.worldId) {
-            1 -> GridDimensions(4, 4)
-            2 -> GridDimensions(5, 5)
-            3 -> GridDimensions(5, 5)
-            4 -> GridDimensions(6, 6)
-            5 -> GridDimensions(7, 7)
-            6 -> GridDimensions(8, 8)
-            else -> GridDimensions(4, 4)
-        }
+        val policy = com.zynpath.game.core.puzzle.policy.PuzzleConstraintPolicy.forSoloLevel(levelId)
+        val dimensions = policy.gridDimensions
 
-        val checkpointCount = when (chapter.chapterId) {
-            1 -> if (isRecovery) 6 else 5 + ((levelId - 1) % 2)
-            2 -> if (isRecovery) 7 else 4 + ((levelId - 26) % 4)
-            3 -> if (isRecovery) 7 else 4 + ((levelId - 51) % 4)
-            4 -> if (isRecovery) 8 else 5 + ((levelId - 101) % 4)
-            5 -> if (isRecovery) 10 else 5 + ((levelId - 151) % 6)
-            6 -> if (isRecovery) 12 else 6 + ((levelId - 201) % 7)
-            7 -> if (isRecovery) 14 else 6 + ((levelId - 251) % 9)
-            else -> 4
-        }
+        val checkpointCount = when {
+            levelId <= 4 -> 6 // Tutorial levels: 6 checkpoints in 6x6 World 1
+            isRecovery -> minOf(policy.checkpointRequirements.last, policy.checkpointRequirements.first + 3)
+            else -> policy.checkpointRequirements.first + (levelId % (policy.checkpointRequirements.last - policy.checkpointRequirements.first + 1))
+        }.coerceIn(policy.checkpointRequirements)
 
-        val (minWalls, maxWalls) = when (chapter.chapterId) {
-            1 -> 0 to 0
-            2 -> 0 to 0
-            3 -> if (isRecovery) 1 to 2 else 2 to 5
-            4 -> if (isRecovery) 2 to 4 else 3 to 8
-            5 -> if (isRecovery) 4 to 6 else 5 to 12
-            6 -> if (isRecovery) 6 to 8 else 7 to 16
-            7 -> if (isRecovery) 8 to 10 else 9 to 18
-            else -> 0 to 0
+        val (minWalls, maxWalls) = when {
+            levelId in 1..20 -> 0 to 0 // World 1: Learn drawing and order without wall constraints
+            isRecovery -> policy.allowedWallCountRange.first to minOf(policy.allowedWallCountRange.last, policy.allowedWallCountRange.first + 2)
+            else -> policy.allowedWallCountRange.first to policy.allowedWallCountRange.last
         }
 
         val routeStyle = when {
             isRecovery -> RouteStyle.RANDOM_WALK
-            chapter.chapterId <= 2 -> RouteStyle.SERPENTINE
-            chapter.chapterId in 3..4 -> RouteStyle.SPIRAL_LIKE
             else -> RouteStyle.MIXED
         }
 

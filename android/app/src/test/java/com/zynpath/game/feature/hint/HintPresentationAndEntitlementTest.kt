@@ -67,8 +67,8 @@ class HintPresentationAndEntitlementTest {
         val result = hintEngine.computeHint(request)
         assertTrue("Solo mode must produce a valid NextStep hint", result is HintResult.NextMove)
         val nextStep = result as HintResult.NextMove
-        // The recommended next step from (0,0) in canonical solution is (0,1)
-        assertEquals(GridPosition(0, 1), nextStep.nextMove)
+        // The recommended next step from (0,0) in canonical solution is (1,0)
+        assertEquals(GridPosition(1, 0), nextStep.nextMove)
     }
 
     @Test
@@ -152,6 +152,6 @@ class HintPresentationAndEntitlementTest {
         // When ad network is unavailable, Solo mode remains 100% playable
         val def = PackagedPuzzles.LEVEL_1
         assertNotNull(def)
-        assertEquals(16, def.gridDimensions.totalCells)
+        assertEquals(36, def.gridDimensions.totalCells)
     }
 }

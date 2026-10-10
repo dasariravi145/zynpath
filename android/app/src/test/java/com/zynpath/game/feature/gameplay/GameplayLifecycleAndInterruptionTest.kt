@@ -8,6 +8,7 @@ import com.zynpath.game.core.puzzle.session.SessionStatus
 import com.zynpath.game.core.puzzle.catalog.CatalogAssetGenerator
 import com.zynpath.game.core.puzzle.catalog.InMemoryAssetLoader
 import com.zynpath.game.core.puzzle.catalog.LevelCatalogRepositoryImpl
+import com.zynpath.game.core.puzzle.catalog.PackagedPuzzles
 import com.zynpath.game.core.puzzle.model.GridPosition
 import com.zynpath.game.fake.FakeProgressRepository
 import com.zynpath.game.fake.FakeGameSessionDao
@@ -120,6 +121,7 @@ class GameplayLifecycleAndInterruptionTest {
                 worldId = 1,
                 levelId = 1,
                 puzzleId = "w1_lvl1",
+                puzzleVersion = PackagedPuzzles.LEVEL_1.puzzleVersion,
                 path = listOf(GridPosition(0, 0), GridPosition(0, 1)),
                 moveCount = 2,
                 elapsedActiveTimeMs = 8500L,

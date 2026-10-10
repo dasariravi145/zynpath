@@ -73,6 +73,24 @@ class OkHttpAuthApiService(
         executeAuthRequest(request)
     }
 
+    override suspend fun createGuestSession(
+        guestUuid: String?,
+        displayName: String?
+    ): NetworkResult<AuthResponseDto> = withContext(ioDispatcher) {
+        val jsonPayload = JSONObject().apply {
+            if (guestUuid != null) put("guestUuid", guestUuid)
+            if (displayName != null) put("displayName", displayName)
+        }.toString()
+
+        val request = Request.Builder()
+            .url("${getBaseUrl()}/auth/guest")
+            .post(jsonPayload.toRequestBody(jsonMediaType))
+            .addHeader("Accept", "application/json")
+            .build()
+
+        executeAuthRequest(request)
+    }
+
     override suspend fun getCurrentPlayer(sessionToken: String): NetworkResult<AuthResponseDto> = withContext(ioDispatcher) {
         val request = Request.Builder()
             .url("${getBaseUrl()}/auth/me")

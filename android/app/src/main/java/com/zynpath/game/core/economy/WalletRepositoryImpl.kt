@@ -38,9 +38,12 @@ class WalletRepositoryImpl @Inject constructor(
         val ACTIVE_PAID_ATTEMPT_UUID = stringPreferencesKey("active_paid_attempt_uuid")
     }
 
-    private suspend fun getActivePlayerId(): String {
-        val prefs = preferencesRepository.userPreferencesFlow.firstOrNull()
-        return prefs?.guestUuid?.ifBlank { "guest_player" } ?: "guest_player"
+    suspend fun getActivePlayerId(): String {
+        val stableId = preferencesRepository.getOrCreateGuestUuid()
+        try {
+            walletDao.reassignPlayerTransactions("guest_player", stableId)
+        } catch (_: Exception) {}
+        return stableId
     }
 
     override val balanceFlow: Flow<Int> = preferencesRepository.userPreferencesFlow
@@ -180,6 +183,7 @@ class WalletRepositoryImpl @Inject constructor(
         val currentGuestId = getActivePlayerId()
         if (currentGuestId != newPlayerId) {
             walletDao.reassignPlayerTransactions(currentGuestId, newPlayerId)
+            preferencesRepository.setGuestUuid(newPlayerId)
         }
     }
 
@@ -191,49 +195,21 @@ class WalletRepositoryImpl @Inject constructor(
             }
     }
 
-    // --- Solo Reward Run Lifecycle ---
+    override suspend fun getRecentTransactions(limit: Int): List<WalletTransactionEntity> {
+        val playerId = getActivePlayerId()
+        return walletDao.getRecentTransactionsList(playerId, limit)
+    }
 
+    override suspend fun getRemainingCoinAds(dateUtc: String): Int = getRemainingDailyCoinAds(dateUtc)
+
+    // --- Solo Reward Run Lifecycle ---
     override suspend fun isLevelPaidAttemptActive(levelId: Int): Boolean {
-        val prefs = dataStore.data.first()
-        val activeLevel = prefs[PreferencesKeys.ACTIVE_PAID_LEVEL_ID] ?: 0
-        return activeLevel == levelId
+        return false // Normal Solo level entry is always free!
     }
 
     override suspend fun commitSoloRewardRunEntry(levelId: Int): Result<Boolean> {
-        // Levels 1..3 are always free
-        if (levelId <= EconomyConfig.SOLO_LEVELS_FREE_UNTIL) {
-            return Result.success(true)
-        }
-
-        // If level already completed, no fee charged and no first-clear reward
-        val isCompleted = levelProgressDao.getLevelProgress(levelId)?.isCompleted == true
-        if (isCompleted) {
-            return Result.success(true)
-        }
-
-        // If paid attempt already committed for this level, retry is free
-        if (isLevelPaidAttemptActive(levelId)) {
-            return Result.success(true)
-        }
-
-        // Deduct entry fee atomically
-        val attemptUuid = UUID.randomUUID().toString()
-        val debitResult = debit(
-            type = "SOLO_ENTRY",
-            amount = EconomyConfig.SOLO_REWARD_RUN_ENTRY_FEE,
-            idempotencyKey = "entry_level_${levelId}_$attemptUuid",
-            metadataJson = "{\"levelId\":$levelId,\"attemptUuid\":\"$attemptUuid\"}"
-        )
-
-        return if (debitResult.isSuccess) {
-            dataStore.edit { prefs ->
-                prefs[PreferencesKeys.ACTIVE_PAID_LEVEL_ID] = levelId
-                prefs[PreferencesKeys.ACTIVE_PAID_ATTEMPT_UUID] = attemptUuid
-            }
-            Result.success(true)
-        } else {
-            Result.failure(debitResult.exceptionOrNull() ?: IllegalStateException("Payment failed"))
-        }
+        // Prompt Section 1 & 2: Normal Solo level entry is always free!
+        return Result.success(true)
     }
 
     override suspend fun clearActivePaidAttempt(levelId: Int) {
@@ -276,7 +252,7 @@ class WalletRepositoryImpl @Inject constructor(
         val key = "daily_login_${dateUtc}_$playerId"
         return credit(
             type = "DAILY_LOGIN",
-            amount = EconomyConfig.DAILY_LOGIN_BASE_REWARD,
+            amount = EconomyConfig.DAILY_LOGIN_CLAIM_REWARD,
             idempotencyKey = key,
             metadataJson = "{\"dateUtc\":\"$dateUtc\"}"
         )
@@ -316,13 +292,13 @@ class WalletRepositoryImpl @Inject constructor(
             }
         }
         if (chosenSlot == 0) {
-            return Result.failure(IllegalStateException("DAILY_LIMIT_REACHED: Maximum 2 coin ads claimed for $dateUtc"))
+            return Result.failure(IllegalStateException("DAILY_LIMIT_REACHED: Maximum ${EconomyConfig.MAX_DAILY_COIN_ADS} coin ads claimed for $dateUtc"))
         }
 
         val key = "coin_ad_${dateUtc}_${chosenSlot}_$playerId"
         return credit(
             type = "COIN_AD_REWARD",
-            amount = EconomyConfig.COIN_AD_REWARD,
+            amount = EconomyConfig.REWARDED_COIN_AD_REWARD,
             idempotencyKey = key,
             metadataJson = "{\"dateUtc\":\"$dateUtc\",\"slot\":$chosenSlot}"
         )
@@ -379,7 +355,7 @@ class WalletRepositoryImpl @Inject constructor(
         val key = "world_clear_${worldId}_$playerId"
         return credit(
             type = "WORLD_COMPLETION",
-            amount = EconomyConfig.WORLD_COMPLETION_BASE_REWARD,
+            amount = EconomyConfig.WORLD_FIRST_CLEAR_REWARD,
             idempotencyKey = key,
             metadataJson = "{\"worldId\":$worldId}"
         )
@@ -394,5 +370,74 @@ class WalletRepositoryImpl @Inject constructor(
             idempotencyKey = key,
             metadataJson = "{\"worldId\":$worldId}"
         )
+    }
+
+    // --- Extra Hints & In-Level Purchases ---
+
+    override suspend fun purchaseExtraHint(levelId: Int): Result<Int> {
+        val idempotencyKey = "hint_purchase_${levelId}_${UUID.randomUUID()}"
+        return debit(
+            type = "EXTRA_HINT_PURCHASE",
+            amount = EconomyConfig.EXTRA_HINT_COIN_PRICE,
+            idempotencyKey = idempotencyKey,
+            metadataJson = "{\"levelId\":$levelId}"
+        )
+    }
+
+    override suspend fun purchaseShuffle(levelId: Int): Result<Int> {
+        val idempotencyKey = "shuffle_purchase_${levelId}_${UUID.randomUUID()}"
+        return debit(
+            type = "SHUFFLE_PURCHASE",
+            amount = EconomyConfig.SHUFFLE_COIN_PRICE,
+            idempotencyKey = idempotencyKey,
+            metadataJson = "{\"levelId\":$levelId}"
+        )
+    }
+
+    // --- Optional Timed Challenge (200 entry, 300 total payout) ---
+
+    override suspend fun commitTimedChallengeEntry(challengeId: String): Result<Int> {
+        val playerId = getActivePlayerId()
+        val idempotencyKey = "tc_entry_${challengeId}_$playerId"
+        return debit(
+            type = "TIMED_CHALLENGE_ENTRY",
+            amount = EconomyConfig.TIMED_CHALLENGE_ENTRY_FEE,
+            idempotencyKey = idempotencyKey,
+            metadataJson = "{\"challengeId\":\"$challengeId\"}"
+        )
+    }
+
+    override suspend fun payoutTimedChallenge(challengeId: String): Result<Int> {
+        val playerId = getActivePlayerId()
+        val idempotencyKey = "tc_payout_${challengeId}_$playerId"
+        return credit(
+            type = "TIMED_CHALLENGE_PAYOUT",
+            amount = EconomyConfig.TIMED_CHALLENGE_TOTAL_PAYOUT,
+            idempotencyKey = idempotencyKey,
+            metadataJson = "{\"challengeId\":\"$challengeId\"}"
+        )
+    }
+
+    override suspend fun isTimedChallengePayoutClaimed(challengeId: String): Boolean {
+        val playerId = getActivePlayerId()
+        return walletDao.hasTransaction("tc_payout_${challengeId}_$playerId")
+    }
+
+    // --- Optional Cosmetics ---
+
+    override suspend fun purchaseCosmetic(cosmeticId: String, price: Int): Result<Int> {
+        val playerId = getActivePlayerId()
+        val idempotencyKey = "cosmetic_${cosmeticId}_$playerId"
+        return debit(
+            type = "COSMETIC_PURCHASE",
+            amount = price,
+            idempotencyKey = idempotencyKey,
+            metadataJson = "{\"cosmeticId\":\"$cosmeticId\"}"
+        )
+    }
+
+    override suspend fun isCosmeticPurchased(cosmeticId: String): Boolean {
+        val playerId = getActivePlayerId()
+        return walletDao.hasTransaction("cosmetic_${cosmeticId}_$playerId")
     }
 }

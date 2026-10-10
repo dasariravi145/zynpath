@@ -33,7 +33,9 @@ private data class ProfileEditorState(
     val showAccountLinkingDialog: Boolean = false,
     val conflictDialogMessage: String? = null,
     val unconfiguredNotice: String? = null,
-    val snackbarMessage: String? = null
+    val snackbarMessage: String? = null,
+    val isGoogleConnecting: Boolean = false,
+    val googleConnectError: String? = null
 )
 
 /**
@@ -84,13 +86,14 @@ class ProfileViewModel @Inject constructor(
         _compEditorAndCosmetics
     ) { profile, stats, authState, session, compEditorAndCosmetics ->
         val (compStats, editor, equippedCosmetics) = compEditorAndCosmetics
-        val isLinked = profile.accountType == AccountType.LINKED
+        val isLinked = profile.accountType == AccountType.LINKED ||
+            (session != null && session.provider == AuthProvider.GOOGLE && !session.isExpired)
         val providerName = session?.provider?.displayName ?: "External Provider"
 
         val linkingState = AccountLinkingState(
-            accountType = profile.accountType,
+            accountType = if (isLinked) AccountType.LINKED else profile.accountType,
             provider = if (isLinked) providerName else null,
-            publicZynpathId = profile.publicZynpathId,
+            publicZynpathId = profile.publicZynpathId ?: session?.publicZynpathId,
             isLinked = isLinked,
             statusMessage = if (isLinked) "Linked with $providerName" else "Guest Account (Local Offline)"
         )
@@ -107,19 +110,19 @@ class ProfileViewModel @Inject constructor(
             accountLinkingState = linkingState,
             isLinkingLoading = authState == AuthState.LINKING || authState == AuthState.SIGNING_IN,
             isGoogleAvailable = authRepository.isProviderConfigured(AuthProvider.GOOGLE),
-            isFacebookAvailable = authRepository.isProviderConfigured(AuthProvider.FACEBOOK),
             conflictDialogMessage = editor.conflictDialogMessage,
             unconfiguredNotice = editor.unconfiguredNotice,
             snackbarMessage = editor.snackbarMessage,
             competitiveStats = compStats,
-            equippedAvatarFrameId = equippedCosmetics.avatarFrameId
+            equippedAvatarFrameId = equippedCosmetics.avatarFrameId,
+            isGoogleConnecting = editor.isGoogleConnecting,
+            googleConnectError = editor.googleConnectError
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = ProfileUiState(
-            isGoogleAvailable = authRepository.isProviderConfigured(AuthProvider.GOOGLE),
-            isFacebookAvailable = authRepository.isProviderConfigured(AuthProvider.FACEBOOK)
+            isGoogleAvailable = authRepository.isProviderConfigured(AuthProvider.GOOGLE)
         )
     )
 
@@ -205,11 +208,37 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun linkWithFacebook(context: Context) {
+    fun connectWithGoogle(context: Context, onSuccess: (() -> Unit)? = null) {
         viewModelScope.launch {
-            val result = authRepository.linkGuestWithFacebook(context)
-            handleLinkResult(result)
+            _editorState.update { it.copy(isGoogleConnecting = true, googleConnectError = null) }
+            val result = authRepository.connectWithGoogle(context)
+            _editorState.update { it.copy(isGoogleConnecting = false) }
+            when (result) {
+                is AuthResult.Success -> {
+                    handleLinkResult(result)
+                    onSuccess?.invoke()
+                }
+                is AuthResult.Error -> {
+                    _editorState.update { it.copy(googleConnectError = result.message) }
+                    handleLinkResult(result)
+                }
+                is AuthResult.ProviderNotConfigured -> {
+                    _editorState.update { it.copy(googleConnectError = "[Google Setup Pending] ${result.message}") }
+                    handleLinkResult(result)
+                }
+                is AuthResult.Conflict -> {
+                    _editorState.update { it.copy(googleConnectError = result.message) }
+                    handleLinkResult(result)
+                }
+                is AuthResult.Cancelled -> {
+                    // User cancelled provider prompt, progress preserved
+                }
+            }
         }
+    }
+
+    fun clearGoogleConnectError() {
+        _editorState.update { it.copy(googleConnectError = null) }
     }
 
     private fun handleLinkResult(result: AuthResult) {

@@ -13,6 +13,7 @@ package com.zynpath.game.core.puzzle.solver
 data class SolverConfiguration(
     val maxSolutions: Int = 1,
     val nodeLimit: Long = 1_000_000L,
+    val maxBacktracks: Long = Long.MAX_VALUE,
     val timeBudgetMs: Long = 10_000L,
     val enablePruning: Boolean = true,
     val cancellationSignal: () -> Boolean = { false }
@@ -20,8 +21,20 @@ data class SolverConfiguration(
     init {
         require(maxSolutions >= 1) { "maxSolutions must be >= 1, but was $maxSolutions" }
         require(nodeLimit >= 1L) { "nodeLimit must be >= 1, but was $nodeLimit" }
+        require(maxBacktracks >= 1L) { "maxBacktracks must be >= 1, but was $maxBacktracks" }
         require(timeBudgetMs >= 1L) { "timeBudgetMs must be >= 1, but was $timeBudgetMs" }
     }
+
+    /**
+     * Converts this solver configuration into an equivalent [SearchBudget].
+     */
+    fun toSearchBudget(): SearchBudget = SearchBudget(
+        maxSearchNodes = nodeLimit,
+        maxBacktracks = maxBacktracks,
+        maxSolutionsToFind = maxSolutions,
+        timeBudgetMs = timeBudgetMs,
+        enablePruning = enablePruning
+    )
 
     companion object {
         /** Default configuration stopping at the first valid solution found. */
@@ -31,7 +44,10 @@ data class SolverConfiguration(
         val FIRST_SOLUTION = SolverConfiguration(maxSolutions = 1)
 
         /** Search for up to 2 solutions to prove or disprove solution uniqueness. */
-        val CHECK_UNIQUENESS = SolverConfiguration(maxSolutions = 2)
+        val CHECK_UNIQUENESS = SolverConfiguration(
+            maxSolutions = 2,
+            timeBudgetMs = 30_000L
+        )
 
         /** Fast budget for interactive or generator candidate screening. */
         val FAST_CHECK = SolverConfiguration(

@@ -21,18 +21,29 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
+interface CoinRewardedAdHandler {
+    val isAdLoaded: StateFlow<Boolean>
+    val isLoading: StateFlow<Boolean>
+    fun preloadAd()
+    fun showCoinRewardedAd(
+        activity: Activity,
+        onRewarded: () -> Unit,
+        onFailed: (String) -> Unit
+    )
+}
+
 @Singleton
 class CoinRewardedAdManager @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : CoinRewardedAdHandler {
     private val tag = "CoinRewardedAdManager"
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val _isAdLoaded = MutableStateFlow(false)
-    val isAdLoaded: StateFlow<Boolean> = _isAdLoaded.asStateFlow()
+    override val isAdLoaded: StateFlow<Boolean> = _isAdLoaded.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    override val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private var rewardedAd: RewardedAd? = null
     private val isShowing = AtomicBoolean(false)
@@ -49,7 +60,7 @@ class CoinRewardedAdManager @Inject constructor(
         }
     }
 
-    fun preloadAd() {
+    override fun preloadAd() {
         if (_isLoading.value || _isAdLoaded.value) return
 
         _isLoading.value = true
@@ -78,7 +89,7 @@ class CoinRewardedAdManager @Inject constructor(
         }
     }
 
-    fun showCoinRewardedAd(
+    override fun showCoinRewardedAd(
         activity: Activity,
         onRewarded: () -> Unit,
         onFailed: (String) -> Unit

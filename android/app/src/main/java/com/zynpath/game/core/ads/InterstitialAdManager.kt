@@ -22,11 +22,13 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
+import com.zynpath.game.core.datastore.PreferencesRepository
 import javax.inject.Singleton
 
 @Singleton
 class InterstitialAdManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val preferencesRepository: PreferencesRepository
 ) {
     private val tag = "InterstitialAdManager"
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -47,6 +49,18 @@ class InterstitialAdManager @Inject constructor(
 
     fun onFirstTimeLevelCompleted() {
         distinctCompletionsCount++
+    }
+
+    suspend fun isMilestoneEligible(distinctCount: Int): Boolean {
+        if (distinctCount <= 0 || distinctCount % EconomyConfig.INTERSTITIAL_SOLO_FREQUENCY != 0) {
+            return false
+        }
+        val lastHandled = preferencesRepository.getLastHandledInterstitialMilestone()
+        return distinctCount > lastHandled
+    }
+
+    suspend fun markMilestoneHandled(milestone: Int) {
+        preferencesRepository.setLastHandledInterstitialMilestone(milestone)
     }
 
     fun isAdReadyToShow(): Boolean {
@@ -96,37 +110,19 @@ class InterstitialAdManager @Inject constructor(
     }
 
     /**
-     * Checks if all cadence and frequency cap constraints are met:
-     * - Cooldown of at least 120 seconds between interstitials.
-     * - Maximum 2 regular interstitials per session.
-     * - Maximum 3 regular interstitials per day.
-     * - Ad must be pre-loaded and ready.
+     * Checks if ad is ready to show.
+     * The approved every-3rd first-time completion rule governs interstitial opportunity cadence.
      */
     fun canShowInterstitial(): Boolean {
-        checkDailyReset()
-
-        val now = System.currentTimeMillis()
-        val cooldownPassed = (now - lastShownTimestampMs) >= (EconomyConfig.INTERSTITIAL_MIN_INTERVAL_SECONDS * 1000L)
-        val withinSessionCap = sessionInterstitialsShown < EconomyConfig.INTERSTITIAL_MAX_PER_SESSION
-        val withinDailyCap = dailyInterstitialsShown < EconomyConfig.INTERSTITIAL_MAX_PER_DAY
-        val adReady = _isAdLoaded.value && interstitialAd != null
-
-        return cooldownPassed && withinSessionCap && withinDailyCap && adReady
+        return _isAdLoaded.value && interstitialAd != null
     }
 
     /**
-     * Evaluates milestone eligibility (every 3rd distinct first-time solo level completion),
-     * ensuring priority of World Completion experience over interstitial ad.
+     * Evaluates milestone eligibility (every 3rd distinct first-time solo level completion).
      */
     fun shouldTriggerMilestoneInterstitial(
-        completedDistinctCount: Int,
-        isWorldCompletion: Boolean
+        completedDistinctCount: Int
     ): Boolean {
-        // World completion celebration always takes precedence
-        if (isWorldCompletion) {
-            return false
-        }
-        // Every 3rd distinct first-time level completion
         val isMilestone = (completedDistinctCount > 0 && completedDistinctCount % EconomyConfig.INTERSTITIAL_SOLO_FREQUENCY == 0)
         return isMilestone && canShowInterstitial()
     }

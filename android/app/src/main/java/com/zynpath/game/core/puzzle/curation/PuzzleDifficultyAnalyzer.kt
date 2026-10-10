@@ -24,7 +24,8 @@ import kotlin.math.log10
  */
 class PuzzleDifficultyAnalyzer(
     private val defaultConfiguration: DifficultyAnalysisConfiguration = DifficultyAnalysisConfiguration.DEFAULT,
-    private val solver: PuzzleSolver = PuzzleSolver()
+    private val solver: PuzzleSolver = PuzzleSolver(),
+    private val advancedAnalyzer: com.zynpath.game.core.puzzle.analysis.AdvancedReasoningAnalyzer = com.zynpath.game.core.puzzle.analysis.AdvancedReasoningAnalyzer()
 ) {
 
     /**
@@ -102,16 +103,27 @@ class PuzzleDifficultyAnalyzer(
         val componentScores = computeComponentScores(metrics)
 
         // 5. Compute Weighted Composite Score
-        val estimatedScore = (
+        val baseScore = (
             config.weightSize * componentScores.getValue("size") +
             config.weightWalls * componentScores.getValue("walls") +
             config.weightCheckpoints * componentScores.getValue("checkpoints") +
             config.weightTurns * componentScores.getValue("turns") +
             config.weightGaps * componentScores.getValue("gaps") +
-            config.weightSolverNodes * componentScores.getValue("solver")
-        ).coerceIn(0.0, 1.0)
+            config.weightSolverNodes * componentScores.getValue("solver") +
+            config.weightDecisions * componentScores.getValue("decisions") +
+            config.weightLookahead * componentScores.getValue("lookahead") +
+            config.weightIsolation * componentScores.getValue("isolation")
+        )
+
+        // If solved by simple naive strategy (greedy/serpentine/wall-follower), cap/discount difficulty
+        val estimatedScore = if (metrics.simpleStrategySolved) {
+            (baseScore * 0.70).coerceIn(0.0, 1.0)
+        } else {
+            (baseScore * 1.15).coerceIn(0.0, 1.0)
+        }
 
         val band = DifficultyBand.fromScore(estimatedScore)
+
 
         return DifficultyAnalysisResult(
             puzzleId = definition.puzzleId,
@@ -235,6 +247,163 @@ class PuzzleDifficultyAnalyzer(
             definition.blockedEdges.any { edge -> edge.first == cell || edge.second == cell }
         }
 
+        // Advanced Reasoning, Decisions, Look-Ahead & Isolation (Section 2)
+        var meaningfulDecisions = 0
+        var forcedMoves = 0
+        var optionalMoves = 0
+        var maxLookAhead = 0
+        var plausibleIncorrectPaths = 0
+        var isolationRisks = 0
+
+        val checkpointsByPos = definition.checkpoints.associateBy { it.position }
+        val visitedSoFar = HashSet<GridPosition>()
+        var nextCpNumber = 2
+        val branchDepths = ArrayList<Int>()
+        var futureCellDepCount = 0
+        var cellReservationCount = 0
+        var longRangeDepCount = 0
+
+        if (pathLength >= 2) {
+            for (step in 0 until pathLength - 1) {
+                val current = pathPositions[step]
+                visitedSoFar.add(current)
+
+                val cpCurrent = checkpointsByPos[current]
+                if (cpCurrent != null && cpCurrent.number >= nextCpNumber) {
+                    nextCpNumber = cpCurrent.number + 1
+                }
+
+                val nextActual = pathPositions[step + 1]
+                val neighbors = definition.graph.getTraversableNeighbors(current)
+                val legalCandidates = ArrayList<GridPosition>()
+
+                for (nbr in neighbors) {
+                    if (nbr in visitedSoFar) continue
+                    val cpNbr = checkpointsByPos[nbr]
+                    if (cpNbr != null && cpNbr.number != nextCpNumber) continue
+                    val remainingRequired = totalCells - visitedSoFar.size
+                    if (nbr == finalCheckpoint && remainingRequired > 1) continue
+                    legalCandidates.add(nbr)
+                }
+
+                if (legalCandidates.size > 1) {
+                    meaningfulDecisions++
+                    optionalMoves++
+
+                    for (alt in legalCandidates) {
+                        if (alt == nextActual) continue
+
+                        // 1. Look-ahead depth check: simulate taking alt and see how many steps it survives
+                        val branchVisited = HashSet(visitedSoFar)
+                        branchVisited.add(alt)
+                        var branchNextCp = nextCpNumber
+                        val cpAtAlt = checkpointsByPos[alt]
+                        if (cpAtAlt != null && cpAtAlt.number >= branchNextCp) {
+                            branchNextCp = cpAtAlt.number + 1
+                        }
+
+                        var depth = 1
+                        var currBranch = alt
+                        var canAdvance = true
+                        while (canAdvance && depth < 8) {
+                            val nextNbrs = definition.graph.getTraversableNeighbors(currBranch)
+                            val branchCands = nextNbrs.filter { bn ->
+                                bn !in branchVisited &&
+                                (checkpointsByPos[bn]?.number == null || checkpointsByPos[bn]?.number == branchNextCp) &&
+                                (bn != finalCheckpoint || (totalCells - branchVisited.size) <= 1)
+                            }
+                            if (branchCands.isEmpty()) {
+                                canAdvance = false
+                            } else {
+                                depth++
+                                val nextStep = branchCands.first()
+                                branchVisited.add(nextStep)
+                                val cpNext = checkpointsByPos[nextStep]
+                                if (cpNext != null && cpNext.number >= branchNextCp) {
+                                    branchNextCp = cpNext.number + 1
+                                }
+                                currBranch = nextStep
+                            }
+                        }
+
+                        branchDepths.add(depth)
+                        if (depth > maxLookAhead) {
+                            maxLookAhead = depth
+                        }
+                        if (depth >= 2) {
+                            plausibleIncorrectPaths++
+                        }
+                        if (depth >= 3) {
+                            longRangeDepCount++
+                        }
+
+                        // 2. Cell isolation & reservation check
+                        val unvisitedAfterAlt = definition.requiredCells.filter { it !in visitedSoFar && it != alt }
+                        if (unvisitedAfterAlt.isNotEmpty()) {
+                            var hasIsolatedCell = false
+                            for (u in unvisitedAfterAlt) {
+                                if (u == finalCheckpoint) continue
+                                val degreeInRemaining = definition.graph.getTraversableNeighbors(u)
+                                    .count { it in unvisitedAfterAlt || it == alt }
+                                if (degreeInRemaining < 2) {
+                                    hasIsolatedCell = true
+                                    break
+                                }
+                            }
+                            if (hasIsolatedCell) {
+                                isolationRisks++
+                                futureCellDepCount++
+                            }
+                        }
+                    }
+                } else {
+                    forcedMoves++
+                }
+
+                // Check cell reservation: if current position has unvisited neighbors that are NOT visited
+                // until after the next checkpoint is reached
+                val nextTargetCpPos = definition.checkpoints.find { it.number == nextCpNumber }?.position
+                if (nextTargetCpPos != null) {
+                    val rawNbrs = definition.graph.getTraversableNeighbors(current)
+                    for (rn in rawNbrs) {
+                        if (rn !in visitedSoFar && rn != nextActual) {
+                            val nextCpIdx = pathPositions.indexOf(nextTargetCpPos)
+                            val rnIdx = pathPositions.indexOf(rn)
+                            if (nextCpIdx in 0..rnIdx) {
+                                cellReservationCount++
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Run simple strategy baseline solver to detect if casual greedy / wall-follower easily solves it
+        val simpleBaseline = com.zynpath.game.core.puzzle.solver.SimpleStrategyBaselineSolver()
+        val simpleEval = simpleBaseline.evaluate(definition)
+
+        // Count deceptive checkpoint pairs: Manhattan distance <= 2, but path gap >= 4
+        var deceptiveCount = 0
+        for (i in 1 until sortedCheckpoints.size) {
+            val cp1 = sortedCheckpoints[i - 1].position
+            val cp2 = sortedCheckpoints[i].position
+            val manhattan = kotlin.math.abs(cp1.row - cp2.row) + kotlin.math.abs(cp1.column - cp2.column)
+            val gap = gaps.getOrNull(i - 1) ?: 0
+            if (manhattan <= 2 && gap >= 4) {
+                deceptiveCount++
+            }
+        }
+
+        val wallPositions = definition.blockedEdges.map {
+            "${it.first.row},${it.first.column}-${it.second.row},${it.second.column}"
+        }.sorted()
+
+        val advResult = advancedAnalyzer.analyze(definition, path)
+        val avgWrongDepth = if (branchDepths.isNotEmpty()) branchDepths.average() else 0.0
+        val forcedRatio = if (pathLength > 0) forcedMoves.toDouble() / pathLength else 0.0
+        val deceptionScore = if (sortedCheckpoints.size > 1) deceptiveCount.toDouble() / (sortedCheckpoints.size - 1) else 0.0
+        val fingerprint = com.zynpath.game.core.puzzle.generator.PuzzleFingerprint.canonicalRepresentation(definition)
+
         return DifficultyMetrics(
             rows = rows,
             columns = cols,
@@ -265,16 +434,57 @@ class PuzzleDifficultyAnalyzer(
             solverBacktracks = solverResult.statistics.backtracks,
             solverPrunedBranches = solverResult.statistics.prunedBranches,
             uniquenessStatus = solverResult.uniqueness,
-            solutionCount = solverResult.solutionCount
+            solutionCount = solverResult.solutionCount,
+            meaningfulRouteDecisions = meaningfulDecisions,
+            forcedMovesCount = forcedMoves,
+            optionalMovesCount = optionalMoves,
+            requiredLookAheadDepth = maxLookAhead,
+            plausibleIncorrectPathsCount = plausibleIncorrectPaths,
+            remainingCellIsolationRisks = isolationRisks,
+            maxSimilarityToPrevious = 0.0,
+            simpleStrategySolved = simpleEval.solvedByAnySimpleStrategy,
+            simpleStrategyName = simpleEval.successfulStrategy,
+            deceptiveCheckpointDistances = deceptiveCount,
+            verifiedCoveredCells = pathLength,
+            wallPositions = wallPositions,
+            forcedMoveRatio = forcedRatio,
+            maxWrongBranchDepth = maxOf(maxLookAhead, advResult.maximumWrongBranchDepth),
+            averageWrongBranchDepth = if (advResult.plausibleWrongBranchCount > 0) advResult.averageWrongBranchDepth else avgWrongDepth,
+            futureCellDependency = maxOf(futureCellDepCount, advResult.futureCellDependencyScore.toInt()),
+            cellReservationRequirement = maxOf(cellReservationCount, advResult.cellReservationScore.toInt()),
+            checkpointDeceptionScore = maxOf(deceptionScore, advResult.checkpointDeceptionScore),
+            longRangeDependencyCount = maxOf(longRangeDepCount, advResult.futureDependencyDistance.toInt()),
+            backtrackingRequirement = solverResult.statistics.backtracks.toInt(),
+            structuralFingerprint = fingerprint,
+            simpleStrategyDetails = simpleEval.details,
+            meaningfulDecisionPointCount = maxOf(meaningfulDecisions, advResult.meaningfulDecisionPointCount),
+            decisionDepth = advResult.decisionDepth,
+            wrongBranchCheckpointDepth = advResult.wrongBranchCheckpointDepth,
+            futureDependencyDistance = advResult.futureDependencyDistance,
+            criticalConnectorCount = advResult.criticalConnectorCount,
+            regionDependencyCount = advResult.regionDependencyCount,
+            solverDeadEnds = maxOf(solverResult.statistics.backtracks, advResult.solverDeadEnds),
+            regionPlanningScore = advResult.regionPlanningScore,
+            cellReservationScore = advResult.cellReservationScore,
+            futureCellDependencyScore = advResult.futureCellDependencyScore,
+            decisionChainDepth = advResult.decisionChainDepth,
+            wrongBranchImpact = advResult.wrongBranchImpact,
+            multiDependencyDecisionCount = advResult.multiDependencyDecisionCount,
+            dependencyChainDepth = advResult.dependencyChainDepth,
+            reservationDuration = advResult.reservationDuration,
+            reservationImportance = advResult.reservationImportance,
+            globalPlanningScore = advResult.globalPlanningScore,
+            selfCutRisk = advResult.selfCutRisk
         )
     }
+
 
     /**
      * Normalizes metrics into sub-scores scaled between 0.0 and 1.0.
      */
     private fun computeComponentScores(m: DifficultyMetrics): Map<String, Double> {
-        // Size score: 4x4 (16 cells) -> 0.0, 8x8 (64 cells) -> 1.0
-        val sizeScore = ((m.totalRequiredCells - 16).coerceAtLeast(0) / (64.0 - 16.0)).coerceIn(0.0, 1.0)
+        // Size score: 6x6 (36 cells) production minimum -> 0.0, 12x12 (144 cells) production maximum -> 1.0
+        val sizeScore = ((m.totalRequiredCells - 36).coerceAtLeast(0) / (144.0 - 36.0)).coerceIn(0.0, 1.0)
 
         // Wall score: World 6 maximum wall limit is 18
         val wallScore = (m.wallCount / 18.0).coerceIn(0.0, 1.0)
@@ -304,7 +514,22 @@ class PuzzleDifficultyAnalyzer(
             "checkpoints" to cpScore,
             "turns" to turnScore,
             "gaps" to gapScore,
-            "solver" to solverScore
+            "solver" to solverScore,
+            "decisions" to (m.meaningfulRouteDecisions.toDouble() / 8.0).coerceIn(0.0, 1.0),
+            "lookahead" to (m.requiredLookAheadDepth.toDouble() / 4.0).coerceIn(0.0, 1.0),
+            "isolation" to (m.remainingCellIsolationRisks.toDouble() / 4.0).coerceIn(0.0, 1.0),
+            "globalPlanning" to m.globalPlanningScore
         )
+    }
+
+    /**
+     * Evaluates and returns the authoritative [DifficultyAnalysis] model adhering to Master Redesign Section 18.
+     */
+    fun analyzeDifficulty(
+        definition: PuzzleDefinition,
+        verifiedSolution: PuzzlePath? = null,
+        solverResult: SolverResult? = null
+    ): DifficultyAnalysis {
+        return analyze(definition, verifiedSolution, solverResult).difficultyAnalysis
     }
 }

@@ -58,6 +58,11 @@ class AccountRepositoryImpl @Inject constructor(
         scope.launch {
             authRepository.currentSession.collect { session ->
                 if (session != null) {
+                    if (session.provider == com.zynpath.game.core.auth.model.AuthProvider.GOOGLE) {
+                        if (!_linkedProviders.value.contains("GOOGLE")) {
+                            _linkedProviders.value = (_linkedProviders.value + "GOOGLE").distinct()
+                        }
+                    }
                     refreshAccountSettings()
                 } else {
                     _accountSettings.value = null

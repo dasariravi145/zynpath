@@ -35,5 +35,6 @@ data class UserPreferences(
     val touchSensitivity: Float = 1.0f,
     val tutorialStage: Int = 1,
     val isTutorialSkipped: Boolean = false,
-    val seenFeatureTips: Set<String> = emptySet()
+    val seenFeatureTips: Set<String> = emptySet(),
+    val lastHandledInterstitialMilestone: Int = 0
 )

@@ -78,7 +78,7 @@ import com.zynpath.game.core.puzzle.model.WorldConfiguration
 fun SoloCampaignCard(
     uiState: HomeUiState,
     onPlayClick: () -> Unit,
-    onWorldMapClick: () -> Unit,
+    onLevelSelectionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isReducedMotion = uiState.isReducedMotion
@@ -227,19 +227,19 @@ fun SoloCampaignCard(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            // World Map / Level Selection Shortcut
+            // Level Selection Shortcut
             Box(
                 modifier = Modifier
                     .size(52.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color(0xEE14244E))
                     .border(1.2.dp, GameElectricCyan.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
-                    .clickable(onClick = onWorldMapClick),
+                    .clickable(onClick = onLevelSelectionClick),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Map,
-                    contentDescription = "World map",
+                    contentDescription = "Select level",
                     tint = GameElectricCyan,
                     modifier = Modifier.size(24.dp)
                 )

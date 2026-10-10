@@ -1,15 +1,12 @@
 package com.zynpath.game.feature.multiplayer
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,16 +34,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +52,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,14 +77,6 @@ import com.zynpath.game.core.designsystem.components.GamePanel
 import com.zynpath.game.core.designsystem.components.GamePrimaryButton
 import com.zynpath.game.core.designsystem.components.GameScreenBackground
 import com.zynpath.game.core.designsystem.components.GameSecondaryButton
-import com.zynpath.game.core.designsystem.theme.AccentGold
-import com.zynpath.game.core.designsystem.theme.CharcoalNavy
-import com.zynpath.game.core.designsystem.theme.DeepIndigo
-import com.zynpath.game.core.designsystem.theme.EmeraldGreen
-import com.zynpath.game.core.designsystem.theme.ErrorRed
-import com.zynpath.game.core.designsystem.theme.GameBorders
-import com.zynpath.game.core.designsystem.theme.GameBrightBlue
-import com.zynpath.game.core.designsystem.theme.GameBrushes
 import com.zynpath.game.core.designsystem.theme.GameDeepNavy
 import com.zynpath.game.core.designsystem.theme.GameElectricCyan
 import com.zynpath.game.core.designsystem.theme.GameGold
@@ -101,49 +88,45 @@ import com.zynpath.game.core.designsystem.theme.GameShapes
 import com.zynpath.game.core.designsystem.theme.GameSuccessGreen
 import com.zynpath.game.core.designsystem.theme.GameTypography
 import com.zynpath.game.core.designsystem.theme.GameWhite
-import com.zynpath.game.core.designsystem.theme.GunmetalCard
-import com.zynpath.game.core.designsystem.theme.MutedSlate
-import com.zynpath.game.core.designsystem.theme.OffWhiteText
-import com.zynpath.game.core.designsystem.theme.PathNeonCyan
-import com.zynpath.game.core.designsystem.theme.WarningAmber
-import com.zynpath.game.core.multiplayer.model.MatchParticipantDto
+import com.zynpath.game.core.multiplayer.model.ClientMatchState
 import com.zynpath.game.core.multiplayer.model.MatchResultDto
+import com.zynpath.game.core.puzzle.model.GridPosition
 import com.zynpath.game.core.puzzle.ui.PuzzleBoard
 
 /**
  * Screen rendering Quick Duel 1v1 online multiplayer experience.
  *
- * Implements Prompt 21:
- * - Functional entry point with competitive overview & auth requirement.
- * - Queue searching state with cancel.
- * - Match Found lobby with player vs real opponent inspection.
- * - Authoritative ready confirmation with 20s window.
- * - Synchronized 3-second countdown.
- * - Live gameplay board reusing PuzzleBoard with dual progress bars and authoritative timer.
- * - Hints strictly disabled; undo & reset preserved.
- * - Full solution submission with dual-win server validation overlay.
- * - Authoritative Result screen showing actual winner, timing, SHA-256 fingerprint, Play Again, and Hub exit.
- * - Forfeit confirmation dialog preventing accidental abandonment.
- * - Ephemeral rate-limited preset reactions.
+ * Implements Quick Duel Complete UX Simplification:
+ * - Instant Quick Match flow: TAP -> SEARCH -> MATCH FOUND -> COUNTDOWN -> GAME.
+ * - Facebook sign-in completely removed from Quick Duel (guest players matchmake directly).
+ * - No heavy pre-match rules or authentication gates blocking matchmaking.
+ * - Fantasy two-portal searching animation.
+ * - Automated 1-2s VS presentation with cyan/gold auras.
+ * - Prominent 3-2-1-GO synchronized countdown.
+ * - Live gameplay on certified 11x11/12x12 expert puzzles with compact HUD.
+ * - Concise result screen with instant Play Again.
+ * - Compact rules modal accessible via small ⓘ icon.
  */
 @Composable
 fun QuickDuelScreen(
     onBackClick: () -> Unit,
-    onNavigateToSignIn: () -> Unit,
+    onNavigateToSignIn: () -> Unit = {},
     viewModel: QuickDuelViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showRulesModal by remember { mutableStateOf(false) }
+
+    // If entered in IDLE state (or after leaving match), return to home
+    LaunchedEffect(state.clientMatchState) {
+        if (state.clientMatchState == ClientMatchState.IDLE) {
+            onBackClick()
+        }
+    }
 
     // Handle Android hardware/gesture back
     BackHandler {
         if (state.isActiveGameplay) {
             viewModel.requestForfeit()
-        } else if (state.isSearching) {
-            viewModel.cancelSearching()
-            onBackClick()
-        } else if (state.isMatchFound) {
-            viewModel.leaveMatch()
-            onBackClick()
         } else {
             viewModel.leaveMatch()
             onBackClick()
@@ -187,6 +170,40 @@ fun QuickDuelScreen(
         )
     }
 
+    // Compact Rules Dialog (Sections 19 & 20)
+    if (showRulesModal) {
+        AlertDialog(
+            onDismissRequest = { showRulesModal = false },
+            title = {
+                Text(
+                    text = "QUICK DUEL",
+                    fontWeight = FontWeight.Bold,
+                    color = GameGoldHighlight,
+                    style = GameTypography.screenHeading
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CompactRuleBullet("Same puzzle for both players")
+                    CompactRuleBullet("Cover every cell")
+                    CompactRuleBullet("Numbers in order")
+                    CompactRuleBullet("First valid finish wins")
+                    CompactRuleBullet("No competitive hints")
+                }
+            },
+            confirmButton = {
+                GamePrimaryButton(
+                    text = "CLOSE",
+                    onClick = { showRulesModal = false },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            containerColor = Color(0xF207142D),
+            shape = GameShapes.dialog,
+            modifier = Modifier.border(BorderStroke(1.2.dp, GameRoyalBlue.copy(alpha = 0.6f)), GameShapes.dialog)
+        )
+    }
+
     GameScreenBackground(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
@@ -194,9 +211,13 @@ fun QuickDuelScreen(
                     isConnected = state.isConnected,
                     isAuthenticated = state.isAuthenticated,
                     isActiveGameplay = state.isActiveGameplay,
+                    onInfoClick = { showRulesModal = true },
                     onBack = {
                         if (state.isActiveGameplay) {
                             viewModel.requestForfeit()
+                        } else if (state.isSearching || state.clientMatchState == ClientMatchState.IDLE) {
+                            viewModel.cancelSearching()
+                            onBackClick()
                         } else {
                             viewModel.leaveMatch()
                             onBackClick()
@@ -207,103 +228,91 @@ fun QuickDuelScreen(
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets.safeDrawing
         ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when {
-                // 1. Authoritative Completed Result Screen
-                state.isCompleted -> {
-                    QuickDuelResultContent(
-                        state = state,
-                        onPlayAgain = { viewModel.playAgain() },
-                        onReturnToHub = {
-                            viewModel.leaveMatch()
-                            onBackClick()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when {
+                    // 1. Authoritative Completed Result Screen
+                    state.isCompleted -> {
+                        QuickDuelResultContent(
+                            state = state,
+                            onPlayAgain = {
+                                viewModel.leaveMatch()
+                                onBackClick()
+                            },
+                            onReturnToHub = {
+                                viewModel.leaveMatch()
+                                onBackClick()
+                            }
+                        )
+                    }
+
+                    // 2. Synchronized 3-second Countdown Overlay
+                    state.isCountdown -> {
+                        QuickDuelCountdownContent(seconds = state.countdownSeconds ?: 3)
+                    }
+
+                    // 3. Active Gameplay Board
+                    state.isActiveGameplay -> {
+                        QuickDuelActiveGameplayContent(
+                            state = state,
+                            onCellEntered = { viewModel.onCellEntered(it) },
+                            onUndo = { viewModel.undo() },
+                            onReset = { viewModel.reset() },
+                            onForfeit = { viewModel.requestForfeit() },
+                            onSendReaction = { viewModel.sendReaction(it) }
+                        )
+                    }
+
+                    // 4. Cancelled or Error State
+                    state.isCancelled || state.isError -> {
+                        QuickDuelErrorContent(
+                            errorMessage = state.errorMessage ?: "The match was cancelled or terminated.",
+                            onReturnToHub = {
+                                viewModel.leaveMatch()
+                                onBackClick()
+                            },
+                            onTryAgain = {
+                                viewModel.leaveMatch()
+                                onBackClick()
+                            }
+                        )
+                    }
+
+                    // 5. Preparing Active Board State
+                    else -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = GameElectricCyan,
+                                modifier = Modifier.size(36.dp),
+                                strokeWidth = 2.5.dp
+                            )
                         }
+                    }
+                }
+
+                // Server-side completion validation modal overlay
+                if (state.isValidatingCompletion) {
+                    QuickDuelValidationOverlay()
+                }
+
+                // Ephemeral floating reaction badge
+                state.activeReactionPopup?.let { reaction ->
+                    QuickDuelReactionBadge(
+                        reaction = reaction,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 16.dp)
                     )
                 }
-
-                // 2. Synchronized 3-second Countdown Overlay
-                state.isCountdown -> {
-                    QuickDuelCountdownContent(seconds = state.countdownSeconds ?: 3)
-                }
-
-                // 3. Active Gameplay Board
-                state.isActiveGameplay -> {
-                    QuickDuelActiveGameplayContent(
-                        state = state,
-                        onCellEntered = { viewModel.onCellEntered(it) },
-                        onUndo = { viewModel.undo() },
-                        onReset = { viewModel.reset() },
-                        onForfeit = { viewModel.requestForfeit() },
-                        onSendReaction = { viewModel.sendReaction(it) }
-                    )
-                }
-
-                // 4. Match Found Lobby (Waiting for Ready / Opponent)
-                state.isMatchFound -> {
-                    QuickDuelLobbyContent(
-                        state = state,
-                        onMarkReady = { viewModel.markReady() },
-                        onLeaveMatch = {
-                            viewModel.leaveMatch()
-                            onBackClick()
-                        }
-                    )
-                }
-
-                // 5. Searching in Queue
-                state.isSearching -> {
-                    QuickDuelSearchingContent(
-                        ticketId = state.ticketStatus?.ticketId,
-                        onCancel = { viewModel.cancelSearching() }
-                    )
-                }
-
-                // 6. Match Cancelled or Error
-                state.isCancelled || state.isError -> {
-                    QuickDuelErrorContent(
-                        errorMessage = state.errorMessage ?: "The match was cancelled or terminated.",
-                        onReturnToHub = {
-                            viewModel.leaveMatch()
-                            onBackClick()
-                        },
-                        onTryAgain = {
-                            viewModel.clearError()
-                            viewModel.startSearching()
-                        }
-                    )
-                }
-
-                // 7. Idle / Entry Point
-                else -> {
-                    QuickDuelEntryPointContent(
-                        state = state,
-                        onFindOpponent = { viewModel.startSearching() },
-                        onNavigateToSignIn = onNavigateToSignIn
-                    )
-                }
-            }
-
-            // Server-side completion validation modal overlay
-            if (state.isValidatingCompletion) {
-                QuickDuelValidationOverlay()
-            }
-
-            // Ephemeral floating reaction badge
-            state.activeReactionPopup?.let { reaction ->
-                QuickDuelReactionBadge(
-                    reaction = reaction,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp)
-                )
             }
         }
     }
-}
 }
 
 @Composable
@@ -311,6 +320,7 @@ private fun QuickDuelTopBar(
     isConnected: Boolean,
     isAuthenticated: Boolean,
     isActiveGameplay: Boolean,
+    onInfoClick: () -> Unit,
     onBack: () -> Unit
 ) {
     Row(
@@ -333,26 +343,41 @@ private fun QuickDuelTopBar(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "QUICK DUEL 1v1",
+                text = "QUICK DUEL",
                 style = GameTypography.hudLabel.copy(letterSpacing = 1.2.sp),
                 color = GameWhite,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = if (isActiveGameplay) "Live Match in Progress" else "Dual-Win Verified Online Race",
+                text = if (isActiveGameplay) "Live Match in Progress" else "Race another player on the same puzzle.",
                 style = GameTypography.secondaryInfo,
-                color = if (isActiveGameplay) GameElectricCyan else GameSecondaryText
+                color = if (isActiveGameplay) GameElectricCyan else GameSecondaryText,
+                maxLines = 1
             )
         }
 
-        // Connection feedback:
-        // When unauthenticated, unauthenticated WebSocket is disconnected by design.
-        // Do NOT label offline. Show neutral "Online Arena".
-        // When authenticated: "Live" (green) if connected, "Connecting..." (amber) if reconnecting.
+        // Small ⓘ info action button (Section 19)
+        IconButton(
+            onClick = onInfoClick,
+            modifier = Modifier
+                .size(36.dp)
+                .background(GameMidnightBlue, CircleShape)
+                .border(BorderStroke(1.dp, GameRoyalBlue.copy(alpha = 0.6f)), CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Duel Rules",
+                tint = GameElectricCyan,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Connection feedback
         val (statusText, statusColor) = when {
-            !isAuthenticated -> Pair("Online Arena", GameRoyalBlue)
             isConnected -> Pair("Live Arena", GameSuccessGreen)
-            else -> Pair("Connecting...", WarningAmber)
+            else -> Pair("Online Arena", GameRoyalBlue)
         }
 
         Row(
@@ -378,672 +403,52 @@ private fun QuickDuelTopBar(
     }
 }
 
-/**
- * Section 7: Quick Duel Entry Point View.
- */
 @Composable
-private fun QuickDuelEntryPointContent(
-    state: QuickDuelUiState,
-    onFindOpponent: () -> Unit,
-    onNavigateToSignIn: () -> Unit
-) {
-    val scrollState = rememberScrollState()
-    var isFindingMatch by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Mode Header Panel
-        GamePanel(
-            modifier = Modifier.fillMaxWidth(),
-            border = BorderStroke(1.2.dp, GameElectricCyan.copy(alpha = 0.5f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(GameElectricCyan.copy(alpha = 0.16f), CircleShape)
-                            .border(BorderStroke(1.dp, GameElectricCyan.copy(alpha = 0.6f)), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = GameElectricCyan,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "QUICK DUEL 1v1",
-                            style = GameTypography.hudLabel,
-                            fontWeight = FontWeight.Bold,
-                            color = GameWhite
-                        )
-                        Text(
-                            text = "Real-Time Competitive Puzzle Race",
-                            style = GameTypography.secondaryInfo,
-                            color = GameElectricCyan
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Race head-to-head against another real player on identical solver-verified puzzles. Both participants receive the same continuous path puzzle. The first player to cover 100% of required cells in valid checkpoint order authoritatively validated by the server wins!",
-                    style = GameTypography.secondaryInfo,
-                    color = GameWhite.copy(alpha = 0.85f),
-                    lineHeight = 19.sp
-                )
-            }
-        }
-
-        // Player vs Opponent Preview Showcase
-        val localName = state.authSession?.displayName ?: "Guest Player"
-        val localSubtitle = state.authSession?.let { "ID: ${it.publicZynpathId.take(8)}..." } ?: "Local Session"
-
-        PlayerVsOpponentShowcase(
-            localName = localName,
-            localSubtitle = localSubtitle,
-            opponentName = null,
-            opponentSubtitle = null,
-            isWaiting = true
-        )
-
-        // Dual-Win Competitive Rules
-        GamePanel(
-            modifier = Modifier.fillMaxWidth(),
-            border = BorderStroke(1.dp, GameRoyalBlue.copy(alpha = 0.45f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "DUAL-WIN RULES",
-                    style = GameTypography.hudLabel.copy(fontSize = 13.sp),
-                    fontWeight = FontWeight.Bold,
-                    color = GameGoldHighlight
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                CompetitiveRuleItem("1", "Start at Checkpoint 1 and end at the highest checkpoint.")
-                CompetitiveRuleItem("2", "Connect numbered checkpoints in strict ascending sequence.")
-                CompetitiveRuleItem("3", "Move orthogonally and cover 100% of required cells.")
-                CompetitiveRuleItem("4", "Never cross blocked walls or revisit cells on forward moves.")
-                CompetitiveRuleItem("5", "Competitive hint assistance is strictly disabled.")
-            }
-        }
-
-        // Authentication Gate for Guests
-        if (!state.isAuthenticated) {
-            GamePanel(
-                modifier = Modifier.fillMaxWidth(),
-                border = BorderStroke(1.2.dp, GameGold.copy(alpha = 0.6f))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = GameGoldHighlight
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Sign-In Required for Online Play",
-                            style = GameTypography.bodyEmphasized,
-                            fontWeight = FontWeight.Bold,
-                            color = GameGoldHighlight
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "To safeguard competitive integrity and prevent fake match outcomes, online 1v1 duels require a signed-in account. Guest progress and achievements remain safe and link automatically upon sign-in.",
-                        style = GameTypography.secondaryInfo,
-                        color = GameSecondaryText
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    GameSecondaryButton(
-                        text = "Sign In to Play Online",
-                        onClick = onNavigateToSignIn,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Matchmaking Button (Gold Primary Action with Double-Tap Guard)
-        val canSearch = state.isAuthenticated && state.isConnected && !isFindingMatch
-        val searchButtonText = when {
-            !state.isAuthenticated -> "Sign In to Matchmake"
-            !state.isConnected -> "Connecting to Arena..."
-            isFindingMatch -> "Searching..."
-            else -> "FIND MATCH"
-        }
-
-        GamePrimaryButton(
-            text = searchButtonText,
-            onClick = {
-                if (canSearch) {
-                    isFindingMatch = true
-                    onFindOpponent()
-                }
-            },
-            enabled = canSearch,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-private fun CompetitiveRuleItem(number: String, description: String) {
+private fun CompactRuleBullet(text: String) {
     Row(
-        modifier = Modifier.padding(vertical = 3.dp),
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
-                .size(18.dp)
-                .background(GameRoyalBlue.copy(alpha = 0.35f), CircleShape)
-                .border(BorderStroke(1.dp, GameElectricCyan.copy(alpha = 0.5f)), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = number,
-                color = GameElectricCyan,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+                .size(6.dp)
+                .background(GameElectricCyan, CircleShape)
+        )
         Spacer(modifier = Modifier.width(10.dp))
         Text(
-            text = description,
-            style = GameTypography.secondaryInfo,
-            color = GameWhite.copy(alpha = 0.85f)
+            text = text,
+            style = GameTypography.bodyMedium,
+            color = GameWhite
         )
     }
 }
 
-@Composable
-private fun RuleItem(number: String, description: String) {
-    CompetitiveRuleItem(number = number, description = description)
-}
+
+
+
 
 /**
- * Section 9 & 10: Searching View with radar animation and cancellation.
- */
-@Composable
-private fun QuickDuelSearchingContent(
-    ticketId: String?,
-    onCancel: () -> Unit
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "radarPulse")
-    val pulseScale1 by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
-        targetValue = 1.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "radarScale1"
-    )
-    val pulseAlpha1 by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "radarAlpha1"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Radar Sonar Searching Indicator
-        Box(
-            modifier = Modifier.size(140.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            // Expanding pulse wave
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .scale(pulseScale1)
-                    .border(BorderStroke(1.5.dp, GameElectricCyan.copy(alpha = pulseAlpha1)), CircleShape)
-            )
-
-            // Inner cyan sphere
-            Box(
-                modifier = Modifier
-                    .size(90.dp)
-                    .background(GameElectricCyan.copy(alpha = 0.12f), CircleShape)
-                    .border(BorderStroke(2.dp, GameElectricCyan), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    color = GameElectricCyan,
-                    modifier = Modifier.size(52.dp),
-                    strokeWidth = 3.dp
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Text(
-            text = "SEARCHING FOR OPPONENT",
-            style = GameTypography.hudLabel.copy(letterSpacing = 1.2.sp),
-            fontWeight = FontWeight.Bold,
-            color = GameWhite,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Matching with another authenticated player.\nBoth players will receive the exact same solver-verified puzzle.",
-            style = GameTypography.secondaryInfo,
-            color = GameSecondaryText,
-            textAlign = TextAlign.Center
-        )
-
-        ticketId?.let { id ->
-            Spacer(modifier = Modifier.height(14.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(GameRoyalBlue.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                    .border(BorderStroke(1.dp, GameRoyalBlue.copy(alpha = 0.5f)), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = "QUEUE TICKET: ",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = GameSecondaryText,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "${id.take(10)}...",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = GameElectricCyan,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(36.dp))
-
-        GameSecondaryButton(
-            text = "Cancel Matchmaking",
-            onClick = onCancel,
-            modifier = Modifier.fillMaxWidth(0.7f)
-        )
-    }
-}
-
-/**
- * Section 13-15: Match Found Lobby Screen.
- */
-@Composable
-private fun QuickDuelLobbyContent(
-    state: QuickDuelUiState,
-    onMarkReady: () -> Unit,
-    onLeaveMatch: () -> Unit
-) {
-    val session = state.currentSession ?: return
-    val local = state.localParticipant
-    val opponent = state.opponentParticipant
-
-    val scrollState = rememberScrollState()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Match Found Header Panel
-        GamePanel(
-            modifier = Modifier.fillMaxWidth(),
-            border = BorderStroke(1.2.dp, GameSuccessGreen.copy(alpha = 0.6f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(GameSuccessGreen, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "MATCH FOUND!",
-                            style = GameTypography.hudLabel,
-                            fontWeight = FontWeight.Bold,
-                            color = GameSuccessGreen
-                        )
-                    }
-                    Text(
-                        text = "ID: ${session.matchId.take(8)}...",
-                        style = GameTypography.secondaryInfo,
-                        color = GameSecondaryText
-                    )
-                }
-
-                session.puzzle?.let { puzzle ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Assigned Puzzle: ${puzzle.width}x${puzzle.height} • Checkpoints: ${puzzle.checkpoints.size} • SHA: ${puzzle.fingerprint.take(8)}...",
-                        style = GameTypography.secondaryInfo,
-                        color = GameGoldHighlight
-                    )
-                }
-            }
-        }
-
-        // Versus Comparison Showcase
-        PlayerVsOpponentShowcase(
-            localName = local?.displayName ?: "You",
-            localSubtitle = local?.publicZynpathId ?: "",
-            opponentName = opponent?.displayName ?: "Opponent",
-            opponentSubtitle = opponent?.publicZynpathId ?: "",
-            isWaiting = false,
-            localReady = local?.isReady == true,
-            opponentReady = opponent?.isReady == true
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Ready Confirmation / Waiting Indicator
-        if (local?.isReady != true) {
-            GamePrimaryButton(
-                text = "I'M READY!",
-                onClick = onMarkReady,
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            GamePanel(
-                modifier = Modifier.fillMaxWidth(),
-                border = BorderStroke(1.2.dp, GameSuccessGreen.copy(alpha = 0.5f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(
-                        color = GameSuccessGreen,
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.5.dp
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = "You are Ready! Waiting for rival confirmation...",
-                        style = GameTypography.bodyEmphasized,
-                        color = GameSuccessGreen,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-
-        GameSecondaryButton(
-            text = "Leave Match",
-            onClick = onLeaveMatch,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-private fun GlowingVsEmblem(
-    modifier: Modifier = Modifier,
-    isPulsing: Boolean = true
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "vsPulseTransition")
-    val glowScale by if (isPulsing) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.94f,
-            targetValue = 1.10f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1200, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "vsGlowScale"
-        )
-    } else {
-        remember { mutableStateOf(1f) }
-    }
-
-    Box(
-        modifier = modifier.size(52.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // Outer cyan glow ring
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .scale(glowScale)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            GameElectricCyan.copy(alpha = 0.35f),
-                            Color.Transparent
-                        )
-                    ),
-                    CircleShape
-                )
-        )
-
-        // Core VS Badge with gold border
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(GameMidnightBlue, GameDeepNavy)
-                    ),
-                    CircleShape
-                )
-                .border(BorderStroke(1.5.dp, GameGoldHighlight), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "VS",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Black,
-                color = GameGoldHighlight,
-                letterSpacing = 1.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlayerCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    subtitle: String,
-    isOpponent: Boolean,
-    isWaiting: Boolean = false,
-    readyStatus: Boolean? = null
-) {
-    val borderColor = when {
-        isWaiting -> GameRoyalBlue.copy(alpha = 0.35f)
-        isOpponent -> GameGold.copy(alpha = 0.6f)
-        else -> GameElectricCyan.copy(alpha = 0.7f)
-    }
-    val iconTint = when {
-        isWaiting -> GameSecondaryText.copy(alpha = 0.5f)
-        isOpponent -> GameGoldHighlight
-        else -> GameElectricCyan
-    }
-
-    GamePanel(
-        modifier = modifier,
-        border = BorderStroke(1.2.dp, borderColor)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(GameMidnightBlue, CircleShape)
-                    .border(BorderStroke(1.5.dp, borderColor), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = title,
-                style = GameTypography.bodyEmphasized,
-                fontWeight = FontWeight.Bold,
-                color = if (isWaiting) GameSecondaryText else GameWhite,
-                maxLines = 1,
-                textAlign = TextAlign.Center
-            )
-
-            Text(
-                text = subtitle,
-                style = GameTypography.secondaryInfo,
-                color = if (isWaiting) GameSecondaryText.copy(alpha = 0.6f) else GameElectricCyan,
-                maxLines = 1,
-                textAlign = TextAlign.Center
-            )
-
-            if (readyStatus != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                ReadyBadge(isReady = readyStatus)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayerVsOpponentShowcase(
-    localName: String,
-    localSubtitle: String,
-    opponentName: String?,
-    opponentSubtitle: String?,
-    isWaiting: Boolean,
-    localReady: Boolean? = null,
-    opponentReady: Boolean? = null,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        PlayerCard(
-            modifier = Modifier.weight(1f),
-            title = localName,
-            subtitle = localSubtitle,
-            isOpponent = false,
-            readyStatus = localReady
-        )
-
-        GlowingVsEmblem(
-            modifier = Modifier.padding(horizontal = 6.dp),
-            isPulsing = isWaiting || localReady == true
-        )
-
-        PlayerCard(
-            modifier = Modifier.weight(1f),
-            title = opponentName ?: "Awaiting Rival",
-            subtitle = opponentSubtitle ?: "Neutral Silhouette",
-            isOpponent = true,
-            isWaiting = isWaiting,
-            readyStatus = opponentReady
-        )
-    }
-}
-
-@Composable
-private fun ReadyBadge(isReady: Boolean) {
-    if (isReady) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .background(GameSuccessGreen.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                .border(BorderStroke(1.dp, GameSuccessGreen.copy(alpha = 0.6f)), RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 3.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = GameSuccessGreen,
-                modifier = Modifier.size(13.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "READY",
-                color = GameSuccessGreen,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    } else {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .background(GameRoyalBlue.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
-                .border(BorderStroke(1.dp, GameRoyalBlue.copy(alpha = 0.4f)), RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 3.dp)
-        ) {
-            Text(
-                text = "WAITING...",
-                color = GameSecondaryText,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-/**
- * Section 18: Synchronized 3-second Countdown Overlay.
+ * Synchronized 3-second Countdown Overlay (Sections 14 & 27).
  */
 @Composable
 private fun QuickDuelCountdownContent(seconds: Int) {
     val infiniteTransition = rememberInfiniteTransition(label = "countdownPulse")
     val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.12f,
+        initialValue = 0.85f,
+        targetValue = 1.18f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
+            animation = tween(500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "countdownScale"
     )
 
+    val displayText = if (seconds > 0) "$seconds" else "GO!"
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(GameDeepNavy.copy(alpha = 0.95f)),
+            .background(GameDeepNavy.copy(alpha = 0.96f)),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -1051,36 +456,36 @@ private fun QuickDuelCountdownContent(seconds: Int) {
             modifier = Modifier.padding(24.dp)
         ) {
             Text(
-                text = "MATCH STARTS IN",
-                style = GameTypography.hudLabel.copy(letterSpacing = 2.5.sp),
+                text = "GET READY",
+                style = GameTypography.hudLabel.copy(letterSpacing = 3.sp),
                 fontWeight = FontWeight.Bold,
                 color = GameElectricCyan
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Box(
                 modifier = Modifier
-                    .size(130.dp)
+                    .size(150.dp)
                     .scale(pulseScale)
                     .background(
                         Brush.radialGradient(
                             listOf(
-                                GameGoldHighlight.copy(alpha = 0.25f),
+                                GameGoldHighlight.copy(alpha = 0.35f),
                                 Color.Transparent
                             )
                         ),
                         CircleShape
                     )
-                    .border(BorderStroke(2.dp, GameGoldHighlight), CircleShape),
+                    .border(BorderStroke(2.5.dp, GameGoldHighlight), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "$seconds",
-                    fontSize = 80.sp,
+                    text = displayText,
+                    fontSize = if (seconds > 0) 86.sp else 64.sp,
                     fontWeight = FontWeight.Black,
                     color = GameGoldHighlight
                 )
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "Trace every cell in checkpoint order!",
                 style = GameTypography.bodyEmphasized,
@@ -1092,12 +497,12 @@ private fun QuickDuelCountdownContent(seconds: Int) {
 }
 
 /**
- * Section 19: Live Dual-Win Gameplay Screen.
+ * Live Dual-Win Gameplay Screen (Sections 34 & 35).
  */
 @Composable
 private fun QuickDuelActiveGameplayContent(
     state: QuickDuelUiState,
-    onCellEntered: (com.zynpath.game.core.puzzle.model.GridPosition) -> Boolean,
+    onCellEntered: (GridPosition) -> Boolean,
     onUndo: () -> Unit,
     onReset: () -> Unit,
     onForfeit: () -> Unit,
@@ -1390,6 +795,70 @@ private fun QuickDuelActiveGameplayContent(
 }
 
 @Composable
+private fun GlowingVsEmblem(
+    modifier: Modifier = Modifier,
+    isPulsing: Boolean = true
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "vsPulseTransition")
+    val glowScale by if (isPulsing) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.94f,
+            targetValue = 1.10f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "vsGlowScale"
+        )
+    } else {
+        remember { mutableStateOf(1f) }
+    }
+
+    Box(
+        modifier = modifier.size(52.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Outer cyan glow ring
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .scale(glowScale)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            GameElectricCyan.copy(alpha = 0.35f),
+                            Color.Transparent
+                        )
+                    ),
+                    CircleShape
+                )
+        )
+
+        // Core VS Badge with gold border
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(GameMidnightBlue, GameDeepNavy)
+                    ),
+                    CircleShape
+                )
+                .border(BorderStroke(1.5.dp, GameGoldHighlight), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "VS",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Black,
+                color = GameGoldHighlight,
+                letterSpacing = 1.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun ReactionButton(
     emoji: String,
     code: String,
@@ -1412,7 +881,7 @@ private fun ReactionButton(
 }
 
 /**
- * Section 26: Server-side dual-win validation overlay.
+ * Server-side dual-win validation overlay.
  */
 @Composable
 private fun QuickDuelValidationOverlay() {
@@ -1458,7 +927,7 @@ private fun QuickDuelValidationOverlay() {
 }
 
 /**
- * Section 31-33: Authoritative Result Screen.
+ * Concise Authoritative Result Screen (Sections 36 & 37).
  */
 @Composable
 private fun QuickDuelResultContent(
@@ -1622,7 +1091,7 @@ private fun QuickDuelResultContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Play Again Button (Gold Primary Action with Double-Tap Guard)
+        // Play Again Button (Instantly searches again without friction)
         GamePrimaryButton(
             text = if (isPlayAgainTapped) "STARTING MATCHMAKING..." else "PLAY AGAIN",
             onClick = {
@@ -1635,9 +1104,9 @@ private fun QuickDuelResultContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Return to Hub Button
+        // Return to Hub / Back Button
         GameSecondaryButton(
-            text = "RETURN TO MULTIPLAYER HUB",
+            text = "BACK",
             onClick = onReturnToHub,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1685,16 +1154,8 @@ private fun ResultStatRow(
     }
 }
 
-private fun MatchResultDto.formattedTime(): String {
-    return if (solveTimeMs != null && solveTimeMs > 0) {
-        String.format("%.2fs", solveTimeMs / 1000.0)
-    } else {
-        "--"
-    }
-}
-
 /**
- * Section 49: Error and Cancelled State View.
+ * Error and Timeout View (Sections 30 & 31).
  */
 @Composable
 private fun QuickDuelErrorContent(
@@ -1702,6 +1163,33 @@ private fun QuickDuelErrorContent(
     onReturnToHub: () -> Unit,
     onTryAgain: () -> Unit
 ) {
+    val isTimeout = errorMessage.contains("timeout", ignoreCase = true) ||
+            errorMessage.contains("no rival", ignoreCase = true) ||
+            errorMessage.contains("no opponent", ignoreCase = true) ||
+            errorMessage.contains("timed out", ignoreCase = true)
+
+    val isConnection = errorMessage.contains("connection", ignoreCase = true) ||
+            errorMessage.contains("network", ignoreCase = true) ||
+            errorMessage.contains("offline", ignoreCase = true) ||
+            errorMessage.contains("disconnect", ignoreCase = true)
+
+    val title = when {
+        isTimeout -> "NO RIVAL FOUND"
+        isConnection -> "CONNECTION LOST"
+        else -> "MATCH NOTICE"
+    }
+
+    val actionText = when {
+        isTimeout -> "SEARCH AGAIN"
+        else -> "TRY AGAIN"
+    }
+
+    val displayDesc = when {
+        isTimeout -> "No rival was matched within the queue window. Please try searching again."
+        isConnection -> "Connection to the arena server was interrupted. Check your network and try again."
+        else -> errorMessage
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1735,7 +1223,7 @@ private fun QuickDuelErrorContent(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "MATCHMAKING NOTICE",
+                    text = title,
                     style = GameTypography.screenHeading,
                     fontWeight = FontWeight.Black,
                     color = GameWhite,
@@ -1745,7 +1233,7 @@ private fun QuickDuelErrorContent(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = errorMessage,
+                    text = displayDesc,
                     style = GameTypography.bodyMedium,
                     color = GameSecondaryText,
                     textAlign = TextAlign.Center,
@@ -1755,7 +1243,7 @@ private fun QuickDuelErrorContent(
                 Spacer(modifier = Modifier.height(28.dp))
 
                 GamePrimaryButton(
-                    text = "FIND NEW DUEL",
+                    text = actionText,
                     onClick = onTryAgain,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1763,7 +1251,7 @@ private fun QuickDuelErrorContent(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 GameSecondaryButton(
-                    text = "RETURN TO HUB",
+                    text = "BACK",
                     onClick = onReturnToHub,
                     modifier = Modifier.fillMaxWidth()
                 )

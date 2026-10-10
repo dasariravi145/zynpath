@@ -29,71 +29,73 @@ data class WorldDefinition(
 
 object WorldConfiguration {
 
+    const val LEVELS_PER_WORLD: Int = 300
+
     val WORLDS: List<WorldDefinition> = listOf(
         WorldDefinition(
             worldId = 1,
             name = "Learn the Path",
-            gridSize = 4,
+            gridSize = 6,
             hasWalls = false,
             startLevel = 1,
-            endLevel = 20,
+            endLevel = 300,
             minPreviousWorldCompletedToUnlock = 0,
             accentColorHex = 0xFF52B788 // ForestMint
         ),
         WorldDefinition(
             worldId = 2,
             name = "Longer Connections",
-            gridSize = 5,
-            hasWalls = false,
-            startLevel = 21,
-            endLevel = 50,
+            gridSize = 7,
+            hasWalls = true,
+            startLevel = 301,
+            endLevel = 600,
             minPreviousWorldCompletedToUnlock = 20,
             accentColorHex = 0xFF4361EE // AccentBlue
         ),
         WorldDefinition(
             worldId = 3,
             name = "Wall Challenge",
-            gridSize = 5,
+            gridSize = 8,
             hasWalls = true,
-            startLevel = 51,
-            endLevel = 100,
+            startLevel = 601,
+            endLevel = 900,
             minPreviousWorldCompletedToUnlock = 30,
             accentColorHex = 0xFFE63946 // WallCrimson
         ),
         WorldDefinition(
             worldId = 4,
             name = "Complex Routes",
-            gridSize = 6,
-            hasWalls = false,
-            startLevel = 101,
-            endLevel = 150,
+            gridSize = 9,
+            hasWalls = true,
+            startLevel = 901,
+            endLevel = 1200,
             minPreviousWorldCompletedToUnlock = 50,
             accentColorHex = 0xFF7209B7 // AccentPurple
         ),
         WorldDefinition(
             worldId = 5,
             name = "Advanced Logic",
-            gridSize = 7,
+            gridSize = 11,
             hasWalls = true,
-            startLevel = 151,
-            endLevel = 200,
+            startLevel = 1201,
+            endLevel = 1500,
             minPreviousWorldCompletedToUnlock = 50,
             accentColorHex = 0xFFFFB703 // AccentGold
         ),
         WorldDefinition(
             worldId = 6,
             name = "Expert Path",
-            gridSize = 8,
+            gridSize = 12,
             hasWalls = true,
-            startLevel = 201,
-            endLevel = 300,
+            startLevel = 1501,
+            endLevel = 1800,
             minPreviousWorldCompletedToUnlock = 50,
             accentColorHex = 0xFF10B981 // SuccessGreen
         )
     )
 
     const val TOTAL_WORLDS: Int = 6
-    const val TOTAL_LEVELS: Int = 300
+    const val TOTAL_LEVELS: Int = 1800
 
     fun getWorld(worldId: Int): WorldDefinition {
         return WORLDS.firstOrNull { it.worldId == worldId } ?: WORLDS.first()
@@ -142,47 +144,25 @@ object WorldConfiguration {
 
     /**
      * Determines if a world is unlocked given the set of completed level IDs.
-     * World 1 is always unlocked.
-     * World N requires all levels of World (N - 1) to be completed.
+     * Delegates to authoritative [com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority].
      */
     fun isWorldUnlocked(worldId: Int, completedLevelIds: Set<Int>): Boolean {
-        if (worldId == 1) return true
-        val previousWorld = WORLDS.firstOrNull { it.worldId == worldId - 1 } ?: return false
-        val completedInPrevious = completedLevelIds.count { it in previousWorld.levelRange }
-        return completedInPrevious >= getWorld(worldId).minPreviousWorldCompletedToUnlock
+        return com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.isWorldUnlocked(worldId, completedLevelIds)
     }
 
     /**
-     * Determines if a level is unlocked.
-     * Level 1 is always unlocked.
-     * Level L is unlocked if its world is unlocked AND:
-     * - It is the first level of that world, OR
-     * - Level (L - 1) is completed.
+     * Determines if a level is unlocked given the set of completed level IDs.
+     * Delegates to authoritative [com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority].
      */
     fun isLevelUnlocked(levelId: Int, completedLevelIds: Set<Int>): Boolean {
-        if (levelId <= 1) return true
-        if (levelId > TOTAL_LEVELS) return false
-
-        val world = getWorldForLevel(levelId)
-        if (!isWorldUnlocked(world.worldId, completedLevelIds)) return false
-
-        // First level of world is unlocked once world is unlocked
-        if (levelId == world.startLevel) return true
-
-        // Otherwise previous level must be completed
-        return (levelId - 1) in completedLevelIds
+        return com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.isUnlocked(levelId, completedLevelIds)
     }
 
     /**
      * Finds the next uncompleted playable level for the player.
-     * Returns 1 if no levels are completed, or the lowest numbered unlocked uncompleted level.
+     * Delegates to authoritative [com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority].
      */
     fun getNextPlayableLevel(completedLevelIds: Set<Int>): Int {
-        for (lvl in 1..TOTAL_LEVELS) {
-            if (lvl !in completedLevelIds && isLevelUnlocked(lvl, completedLevelIds)) {
-                return lvl
-            }
-        }
-        return TOTAL_LEVELS
+        return com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.resolveContinueDestination(completedLevelIds)
     }
 }

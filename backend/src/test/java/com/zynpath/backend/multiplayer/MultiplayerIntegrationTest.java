@@ -267,4 +267,36 @@ class MultiplayerIntegrationTest {
                 .andExpect(jsonPath("$.category").value("QUICK_DUEL_WINS"))
                 .andExpect(jsonPath("$.entries").isArray());
     }
+
+    @Test
+    @DisplayName("Friends Arena room creation succeeds with valid session")
+    void friendsArena_createRoom_success() throws Exception {
+        TestPlayer host = createPlayer("sub_fa_host", "Arena Host");
+
+        mockMvc.perform(post("/api/v1/multiplayer/friends-arena/rooms")
+                .header("Authorization", "Bearer " + host.session().sessionToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roomId").isNotEmpty())
+                .andExpect(jsonPath("$.roomCode").isNotEmpty())
+                .andExpect(jsonPath("$.hostPlayerId").value(host.account().playerId()))
+                .andExpect(jsonPath("$.maxCapacity").value(5))
+                .andExpect(jsonPath("$.members.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("Duplicate /api/v1 prefix returns 404 Not Found instead of 500 error")
+    void reproduce_duplicateApiV1Prefix() throws Exception {
+        TestPlayer host = createPlayer("sub_fa_host2", "Arena Host 2");
+
+        mockMvc.perform(post("/api/v1/api/v1/multiplayer/friends-arena/rooms")
+                .header("Authorization", "Bearer " + host.session().sessionToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Resource not found: /api/v1/api/v1/multiplayer/friends-arena/rooms"));
+    }
 }
+

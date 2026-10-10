@@ -92,7 +92,9 @@ data class LevelExperienceMetadata(
     val isMilestone: Boolean get() = milestoneIndicator != null && milestoneIndicator.type != MilestoneType.NONE
 
     init {
-        require(levelId in 1..300) { "levelId must be in 1..300 (got $levelId)" }
+        require(levelId in 1..com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS) {
+            "levelId must be in 1..${com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS} (got $levelId)"
+        }
         require(chapterId in 1..7) { "chapterId must be in 1..7 (got $chapterId)" }
         require(defaultFreeHints == 2) { "defaultFreeHints must be locked to 2 (got $defaultFreeHints)" }
     }

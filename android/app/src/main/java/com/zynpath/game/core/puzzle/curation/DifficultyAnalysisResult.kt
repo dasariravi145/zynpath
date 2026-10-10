@@ -25,6 +25,50 @@ data class DifficultyAnalysisResult(
         get() = metrics.uniquenessStatus
 
     /**
+     * Authoritative difficulty analysis representation adhering to Master Redesign Section 18.
+     */
+    val difficultyAnalysis: DifficultyAnalysis by lazy {
+        DifficultyAnalysis(
+            gridSize = com.zynpath.game.core.puzzle.model.GridDimensions(metrics.rows, metrics.columns),
+            cellCount = metrics.totalRequiredCells,
+            checkpointCount = metrics.checkpointCount,
+            decisionPointCount = metrics.meaningfulRouteDecisions,
+            meaningfulDecisionPointCount = metrics.meaningfulDecisionPointCount,
+            decisionDepth = metrics.decisionDepth,
+            decisionChainDepth = metrics.decisionChainDepth,
+            forcedMoveRatio = metrics.forcedMoveRatio,
+            plausibleWrongBranchCount = metrics.plausibleIncorrectPathsCount,
+            averageWrongBranchDepth = metrics.averageWrongBranchDepth,
+            maximumWrongBranchDepth = metrics.maxWrongBranchDepth,
+            wrongBranchCheckpointDepth = metrics.wrongBranchCheckpointDepth,
+            wrongBranchImpact = metrics.wrongBranchImpact,
+            futureCellDependencyScore = metrics.futureCellDependencyScore,
+            futureDependencyDistance = metrics.futureDependencyDistance,
+            multiDependencyDecisionCount = metrics.multiDependencyDecisionCount,
+            dependencyChainDepth = metrics.dependencyChainDepth,
+            cellReservationScore = metrics.cellReservationScore,
+            reservationDuration = metrics.reservationDuration,
+            reservationImportance = metrics.reservationImportance,
+            checkpointDeceptionScore = metrics.checkpointDeceptionScore,
+            regionPlanningScore = metrics.regionPlanningScore,
+            globalPlanningScore = metrics.globalPlanningScore,
+            criticalConnectorCount = metrics.criticalConnectorCount,
+            regionDependencyCount = metrics.regionDependencyCount,
+            selfCutRisk = metrics.selfCutRisk,
+            solverSearchNodes = metrics.solverNodesExplored,
+            solverBacktracks = metrics.solverBacktracks,
+            solverDeadEnds = metrics.solverDeadEnds,
+            solutionClassification = when (metrics.uniquenessStatus) {
+                UniquenessStatus.UNIQUE -> com.zynpath.game.core.puzzle.solver.SolutionClassification.UNIQUE
+                UniquenessStatus.NON_UNIQUE -> com.zynpath.game.core.puzzle.solver.SolutionClassification.MULTIPLE
+                UniquenessStatus.UNSOLVABLE -> com.zynpath.game.core.puzzle.solver.SolutionClassification.NONE
+                UniquenessStatus.UNKNOWN -> com.zynpath.game.core.puzzle.solver.SolutionClassification.UNKNOWN_LIMIT_REACHED
+            },
+            difficultyTier = difficultyBand
+        )
+    }
+
+    /**
      * User-facing presentation summary without exposing internal solver search internals.
      */
     fun toPresentationSummary(): String {

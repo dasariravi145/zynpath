@@ -58,6 +58,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.zynpath.game.feature.settings.SettingsModal
+import com.zynpath.game.feature.profile.ProfileModal
+import com.zynpath.game.feature.multiplayer.CreateRoomModal
+import com.zynpath.game.feature.multiplayer.FriendPickerModal
+import com.zynpath.game.feature.multiplayer.FriendsArenaViewModel
+import com.zynpath.game.feature.multiplayer.JoinRoomModal
+import com.zynpath.game.core.designsystem.components.GoogleConnectModal
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -116,9 +124,14 @@ fun HomeScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToAchievements: () -> Unit = {},
     onNavigateToFriendsArena: () -> Unit = {},
+    onNavigateToFriendsArenaRoom: (String) -> Unit = {},
     onNavigateToPlayLevel: (worldId: Int, levelId: Int) -> Unit = { _, _ -> onNavigateToSoloPlay() },
     onNavigateToResume: (worldId: Int, levelId: Int) -> Unit = { _, _ -> onNavigateToSoloPlay() },
-    viewModel: HomeViewModel = hiltViewModel()
+    onNavigateToRewards: () -> Unit = {},
+    onNavigateToCosmetics: () -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel(),
+    friendsArenaViewModel: FriendsArenaViewModel = hiltViewModel(),
+    quickDuelViewModel: com.zynpath.game.feature.multiplayer.QuickDuelViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -126,6 +139,10 @@ fun HomeScreen(
     val windowInfo = rememberZynpathWindowInfo()
     val feedbackCoordinator = rememberZynpathFeedbackCoordinator()
     var showCoinDetailsSheet by remember { mutableStateOf(false) }
+    var showFreeRewardsModal by remember { mutableStateOf(false) }
+    var showSettingsModal by remember { mutableStateOf(false) }
+    var showProfileModal by remember { mutableStateOf(false) }
+    var showQuickDuelModal by remember { mutableStateOf(false) }
     @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
     val bottomSheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val recentTransactions by (viewModel.walletRepository?.observeRecentTransactions(20) ?: kotlinx.coroutines.flow.flowOf(emptyList()))
@@ -196,8 +213,8 @@ fun HomeScreen(
             // Top: Player Header
             HomePlayerHeader(
                 uiState = uiState,
-                onNavigateToProfile = onNavigateToProfile,
-                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToProfile = { showProfileModal = true },
+                onNavigateToSettings = { showSettingsModal = true },
                 onNavigateToNotifications = onNavigateToNotifications,
                 onNavigateToLevels = onNavigateToLevels,
                 onCoinClick = { showCoinDetailsSheet = true }
@@ -241,16 +258,16 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Big Golden Yellow "PLAY" Pill Button
+                        // Big Golden Yellow "PLAY" / "CONTINUE" Pill Button
                         com.zynpath.game.core.designsystem.components.ZynpathMasterPillButton(
-                            text = "▶  PLAY",
+                            text = if (uiState.resumableSession != null) "▶  CONTINUE" else "▶  PLAY",
                             onClick = {
                                 feedbackCoordinator.onButtonPressed()
                                 val resumable = uiState.resumableSession
                                 if (resumable != null) {
                                     onNavigateToResume(resumable.worldId, resumable.levelId)
                                 } else {
-                                    onNavigateToPlayLevel(uiState.nextPlayableWorldId, uiState.nextPlayableLevelId)
+                                    onNavigateToLevels()
                                 }
                             },
                             style = com.zynpath.game.core.designsystem.components.ZynpathPillStyle.GOLD,
@@ -260,6 +277,25 @@ fun HomeScreen(
                                 .fillMaxWidth(0.88f)
                                 .padding(vertical = 4.dp)
                         )
+
+                        if (uiState.resumableSession != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Select Level",
+                                style = GameTypography.labelMedium.copy(
+                                    color = GameElectricCyan,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        feedbackCoordinator.onButtonPressed()
+                                        onNavigateToLevels()
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
+                        }
                     }
 
                     // 3 SECONDARY GAME MODES ROW (Reference Panel 03)
@@ -279,7 +315,9 @@ fun HomeScreen(
                             },
                             onClick = {
                                 feedbackCoordinator.onButtonPressed()
-                                viewModel.onOnlineModeSelected(isOnlineRequired = true, onNavigate = onNavigateToQuickDuel)
+                                viewModel.onOnlineModeSelected(isOnlineRequired = true, onNavigate = {
+                                    showQuickDuelModal = true
+                                })
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -296,7 +334,7 @@ fun HomeScreen(
                             },
                             onClick = {
                                 feedbackCoordinator.onButtonPressed()
-                                onNavigateToFriendsArena()
+                                friendsArenaViewModel.onFriendsArenaTapped()
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -333,12 +371,12 @@ fun HomeScreen(
                 iconRes = R.drawable.ic_nav_home
             ),
             GameBottomNavItem(
-                route = Screen.WorldSelection.route,
+                route = Screen.LevelSelection.createRoute(),
                 label = "Game",
                 iconRes = R.drawable.ic_mode_crossed_swords
             ),
             GameBottomNavItem(
-                route = Screen.DailyChallenge.route,
+                route = Screen.Rewards.route,
                 label = "Rewards",
                 iconRes = R.drawable.ic_nav_gift_box
             ),
@@ -363,14 +401,30 @@ fun HomeScreen(
                             scrollState.animateScrollTo(0)
                         }
                     }
-                    Screen.WorldSelection.route -> onNavigateToLevels()
-                    Screen.DailyChallenge.route -> onNavigateToDailyChallenge()
+                    Screen.LevelSelection.createRoute() -> onNavigateToLevels()
+                    Screen.Rewards.route -> {
+                        feedbackCoordinator.onButtonPressed()
+                        showFreeRewardsModal = true
+                    }
                     Screen.Friends.createRoute() -> onNavigateToFriends()
-                    Screen.Profile.route -> onNavigateToProfile()
+                    Screen.Profile.route -> {
+                        showProfileModal = true
+                    }
                 }
             },
             items = navItems,
             modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+
+    if (showFreeRewardsModal) {
+        com.zynpath.game.feature.rewards.FreeRewardsDialog(
+            onDismiss = { showFreeRewardsModal = false },
+            onPlayDailyChallenge = {
+                showFreeRewardsModal = false
+                onNavigateToDailyChallenge()
+            },
+            onNavigateToCosmetics = onNavigateToCosmetics
         )
     }
 
@@ -396,6 +450,99 @@ fun HomeScreen(
             recentTransactions = recentTransactions,
             walletRepository = viewModel.walletRepository,
             coinRewardedAdManager = viewModel.coinRewardedAdManager
+        )
+    }
+
+    // Settings Modal Popup over mounted HomeScreen
+    if (showSettingsModal) {
+        SettingsModal(
+            onDismiss = { showSettingsModal = false },
+            onNavigateToTutorial = onNavigateToTutorial
+        )
+    }
+
+    // Profile Modal Popup over mounted HomeScreen
+    if (showProfileModal) {
+        ProfileModal(
+            onDismiss = { showProfileModal = false }
+        )
+    }
+
+    val friendsArenaState by friendsArenaViewModel.uiState.collectAsStateWithLifecycle()
+    val localContext = LocalContext.current
+
+    // Friends Arena: Google Connect Modal
+    if (friendsArenaState.showGoogleConnectModal) {
+        GoogleConnectModal(
+            onDismiss = { friendsArenaViewModel.dismissGoogleConnectModal() },
+            onContinueWithGoogle = { friendsArenaViewModel.connectWithGoogle(localContext) },
+            isLoading = friendsArenaState.isGoogleConnecting,
+            errorMessage = friendsArenaState.googleConnectError,
+            onRetry = { friendsArenaViewModel.connectWithGoogle(localContext) }
+        )
+    }
+
+    // Friends Arena: Compact Create Room Modal
+    if (friendsArenaState.showCreateRoomModal) {
+        CreateRoomModal(
+            onDismiss = { friendsArenaViewModel.dismissCreateRoomModal() },
+            selectedPlayerCount = friendsArenaState.selectedPlayerCount,
+            onPlayerCountSelected = { friendsArenaViewModel.onPlayerCountChanged(it) },
+            invitedFriendsCount = friendsArenaState.selectedFriendIds.size,
+            onInviteFriendsClick = { friendsArenaViewModel.openFriendPicker() },
+            onCreateRoom = {
+                friendsArenaViewModel.createRoom { roomId ->
+                    onNavigateToFriendsArenaRoom(roomId)
+                }
+            },
+            onJoinRoomClick = { friendsArenaViewModel.openJoinRoomModal() },
+            isCreating = friendsArenaState.isCreatingRoom,
+            errorMessage = friendsArenaState.createRoomError,
+            puzzleDescription = friendsArenaState.selectedPuzzleDescription
+        )
+    }
+
+    // Friends Arena: Compact Friend Picker Modal
+    if (friendsArenaState.showFriendPickerModal) {
+        FriendPickerModal(
+            friends = friendsArenaState.eligibleFriends,
+            selectedFriendIds = friendsArenaState.selectedFriendIds,
+            maxSelection = (friendsArenaState.selectedPlayerCount - 1).coerceAtLeast(0),
+            onToggleFriend = { friendsArenaViewModel.toggleFriendSelected(it) },
+            onDismiss = { friendsArenaViewModel.dismissFriendPicker() }
+        )
+    }
+
+    // Friends Arena: Compact Join Room Modal
+    if (friendsArenaState.showJoinRoomModal) {
+        JoinRoomModal(
+            roomCode = friendsArenaState.joinRoomCode,
+            onRoomCodeChange = { friendsArenaViewModel.onJoinRoomCodeChanged(it) },
+            onJoinClick = {
+                friendsArenaViewModel.joinRoom(friendsArenaState.joinRoomCode) { roomId ->
+                    onNavigateToFriendsArenaRoom(roomId)
+                }
+            },
+            onDismiss = {
+                friendsArenaViewModel.dismissJoinRoomModal()
+                friendsArenaViewModel.openCreateRoomModal()
+            },
+            isJoining = friendsArenaState.isJoiningRoom,
+            errorMessage = friendsArenaState.joinRoomError
+        )
+    }
+
+    // Quick Duel: Compact Matchmaking Modal over Home Screen
+    if (showQuickDuelModal) {
+        com.zynpath.game.feature.multiplayer.QuickDuelMatchmakingModal(
+            viewModel = quickDuelViewModel,
+            onDismiss = {
+                showQuickDuelModal = false
+            },
+            onMatchConfirmed = {
+                showQuickDuelModal = false
+                onNavigateToQuickDuel()
+            }
         )
     }
 }

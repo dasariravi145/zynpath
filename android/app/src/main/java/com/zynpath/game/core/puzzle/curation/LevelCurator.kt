@@ -222,7 +222,7 @@ class LevelCurator(
             baseTarget = (baseTarget - config.recoveryDifficultyReduction).coerceAtLeast(targetMin)
         }
 
-        val rangeRadius = 0.20
+        val rangeRadius = 0.25
         val low = (baseTarget - rangeRadius).coerceAtLeast(0.0)
         val high = (baseTarget + rangeRadius).coerceAtMost(1.0)
         return low..high

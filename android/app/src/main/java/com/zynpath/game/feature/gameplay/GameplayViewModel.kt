@@ -117,6 +117,9 @@ sealed class GameplayUiState {
         val levelHintState: com.zynpath.game.core.puzzle.experience.hint.LevelHintState? = null,
         val experienceMetadata: com.zynpath.game.core.puzzle.experience.LevelExperienceMetadata? = null,
         val coinsEarned: Int = 0,
+        val levelCoinsAwarded: Int = 0,
+        val worldCoinsAwarded: Int = 0,
+        val currentWalletBalance: Int = 0,
         val isWorldRewardBonusEligible: Boolean = false,
         val isRewardRunActive: Boolean = false,
         val undoCount: Int = 0,
@@ -322,6 +325,7 @@ class GameplayViewModel @Inject constructor(
     private var timerJob: Job? = null
     private var saveJob: Job? = null
     private var hintJob: Job? = null
+    private var completionPersistenceJob: Job? = null
     private val _elapsedTimeMs = MutableStateFlow(0L)
     val elapsedTimeMs: StateFlow<Long> = _elapsedTimeMs.asStateFlow()
     private var lastReadyState: GameplayUiState.Ready? = null
@@ -353,14 +357,29 @@ class GameplayViewModel @Inject constructor(
     private var undoCount: Int = 0
     private var resetCount: Int = 0
     private var isRewardRun: Boolean = true
+    private var latestWalletBalance: Int = 0
 
     init {
         observePreferences()
         observeRewardedAds()
         observeLevelHints()
+        observeWallet()
         rewardedAdRepository.preloadRewardedAd()
         rewardedHintAdContract?.preloadRewardedAd()
         loadLevel()
+    }
+
+    private fun observeWallet() {
+        val wallet = walletRepository ?: return
+        viewModelScope.launch {
+            wallet.balanceFlow.collectLatest { balance ->
+                latestWalletBalance = balance
+                val currentReady = _uiState.value as? GameplayUiState.Ready ?: return@collectLatest
+                _uiState.value = currentReady.copy(
+                    currentWalletBalance = balance
+                )
+            }
+        }
     }
 
     private fun observeLevelHints() {
@@ -530,6 +549,8 @@ class GameplayViewModel @Inject constructor(
                                     startTimerTicker()
                                 }
 
+                                val initialBalance = walletRepository?.getCurrentBalance() ?: latestWalletBalance
+                                latestWalletBalance = initialBalance
                                 val initialGameState = restoredEngine.currentState
                                 _uiState.value = GameplayUiState.Ready(
                                     worldId = worldId,
@@ -554,6 +575,7 @@ class GameplayViewModel @Inject constructor(
                                     levelHintState = levelHintState,
                                     experienceMetadata = experienceMetadata,
                                     coinsEarned = 0,
+                                    currentWalletBalance = initialBalance,
                                     isWorldRewardBonusEligible = false,
                                     isRewardRunActive = isRewardRun,
                                     undoCount = undoCount,
@@ -599,6 +621,8 @@ class GameplayViewModel @Inject constructor(
                     engine = newEngine
                     gameplayTimer = GameplayTimer(timeProvider, 0L)
 
+                    val initialBalance = walletRepository?.getCurrentBalance() ?: latestWalletBalance
+                    latestWalletBalance = initialBalance
                     val initialGameState = newEngine.currentState
                     val boardState = initialGameState.toBoardState()
                     _uiState.value = GameplayUiState.Ready(
@@ -624,6 +648,7 @@ class GameplayViewModel @Inject constructor(
                         levelHintState = levelHintState,
                         experienceMetadata = experienceMetadata,
                         coinsEarned = 0,
+                        currentWalletBalance = initialBalance,
                         isWorldRewardBonusEligible = false,
                         isRewardRunActive = isRewardRun,
                         undoCount = undoCount,
@@ -978,6 +1003,7 @@ class GameplayViewModel @Inject constructor(
                         val presentation = HintPresentation(
                             type = HintType.NEXT_MOVE,
                             targetCell = result.nextMove,
+                            explanation = result.deductionMessage ?: "",
                             stateRevision = revisionAtRequest
                         )
 
@@ -987,7 +1013,7 @@ class GameplayViewModel @Inject constructor(
                             activeHint = presentation,
                             boardState = latestReady.gameState.toBoardState(hintedCoordinate = result.nextMove),
                             remainingHints = newRemaining,
-                            hintMessage = null,
+                            hintMessage = result.deductionMessage,
                             levelHintState = updatedLevelHint ?: latestReady.levelHintState
                         )
                     }
@@ -1189,6 +1215,47 @@ class GameplayViewModel @Inject constructor(
                         )
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Purchases an extra hint for this level using 300 coins (Prompt Section 6 & 15).
+     * Only debits if balance is sufficient (300 coins).
+     */
+    fun purchaseExtraHintWithCoins() {
+        val currentReady = _uiState.value as? GameplayUiState.Ready ?: return
+        val wallet = walletRepository ?: return
+        viewModelScope.launch {
+            val price = com.zynpath.game.core.economy.EconomyConfig.EXTRA_HINT_COIN_PRICE // 300
+            val balance = wallet.getCurrentBalance()
+            if (balance < price) {
+                val needed = price - balance
+                val latest = _uiState.value as? GameplayUiState.Ready ?: return@launch
+                _uiState.value = latest.copy(
+                    rewardSnackbarMessage = "Need $needed more coins to purchase extra hint."
+                )
+                return@launch
+            }
+            val res = wallet.purchaseExtraHint(levelId)
+            if (res.isSuccess) {
+                val claimId = "extra_hint_coins_${levelId}_${java.util.UUID.randomUUID()}"
+                levelHintRepository?.recordConfirmedReward(levelId, claimId)
+                val updatedLevelHint = levelHintRepository?.getLevelHintState(levelId)
+                val newRemaining = hintUsageRepository.getRemainingHints()
+                val latest = _uiState.value as? GameplayUiState.Ready ?: return@launch
+                _uiState.value = latest.copy(
+                    showLimitReachedDialog = false,
+                    remainingHints = newRemaining,
+                    levelHintState = updatedLevelHint ?: latest.levelHintState,
+                    currentWalletBalance = res.getOrDefault(balance - price),
+                    rewardSnackbarMessage = "Extra hint purchased for $price coins!"
+                )
+            } else {
+                val latest = _uiState.value as? GameplayUiState.Ready ?: return@launch
+                _uiState.value = latest.copy(
+                    rewardSnackbarMessage = "Purchase failed: ${res.exceptionOrNull()?.message ?: "Insufficient coins"}"
+                )
             }
         }
     }
@@ -1441,7 +1508,7 @@ class GameplayViewModel @Inject constructor(
         saveJob?.cancel()
         hintJob?.cancel()
 
-        viewModelScope.launch {
+        completionPersistenceJob = viewModelScope.launch {
             currentRevision++
             try {
                 currentSnapshot?.let { snap ->
@@ -1477,19 +1544,19 @@ class GameplayViewModel @Inject constructor(
                 preferencesRepository.setLastSelectedLevel(levelId)
                 preferencesRepository.setLastSelectedWorld(worldId)
 
-                // Economy: Calculate first-clear and world-completion rewards
-                var coinsAwarded = 0
+                // Economy: Calculate first-clear (+100) and world-completion (+500) rewards
+                var soloCoinsAwarded = 0
+                var worldCoinsAwarded = 0
                 val isFirstClear = walletRepository?.isFirstClearRewardEligible(levelId) == true
-                if (isFirstClear && isRewardRun) {
+                if (isFirstClear) {
                     val clearRes = walletRepository?.grantSoloFirstClearReward(levelId)
                     if (clearRes?.isSuccess == true) {
-                        coinsAwarded += com.zynpath.game.core.economy.EconomyConfig.SOLO_FIRST_CLEAR_REWARD
+                        soloCoinsAwarded = com.zynpath.game.core.economy.EconomyConfig.SOLO_FIRST_CLEAR_REWARD
                     }
-                    walletRepository?.clearActivePaidAttempt(levelId)
                     interstitialAdManager?.onFirstTimeLevelCompleted()
                 }
 
-                // Prompt 41 Section 11-13: Detect first-time world completion celebration
+                // Prompt Section 5: Detect first-time world completion celebration (+500)
                 val world = com.zynpath.game.core.puzzle.model.WorldConfiguration.getWorldForLevel(levelId)
                 val allCompletedIds = progressRepository.getCompletedLevelIds()
                 val isWorldComplete = world.levelRange.all { it in allCompletedIds || it == levelId }
@@ -1498,16 +1565,15 @@ class GameplayViewModel @Inject constructor(
                 val alreadyCelebrated = userPrefs?.seenFeatureTips?.contains(celebrationTipKey) == true
                 val worldCelebrationToTrigger = if (isWorldComplete && !alreadyCelebrated) world else null
 
-                var isWorldAdBonusEligible = false
                 if (isWorldComplete && walletRepository?.isWorldCompletionClaimed(world.worldId) == false) {
                     val worldRes = walletRepository.claimWorldCompletionReward(world.worldId)
                     if (worldRes.isSuccess) {
-                        coinsAwarded += com.zynpath.game.core.economy.EconomyConfig.WORLD_COMPLETION_BASE_REWARD
+                        worldCoinsAwarded = com.zynpath.game.core.economy.EconomyConfig.WORLD_FIRST_CLEAR_REWARD
                     }
                 }
-                if (isWorldComplete && walletRepository?.isWorldCompletionAdBonusClaimed(world.worldId) == false) {
-                    isWorldAdBonusEligible = true
-                }
+
+                val totalCoinsAwarded = soloCoinsAwarded + worldCoinsAwarded
+                val latestBalance = walletRepository?.getCurrentBalance() ?: 0
 
                 val latestReady = _uiState.value as? GameplayUiState.Ready
                 if (latestReady != null) {
@@ -1524,8 +1590,11 @@ class GameplayViewModel @Inject constructor(
                         worldCelebration = worldCelebrationToTrigger,
                         starsEarned = maxOf(latestReady.starsEarned, calculatedStars),
                         totalStars = totalStarsUpdated,
-                        coinsEarned = coinsAwarded,
-                        isWorldRewardBonusEligible = isWorldAdBonusEligible,
+                        coinsEarned = totalCoinsAwarded,
+                        levelCoinsAwarded = soloCoinsAwarded,
+                        worldCoinsAwarded = worldCoinsAwarded,
+                        currentWalletBalance = latestBalance,
+                        isWorldRewardBonusEligible = false,
                         undoCount = undoCount,
                         resetCount = resetCount
                     )
@@ -1666,23 +1735,30 @@ class GameplayViewModel @Inject constructor(
      * Resolves destination using authoritative ProgressionDestinationResolver.
      */
     suspend fun resolveProgressionDestination(): com.zynpath.game.core.puzzle.model.NextDestinationResolution {
-        val completed = progressRepository.getCompletedLevelIds()
-        return com.zynpath.game.core.puzzle.model.ProgressionDestinationResolver.resolve(worldId, levelId, completed)
+        // Ensure completion persistence is durably committed before resolving progression destination
+        completionPersistenceJob?.join()
+        val completed = progressRepository.getCompletedLevelIds() + setOf(levelId)
+        return com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.resolveVictoryDestination(levelId, completed)
     }
 
     /**
      * Checks if a world is unlocked according to authoritative progression.
      */
     suspend fun isWorldUnlocked(targetWorldId: Int): Boolean {
-        return progressRepository.isWorldUnlocked(targetWorldId)
+        completionPersistenceJob?.join()
+        val completed = progressRepository.getCompletedLevelIds() + setOf(levelId)
+        return progressRepository.isWorldUnlocked(targetWorldId) ||
+            com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.isWorldUnlocked(targetWorldId, completed)
     }
 
     /**
      * Resolves the next level through the catalog, verifying unlocked progression and asset availability (Prompt 15 Section 22).
      */
     suspend fun resolveNextLevel(): NextLevelResolution {
-        val completed = progressRepository.getCompletedLevelIds()
-        val destinationResolution = com.zynpath.game.core.puzzle.model.ProgressionDestinationResolver.resolve(worldId, levelId, completed)
+        // Ensure completion persistence is durably committed before querying progression state
+        completionPersistenceJob?.join()
+        val completed = progressRepository.getCompletedLevelIds() + setOf(levelId)
+        val destinationResolution = com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.resolveVictoryDestination(levelId, completed)
 
         return when (val dest = destinationResolution.destination) {
             is com.zynpath.game.core.puzzle.model.ProgressionDestination.JourneyComplete -> {
@@ -1690,22 +1766,24 @@ class GameplayViewModel @Inject constructor(
             }
             is com.zynpath.game.core.puzzle.model.ProgressionDestination.NextWorldEntry -> {
                 val nextWorldId = dest.worldId
-                val isUnlocked = progressRepository.isWorldUnlocked(nextWorldId)
+                val isUnlocked = progressRepository.isWorldUnlocked(nextWorldId) ||
+                    com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.isWorldUnlocked(nextWorldId, completed)
                 if (isUnlocked) {
                     NextLevelResolution.WorldComplete(nextWorldId)
                 } else {
-                    NextLevelResolution.Locked(nextWorldId, com.zynpath.game.core.puzzle.model.WorldConfiguration.getWorld(nextWorldId).startLevel)
+                    NextLevelResolution.Locked(nextWorldId, com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.getWorldById(nextWorldId).startLevel)
                 }
             }
             is com.zynpath.game.core.puzzle.model.ProgressionDestination.NextLevel -> {
                 val nextLevelId = dest.levelId
-                if (nextLevelId > com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS) {
+                if (nextLevelId > com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.TOTAL_LEVELS) {
                     return NextLevelResolution.CatalogCompleted
                 }
                 val nextLevelDef = catalogRepository.getLevel(nextLevelId)
                     ?: return NextLevelResolution.Unavailable(nextLevelId, "Level $nextLevelId does not exist in catalog")
 
-                val isUnlocked = progressRepository.isLevelUnlocked(nextLevelId)
+                val isUnlocked = progressRepository.isLevelUnlocked(nextLevelId) ||
+                    com.zynpath.game.core.puzzle.progression.SoloProgressionAuthority.isUnlocked(nextLevelId, completed)
                 if (!isUnlocked) {
                     return NextLevelResolution.Locked(nextLevelDef.worldId, nextLevelId)
                 }
@@ -1727,6 +1805,8 @@ class GameplayViewModel @Inject constructor(
             }
         }
     }
+
+    suspend fun getDistinctCompletedLevelCount(): Int = progressRepository.getCompletedLevelIds().size
 
     override fun onCleared() {
         super.onCleared()
@@ -1823,5 +1903,9 @@ private class InMemoryPreferencesRepository(
     override suspend fun setAllowFriendRequests(allow: Boolean) { prefsFlow.value = prefsFlow.value.copy(allowFriendRequests = allow) }
     override suspend fun setHighContrast(enabled: Boolean) { prefsFlow.value = prefsFlow.value.copy(isHighContrast = enabled) }
     override suspend fun setTouchSensitivity(sensitivity: Float) { prefsFlow.value = prefsFlow.value.copy(touchSensitivity = sensitivity) }
+    override suspend fun getOrCreateGuestUuid(): String = prefsFlow.value.guestUuid.ifBlank { "test_guest_uuid" }
+    override suspend fun setGuestUuid(uuid: String) { prefsFlow.value = prefsFlow.value.copy(guestUuid = uuid) }
+    override suspend fun getLastHandledInterstitialMilestone(): Int = prefsFlow.value.lastHandledInterstitialMilestone
+    override suspend fun setLastHandledInterstitialMilestone(milestone: Int) { prefsFlow.value = prefsFlow.value.copy(lastHandledInterstitialMilestone = milestone) }
     override suspend fun clearAllPreferences() { prefsFlow.value = UserPreferences() }
 }

@@ -54,7 +54,8 @@ class OkHttpMultiplayerApiService(
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     override fun getBaseUrl(): String {
-        return customBaseUrl?.removeSuffix("/") ?: BuildConfig.BACKEND_BASE_URL.removeSuffix("/")
+        val raw = (customBaseUrl ?: BuildConfig.BACKEND_BASE_URL).trim().removeSuffix("/")
+        return if (raw.endsWith("/api/v1")) raw else "$raw/api/v1"
     }
 
     @get:JvmName("internalBaseUrl")
@@ -733,7 +734,7 @@ class OkHttpMultiplayerApiService(
             put("maxParticipants", maxParticipants)
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/rooms")
+            .url("$baseUrl/multiplayer/mini-league/rooms")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -745,7 +746,7 @@ class OkHttpMultiplayerApiService(
         roomId: String
     ): NetworkResult<com.zynpath.game.core.multiplayer.model.MiniLeagueRoom> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/rooms/$roomId")
+            .url("$baseUrl/multiplayer/mini-league/rooms/$roomId")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -757,7 +758,7 @@ class OkHttpMultiplayerApiService(
         roomCode: String
     ): NetworkResult<com.zynpath.game.core.multiplayer.model.MiniLeagueRoom> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/rooms/code/$roomCode")
+            .url("$baseUrl/multiplayer/mini-league/rooms/code/$roomCode")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -772,7 +773,7 @@ class OkHttpMultiplayerApiService(
             put("roomCode", roomCode)
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/rooms/join")
+            .url("$baseUrl/multiplayer/mini-league/rooms/join")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -784,7 +785,7 @@ class OkHttpMultiplayerApiService(
         roomId: String
     ): NetworkResult<Unit> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/rooms/$roomId/leave")
+            .url("$baseUrl/multiplayer/mini-league/rooms/$roomId/leave")
             .header("Authorization", "Bearer $sessionToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
@@ -810,7 +811,7 @@ class OkHttpMultiplayerApiService(
             put("ready", ready)
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/rooms/$roomId/ready")
+            .url("$baseUrl/multiplayer/mini-league/rooms/$roomId/ready")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -822,7 +823,7 @@ class OkHttpMultiplayerApiService(
         roomId: String
     ): NetworkResult<MatchSessionSnapshotDto> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/rooms/$roomId/start")
+            .url("$baseUrl/multiplayer/mini-league/rooms/$roomId/start")
             .header("Authorization", "Bearer $sessionToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
@@ -838,7 +839,7 @@ class OkHttpMultiplayerApiService(
             put("targetPublicZynpathId", targetPublicZynpathId)
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/rooms/$roomId/invite")
+            .url("$baseUrl/multiplayer/mini-league/rooms/$roomId/invite")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -860,7 +861,7 @@ class OkHttpMultiplayerApiService(
         sessionToken: String
     ): NetworkResult<List<com.zynpath.game.core.multiplayer.model.MiniLeagueInvitation>> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/invitations/incoming")
+            .url("$baseUrl/multiplayer/mini-league/invitations/incoming")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -891,7 +892,7 @@ class OkHttpMultiplayerApiService(
             put("accept", accept)
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/invitations/$invitationId/respond")
+            .url("$baseUrl/multiplayer/mini-league/invitations/$invitationId/respond")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -918,7 +919,7 @@ class OkHttpMultiplayerApiService(
         invitationId: String
     ): NetworkResult<com.zynpath.game.core.multiplayer.model.MiniLeagueInvitation> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/mini-league/invitations/$invitationId/cancel")
+            .url("$baseUrl/multiplayer/mini-league/invitations/$invitationId/cancel")
             .header("Authorization", "Bearer $sessionToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
@@ -1020,7 +1021,7 @@ class OkHttpMultiplayerApiService(
             }
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/rooms")
+            .url("$baseUrl/multiplayer/friends-arena/rooms")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -1032,7 +1033,7 @@ class OkHttpMultiplayerApiService(
         roomId: String
     ): NetworkResult<FriendsArenaRoomDto> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/rooms/$roomId")
+            .url("$baseUrl/multiplayer/friends-arena/rooms/$roomId")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -1044,7 +1045,7 @@ class OkHttpMultiplayerApiService(
         roomCode: String
     ): NetworkResult<FriendsArenaRoomDto> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/rooms/code/$roomCode")
+            .url("$baseUrl/multiplayer/friends-arena/rooms/code/$roomCode")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -1059,7 +1060,7 @@ class OkHttpMultiplayerApiService(
             put("roomCode", roomCode)
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/rooms/join")
+            .url("$baseUrl/multiplayer/friends-arena/rooms/join")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -1071,7 +1072,7 @@ class OkHttpMultiplayerApiService(
         roomId: String
     ): NetworkResult<Unit> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/rooms/$roomId/leave")
+            .url("$baseUrl/multiplayer/friends-arena/rooms/$roomId/leave")
             .header("Authorization", "Bearer $sessionToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
@@ -1093,7 +1094,7 @@ class OkHttpMultiplayerApiService(
         roomId: String
     ): NetworkResult<FriendsArenaRoomDto> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/rooms/$roomId/start")
+            .url("$baseUrl/multiplayer/friends-arena/rooms/$roomId/start")
             .header("Authorization", "Bearer $sessionToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
@@ -1153,7 +1154,7 @@ class OkHttpMultiplayerApiService(
         matchId: String
     ): NetworkResult<FriendsArenaMatchDto> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/matches/$matchId")
+            .url("$baseUrl/multiplayer/friends-arena/matches/$matchId")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -1165,7 +1166,7 @@ class OkHttpMultiplayerApiService(
         roomId: String
     ): NetworkResult<FriendsArenaMatchDto> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/rooms/$roomId/match")
+            .url("$baseUrl/multiplayer/friends-arena/rooms/$roomId/match")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -1183,7 +1184,7 @@ class OkHttpMultiplayerApiService(
             put("lastCheckpoint", lastCheckpoint)
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/matches/$matchId/progress")
+            .url("$baseUrl/multiplayer/friends-arena/matches/$matchId/progress")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -1213,7 +1214,7 @@ class OkHttpMultiplayerApiService(
             put("clientReportedSolveTimeMs", clientDurationMs)
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/matches/$matchId/claim")
+            .url("$baseUrl/multiplayer/friends-arena/matches/$matchId/claim")
             .header("Authorization", "Bearer $sessionToken")
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
@@ -1241,7 +1242,7 @@ class OkHttpMultiplayerApiService(
         matchId: String
     ): NetworkResult<Unit> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/matches/$matchId/forfeit")
+            .url("$baseUrl/multiplayer/friends-arena/matches/$matchId/forfeit")
             .header("Authorization", "Bearer $sessionToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
@@ -1263,7 +1264,7 @@ class OkHttpMultiplayerApiService(
         roomId: String
     ): NetworkResult<FriendsArenaMatchDto> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/friends-arena/rooms/$roomId/rematch")
+            .url("$baseUrl/multiplayer/friends-arena/rooms/$roomId/rematch")
             .header("Authorization", "Bearer $sessionToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
@@ -1349,7 +1350,7 @@ class OkHttpMultiplayerApiService(
             }
         }
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/history?$query")
+            .url("$baseUrl/multiplayer/history?$query")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -1386,7 +1387,7 @@ class OkHttpMultiplayerApiService(
         matchId: String
     ): NetworkResult<MatchDetails> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/history/$matchId")
+            .url("$baseUrl/multiplayer/history/$matchId")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -1434,7 +1435,7 @@ class OkHttpMultiplayerApiService(
         sessionToken: String
     ): NetworkResult<CompetitiveStats> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/stats")
+            .url("$baseUrl/multiplayer/stats")
             .header("Authorization", "Bearer $sessionToken")
             .get()
             .build()
@@ -1457,7 +1458,7 @@ class OkHttpMultiplayerApiService(
         publicZynpathId: String
     ): NetworkResult<PublicCompetitiveStats> = withContext(ioDispatcher) {
         val request = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/stats/$publicZynpathId")
+            .url("$baseUrl/multiplayer/stats/$publicZynpathId")
             .get()
             .build()
 
@@ -1495,7 +1496,7 @@ class OkHttpMultiplayerApiService(
     ): NetworkResult<LeaderboardResponse> = withContext(ioDispatcher) {
         val query = "category=${category.name}&period=${period.name}&page=$page&pageSize=$pageSize"
         val reqBuilder = Request.Builder()
-            .url("$baseUrl/api/v1/multiplayer/leaderboard?$query")
+            .url("$baseUrl/multiplayer/leaderboard?$query")
             .get()
         if (!sessionToken.isNullOrBlank()) {
             reqBuilder.header("Authorization", "Bearer $sessionToken")

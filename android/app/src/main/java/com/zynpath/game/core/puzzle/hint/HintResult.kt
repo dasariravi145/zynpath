@@ -19,7 +19,8 @@ sealed class HintResult {
         val nextMove: GridPosition,
         val fullSolution: PuzzlePath,
         val totalSolutionLength: Int,
-        val isCached: Boolean = false
+        val isCached: Boolean = false,
+        val deductionMessage: String? = null
     ) : HintResult() {
         override val type: HintType = HintType.NEXT_MOVE
         val nextCoordinate: GridPosition get() = nextMove

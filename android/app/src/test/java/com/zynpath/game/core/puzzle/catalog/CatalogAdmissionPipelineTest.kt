@@ -3,6 +3,8 @@ package com.zynpath.game.core.puzzle.catalog
 import com.zynpath.game.core.puzzle.model.BlockedEdge
 import com.zynpath.game.core.puzzle.model.GridPosition
 import com.zynpath.game.core.puzzle.model.NumberedCheckpoint
+import com.zynpath.game.core.puzzle.solver.PuzzleSolver
+import com.zynpath.game.core.puzzle.solver.SolverConfiguration
 import com.zynpath.game.core.puzzle.solver.UniquenessStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

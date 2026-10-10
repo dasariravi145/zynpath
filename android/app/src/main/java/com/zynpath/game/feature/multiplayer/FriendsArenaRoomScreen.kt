@@ -1965,9 +1965,9 @@ private fun ActiveRoomHostControls(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // INVITE FACEBOOK FRIENDS: Tertiary Action (Task 8)
+        // INVITE FRIENDS: Tertiary Action
         GameSecondaryButton(
-            text = "INVITE FACEBOOK FRIENDS",
+            text = "INVITE FRIENDS",
             onClick = onInviteFacebookFriends,
             height = 46.dp,
             modifier = Modifier.fillMaxWidth()

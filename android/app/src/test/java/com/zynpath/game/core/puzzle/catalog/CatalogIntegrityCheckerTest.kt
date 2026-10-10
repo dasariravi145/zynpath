@@ -40,7 +40,7 @@ class CatalogIntegrityCheckerTest {
         assertEquals(0, result.errors.size)
         assertEquals(6, result.checkedWorldCount)
         assertEquals(300, result.checkedLevelCount)
-        assertEquals(PackagedPuzzles.ALL_PACKAGED.size, result.packagedAssetCount)
+        assertEquals(manifest.levels.count { it.hasPackagedAsset }, result.packagedAssetCount)
     }
 
     @Test

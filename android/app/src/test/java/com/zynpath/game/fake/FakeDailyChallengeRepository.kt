@@ -175,7 +175,25 @@ class FakeDailyChallengeRepository(
         )
     }
 
+    private var mockLeaderboardResponse: DailyLeaderboardResponse? = null
+    private var simulateError: Boolean = false
+
+    fun setMockLeaderboardResponse(response: DailyLeaderboardResponse?) {
+        mockLeaderboardResponse = response
+    }
+
+    fun setSimulateError(simulate: Boolean) {
+        simulateError = simulate
+    }
+
     override suspend fun getDailyLeaderboard(dateKey: String?, page: Int, pageSize: Int): Result<DailyLeaderboardResponse> {
+        if (simulateError) {
+            return Result.failure(java.io.IOException("Network offline"))
+        }
+        val mock = mockLeaderboardResponse
+        if (mock != null) {
+            return Result.success(mock)
+        }
         val key = dateKey ?: todayKey()
         return Result.success(
             DailyLeaderboardResponse(

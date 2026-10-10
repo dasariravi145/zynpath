@@ -24,7 +24,9 @@ data class LevelDefinition(
     val hasPackagedAsset: Boolean = true
 ) {
     init {
-        require(levelId in 1..300) { "levelId must be between 1 and 300 (got $levelId)" }
+        require(levelId in 1..com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS) {
+            "levelId must be between 1 and ${com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS} (got $levelId)"
+        }
         require(worldId in 1..6) { "worldId must be between 1 and 6 (got $worldId)" }
         require(puzzleId.isNotBlank()) { "puzzleId cannot be blank" }
         require(assetPath.isNotBlank()) { "assetPath cannot be blank" }

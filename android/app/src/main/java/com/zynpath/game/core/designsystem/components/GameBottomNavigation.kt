@@ -101,6 +101,7 @@ fun GameBottomNavigation(
                 ),
                 shape = dockShape
             )
+            .glossyTopHighlight(cornerRadius = 20.dp, highlightAlpha = 0.14f)
             .navigationBarsPadding()
             .height(66.dp)
             .padding(horizontal = 8.dp)

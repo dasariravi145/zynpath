@@ -50,6 +50,28 @@ object GameBrushes {
     )
 
     /**
+     * Soft reflective mirror/glossy top highlight gradient.
+     */
+    val glossyTopHighlight: Brush = Brush.verticalGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.22f),
+            Color.White.copy(alpha = 0.04f),
+            Color.Transparent
+        )
+    )
+
+    /**
+     * Specular sheen horizontal line gradient.
+     */
+    val glossySheenLine: Brush = Brush.horizontalGradient(
+        colors = listOf(
+            Color.Transparent,
+            Color.White.copy(alpha = 0.35f),
+            Color.Transparent
+        )
+    )
+
+    /**
      * Atmospheric full-screen background gradient.
      */
     val screenBackground: Brush = Brush.verticalGradient(
@@ -171,4 +193,14 @@ object GameBorders {
     val tileFinal: BorderStroke = BorderStroke(2.dp, GameGoldHighlight)
     val avatarGold: BorderStroke = BorderStroke(2.5.dp, GameBrushes.goldGlow)
     val avatarCyan: BorderStroke = BorderStroke(2.5.dp, GameBrushes.cyanGlow)
+    val modalGoldCyan: BorderStroke = BorderStroke(
+        width = 1.4.dp,
+        brush = Brush.verticalGradient(
+            colors = listOf(
+                GameGoldHighlight.copy(alpha = 0.85f),
+                GameElectricCyan.copy(alpha = 0.65f),
+                GameRoyalBlue.copy(alpha = 0.35f)
+            )
+        )
+    )
 }

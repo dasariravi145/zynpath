@@ -16,7 +16,9 @@ data class LevelHintState(
     val rewardedHintsConsumed: Int = 0
 ) {
     init {
-        require(levelId in 1..300) { "levelId must be in 1..300 (got $levelId)" }
+        require(levelId in 1..com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS) {
+            "levelId must be in 1..${com.zynpath.game.core.puzzle.model.WorldConfiguration.TOTAL_LEVELS} (got $levelId)"
+        }
         require(freeHintsTotal == LOCKED_FREE_HINTS_PER_LEVEL) {
             "Level hint economy locks exactly $LOCKED_FREE_HINTS_PER_LEVEL free hints per level"
         }

@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -137,64 +138,40 @@ class DailyChallengeViewModel @Inject constructor(
     fun loadTodayChallenge() {
         viewModelScope.launch {
             try {
-                // 1. Resolve local challenge definition
+                // 1. Resolve deterministic local challenge immediately (0ms)
                 val localChallenge = dailyChallengeRepository.getTodayChallenge()
+                currentChallenge = localChallenge
 
-                // 2. Check if official challenge is available from backend
-                val onlineChallengeResult = dailyChallengeRepository.getOfficialChallengeOnline(localChallenge.dateKey)
-                val effectiveChallenge = if (onlineChallengeResult.isSuccess) {
-                    onlineChallengeResult.getOrThrow()
-                } else {
-                    localChallenge
-                }
-                currentChallenge = effectiveChallenge
-
-                // Check Room status for today
+                // 2. Check Room status for today immediately
                 val summary = dailyChallengeRepository.observeTodaySummary().firstOrNull()
                 val currentStreak = summary?.currentStreak ?: 0
                 val maxStreak = summary?.maxStreak ?: 0
                 val personalBest = summary?.entity?.bestTimeMs?.takeIf { it > 0 }
 
-                // Check stored verification status
                 val initialVerification = try {
                     DailyVerificationStatus.valueOf(summary?.entity?.verificationStatus ?: "LOCAL_COMPLETION")
                 } catch (e: Exception) {
                     DailyVerificationStatus.LOCAL_COMPLETION
                 }
                 val isEligible = summary?.entity?.isLeaderboardEligible ?: false
+                val availability = summary?.availability ?: DailyChallengeAvailability.AVAILABLE
 
-                // 3. Check for official competitive attempt
-                var serverAttemptId: String? = summary?.entity?.serverAttemptId
-                var isOnline = false
-
-                val activeAttemptRes = dailyChallengeRepository.getActiveAttempt(effectiveChallenge.dateKey)
-                if (activeAttemptRes.isSuccess && activeAttemptRes.getOrNull() != null) {
-                    serverAttemptId = activeAttemptRes.getOrNull()!!.attemptId
-                    isOnline = true
-                } else if (summary?.availability != DailyChallengeAvailability.COMPLETED) {
-                    val startRes = dailyChallengeRepository.startOfficialAttempt(effectiveChallenge.dateKey)
-                    if (startRes.isSuccess) {
-                        serverAttemptId = startRes.getOrThrow().attemptId
-                        isOnline = true
-                    }
-                }
-
-                // Check for saved session
-                val sessionId = "daily_${effectiveChallenge.challengeId}"
+                // 3. Restore saved session and initialize engine locally
+                val sessionId = "daily_${localChallenge.challengeId}"
                 val savedSession = sessionRepository.getSessionById(sessionId)
 
-                val newEngine = PuzzleEngine(effectiveChallenge.puzzleDefinition)
+                val newEngine = PuzzleEngine(localChallenge.puzzleDefinition)
                 var initialElapsed = 0L
 
                 // Validate saved session
                 if (savedSession != null &&
-                    savedSession.puzzleId == effectiveChallenge.puzzleId &&
-                    savedSession.puzzleVersion == effectiveChallenge.puzzleVersion &&
+                    savedSession.puzzleId == localChallenge.puzzleId &&
+                    savedSession.puzzleVersion == localChallenge.puzzleVersion &&
                     savedSession.status != SessionStatus.COMPLETED
                 ) {
                     val restoredPositions = savedSession.path
                     if (restoredPositions.isNotEmpty()) {
-                        val testEngine = PuzzleEngine(effectiveChallenge.puzzleDefinition)
+                        val testEngine = PuzzleEngine(localChallenge.puzzleDefinition)
                         var valid = true
                         for (coord in restoredPositions) {
                             val res = testEngine.process(PuzzleAction.ExtendPath(coord))
@@ -215,40 +192,13 @@ class DailyChallengeViewModel @Inject constructor(
                 engine = newEngine
 
                 // Record attempt start locally
-                dailyChallengeRepository.recordAttemptStarted(effectiveChallenge)
+                dailyChallengeRepository.recordAttemptStarted(localChallenge)
 
                 // Initialize timer with restored elapsed time
                 gameplayTimer.reset()
 
                 val currentGameState = newEngine.currentState
                 val boardState = currentGameState.toBoardState()
-                val availability = summary?.availability ?: DailyChallengeAvailability.AVAILABLE
-
-                // Fetch personal online result if completed
-                var onlineResult: DailyChallengeOnlineResult? = null
-                var effectiveVerification = initialVerification
-                if (availability == DailyChallengeAvailability.COMPLETED) {
-                    val personalRes = dailyChallengeRepository.getPersonalResultOnline(effectiveChallenge.dateKey)
-                    onlineResult = personalRes.getOrNull()
-
-                    // If completed locally offline and we now have online connectivity, sync provisional record
-                    if (onlineResult == null && initialVerification == DailyVerificationStatus.LOCAL_COMPLETION && onlineChallengeResult.isSuccess) {
-                        val onlineDef = onlineChallengeResult.getOrNull()
-                        if (onlineDef != null && onlineDef.puzzleFingerprint == effectiveChallenge.puzzleFingerprint && summary?.entity != null) {
-                            val syncRes = dailyChallengeRepository.syncProvisional(
-                                challenge = effectiveChallenge,
-                                solveTimeMs = summary.entity.solveTimeMs,
-                                completedAt = summary.entity.completedAt,
-                                path = savedSession?.path?.map { "${it.row},${it.col}" },
-                                movesCount = summary.entity.movesCount
-                            )
-                            if (syncRes.isSuccess) {
-                                onlineResult = syncRes.getOrNull()
-                                effectiveVerification = DailyVerificationStatus.PROVISIONAL
-                            }
-                        }
-                    }
-                }
 
                 val todayUtc = clock.currentUtcDateKey()
                 val isLoginClaimed = walletRepository?.isDailyLoginClaimed(todayUtc) == true
@@ -258,8 +208,9 @@ class DailyChallengeViewModel @Inject constructor(
                 val coinBal = walletRepository?.getCurrentBalance() ?: 0
                 val totalStars = progressRepository?.getTotalStarsEarned()?.firstOrNull() ?: 0
 
+                // EMIT READY STATE IMMEDIATELY - ZERO DELAY!
                 _uiState.value = DailyChallengeUiState.Ready(
-                    challenge = effectiveChallenge,
+                    challenge = localChallenge,
                     availability = availability,
                     gameState = currentGameState,
                     boardState = boardState,
@@ -272,11 +223,11 @@ class DailyChallengeViewModel @Inject constructor(
                     isReducedMotion = isReducedMotion,
                     isSfxEnabled = isSfxEnabled,
                     isHapticsEnabled = isHapticsEnabled,
-                    verificationStatus = effectiveVerification,
-                    isOnlineAttempt = isOnline,
-                    serverAttemptId = serverAttemptId,
+                    verificationStatus = initialVerification,
+                    isOnlineAttempt = false,
+                    serverAttemptId = summary?.entity?.serverAttemptId,
                     isLeaderboardEligible = isEligible,
-                    onlineResult = onlineResult,
+                    onlineResult = null,
                     coinBalance = coinBal,
                     totalStars = totalStars,
                     isDailyLoginClaimed = isLoginClaimed,
@@ -284,6 +235,63 @@ class DailyChallengeViewModel @Inject constructor(
                     isDailyChallengeClearClaimed = isChallengeClearClaimed,
                     isDailyChallengeAdBonusClaimed = isChallengeAdBonusClaimed
                 )
+
+                // 4. Perform official server attempt check & background sync asynchronously (non-blocking)
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        val onlineChallengeResult = dailyChallengeRepository.getOfficialChallengeOnline(localChallenge.dateKey)
+                        var serverAttemptId: String? = summary?.entity?.serverAttemptId
+                        var isOnline = false
+
+                        val activeAttemptRes = dailyChallengeRepository.getActiveAttempt(localChallenge.dateKey)
+                        if (activeAttemptRes.isSuccess && activeAttemptRes.getOrNull() != null) {
+                            serverAttemptId = activeAttemptRes.getOrNull()!!.attemptId
+                            isOnline = true
+                        } else if (availability != DailyChallengeAvailability.COMPLETED) {
+                            val startRes = dailyChallengeRepository.startOfficialAttempt(localChallenge.dateKey)
+                            if (startRes.isSuccess) {
+                                serverAttemptId = startRes.getOrThrow().attemptId
+                                isOnline = true
+                            }
+                        }
+
+                        var onlineResult: DailyChallengeOnlineResult? = null
+                        var effectiveVerification = initialVerification
+                        if (availability == DailyChallengeAvailability.COMPLETED) {
+                            val personalRes = dailyChallengeRepository.getPersonalResultOnline(localChallenge.dateKey)
+                            onlineResult = personalRes.getOrNull()
+
+                            if (onlineResult == null && initialVerification == DailyVerificationStatus.LOCAL_COMPLETION && onlineChallengeResult.isSuccess) {
+                                val onlineDef = onlineChallengeResult.getOrNull()
+                                if (onlineDef != null && onlineDef.puzzleFingerprint == localChallenge.puzzleFingerprint && summary?.entity != null) {
+                                    val syncRes = dailyChallengeRepository.syncProvisional(
+                                        challenge = localChallenge,
+                                        solveTimeMs = summary.entity.solveTimeMs,
+                                        completedAt = summary.entity.completedAt,
+                                        path = savedSession?.path?.map { "${it.row},${it.col}" },
+                                        movesCount = summary.entity.movesCount
+                                    )
+                                    if (syncRes.isSuccess) {
+                                        onlineResult = syncRes.getOrNull()
+                                        effectiveVerification = DailyVerificationStatus.PROVISIONAL
+                                    }
+                                }
+                            }
+                        }
+
+                        val ready = _uiState.value as? DailyChallengeUiState.Ready
+                        if (ready != null) {
+                            _uiState.value = ready.copy(
+                                isOnlineAttempt = isOnline,
+                                serverAttemptId = serverAttemptId,
+                                onlineResult = onlineResult ?: ready.onlineResult,
+                                verificationStatus = effectiveVerification
+                            )
+                        }
+                    } catch (_: Exception) {
+                        // Offline or network error - local gameplay continues uninterrupted
+                    }
+                }
 
                 if (!currentGameState.currentPath.isEmpty && !currentGameState.isCompleted) {
                     gameplayTimer.start()
@@ -420,9 +428,10 @@ class DailyChallengeViewModel @Inject constructor(
             val maxStreak = summary?.maxStreak ?: currentStreak
 
             val todayUtc = clock.currentUtcDateKey()
-            if (walletRepository != null && !walletRepository.isDailyChallengeClearClaimed(todayUtc)) {
-                walletRepository.claimDailyChallengeReward(todayUtc)
-            }
+            val wasAlreadyClaimed = walletRepository?.isDailyChallengeClearClaimed(todayUtc) == true
+            val justClaimed = if (walletRepository != null && !wasAlreadyClaimed) {
+                walletRepository.claimDailyChallengeReward(todayUtc).isSuccess
+            } else false
 
             val latestReady = _uiState.value as? DailyChallengeUiState.Ready
             if (latestReady != null) {
@@ -439,7 +448,8 @@ class DailyChallengeViewModel @Inject constructor(
                     isValidatingOnline = false,
                     onlineResult = onlineResult,
                     showResultDialog = true,
-                    isDailyChallengeClearClaimed = true
+                    isDailyChallengeClearClaimed = true,
+                    isFirstClearBonusAwarded = justClaimed
                 )
             }
 
@@ -626,53 +636,5 @@ class DailyChallengeViewModel @Inject constructor(
                 )
             }
         }
-    }
-
-    fun claimDailyLoginAdBonus(activity: Activity) {
-        val wallet = walletRepository ?: return
-        val adMgr = coinRewardedAdManager ?: return
-        val currentReady = _uiState.value as? DailyChallengeUiState.Ready ?: return
-        if (currentReady.isDailyLoginAdBonusClaimed) return
-
-        adMgr.showCoinRewardedAd(
-            activity = activity,
-            onRewarded = {
-                viewModelScope.launch {
-                    val today = clock.currentUtcDateKey()
-                    val res = wallet.claimDailyLoginAdBonus(today)
-                    if (res.isSuccess) {
-                        val latest = _uiState.value as? DailyChallengeUiState.Ready ?: return@launch
-                        _uiState.value = latest.copy(
-                            isDailyLoginAdBonusClaimed = true
-                        )
-                    }
-                }
-            },
-            onFailed = {}
-        )
-    }
-
-    fun claimDailyChallengeAdBonus(activity: Activity) {
-        val wallet = walletRepository ?: return
-        val adMgr = coinRewardedAdManager ?: return
-        val currentReady = _uiState.value as? DailyChallengeUiState.Ready ?: return
-        if (currentReady.isDailyChallengeAdBonusClaimed) return
-
-        adMgr.showCoinRewardedAd(
-            activity = activity,
-            onRewarded = {
-                viewModelScope.launch {
-                    val today = clock.currentUtcDateKey()
-                    val res = wallet.claimDailyChallengeAdBonus(today)
-                    if (res.isSuccess) {
-                        val latest = _uiState.value as? DailyChallengeUiState.Ready ?: return@launch
-                        _uiState.value = latest.copy(
-                            isDailyChallengeAdBonusClaimed = true
-                        )
-                    }
-                }
-            },
-            onFailed = {}
-        )
     }
 }

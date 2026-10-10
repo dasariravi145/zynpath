@@ -63,6 +63,20 @@ data class SolverResult(
             else -> UniquenessStatus.UNKNOWN
         }
 
+    /**
+     * Authoritative solution classification adhering to Section 11:
+     * NONE, UNIQUE, MULTIPLE, UNKNOWN_LIMIT_REACHED.
+     */
+    val solutionClassification: SolutionClassification
+        get() = when {
+            status == SolverStatus.MULTIPLE_SOLUTIONS -> SolutionClassification.MULTIPLE
+            solutions.size >= 2 -> SolutionClassification.MULTIPLE
+            status == SolverStatus.UNSOLVABLE -> SolutionClassification.NONE
+            isExhaustive && solutions.isEmpty() -> SolutionClassification.NONE
+            isExhaustive && solutions.size == 1 -> SolutionClassification.UNIQUE
+            else -> SolutionClassification.UNKNOWN_LIMIT_REACHED
+        }
+
     /** The primary or first discovered solution path, if any. */
     val firstSolution: PuzzlePath?
         get() = solutions.firstOrNull()

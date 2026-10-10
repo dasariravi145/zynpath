@@ -35,12 +35,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,10 +94,20 @@ fun LevelSelectionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
     val feedbackCoordinator = rememberZynpathFeedbackCoordinator()
+    val gridState = rememberLazyGridState()
 
     LaunchedEffect(Unit) {
         feedbackCoordinator.onScreenOpened()
+    }
+
+    // Auto-focus current level when world or nextPlayableLevelId changes
+    LaunchedEffect(uiState.worldId, uiState.nextPlayableLevelId) {
+        val currentLevelIndex = uiState.levels.indexOfFirst { it.isCurrent }
+        if (currentLevelIndex >= 0) {
+            gridState.animateScrollToItem(currentLevelIndex)
+        }
     }
 
     var selectedLevelForDetails by remember { mutableStateOf<LevelCardData?>(null) }
@@ -108,7 +121,7 @@ fun LevelSelectionScreen(
         )
     }
 
-    // Level Details Modal Dialog
+    // Level Details Modal Dialog (can still be shown if explicit details requested)
     val currentSelected = selectedLevelForDetails
     if (currentSelected != null) {
         LevelDetailsDialog(
@@ -231,11 +244,53 @@ fun LevelSelectionScreen(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Compact World Status Bar (Name, Grid Size, Solved / Locked Status)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${uiState.worldName} (${uiState.gridSize})",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = RefCyanNeon
+                )
+
+                if (uiState.isWorldLocked && uiState.worldUnlockRequirement != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = Color(0xFFFCA5A5),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Locked",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFCA5A5)
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "${uiState.completedCount}/${uiState.levels.size} Solved",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // 4-Column Grid of Levels
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
+                state = gridState,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -252,10 +307,23 @@ fun LevelSelectionScreen(
                         onClick = {
                             if (level.state == LevelState.LOCKED) {
                                 feedbackCoordinator.onInvalidMove()
+                                val reqMsg = if (uiState.isWorldLocked && uiState.worldUnlockRequirement != null) {
+                                    uiState.worldUnlockRequirement!!
+                                } else if (level.localLevelNumber == 1) {
+                                    "Level 1 is unlocked."
+                                } else {
+                                    "Solve Level ${level.localLevelNumber - 1} to unlock this path."
+                                }
+                                coroutineScope.launch {
+                                    snackbarHostState.currentSnackbarData?.dismiss()
+                                    snackbarHostState.showSnackbar(reqMsg)
+                                }
                             } else {
+                                // Direct level entry into gameplay
                                 feedbackCoordinator.onButtonPressed()
+                                viewModel.onLevelSelected(level.levelNumber)
+                                onSelectLevel(uiState.worldId, level.levelNumber)
                             }
-                            selectedLevelForDetails = level
                         }
                     )
                 }
@@ -268,8 +336,35 @@ fun LevelSelectionScreen(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-        )
+                .padding(bottom = 24.dp)
+        ) { snackbarData ->
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF0F172A))
+                    .border(1.2.dp, RefCyanNeon.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = RefGoldPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = snackbarData.visuals.message,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -282,7 +377,8 @@ private fun ReferenceLevelItem(
     onClick: () -> Unit
 ) {
     val isCompleted = level.state == LevelState.COMPLETED
-    val isUnlocked = level.state == LevelState.UNLOCKED || level.isCurrent
+    val isCurrent = level.isCurrent
+    val isUnlocked = level.state == LevelState.UNLOCKED || isCurrent
     val isLocked = level.state == LevelState.LOCKED
 
     Column(
@@ -308,6 +404,15 @@ private fun ReferenceLevelItem(
                                 )
                                 .border(1.dp, Color(0xFF67E8F9), RoundedCornerShape(12.dp))
                         }
+                        isCurrent -> {
+                            Modifier
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color(0xFF1E293B), RefNavySurface)
+                                    )
+                                )
+                                .border(2.dp, RefGoldPrimary, RoundedCornerShape(12.dp))
+                        }
                         isUnlocked -> {
                             Modifier
                                 .background(RefNavySurface)
@@ -323,11 +428,12 @@ private fun ReferenceLevelItem(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "${level.levelNumber}",
+                text = "${level.localLevelNumber}",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = when {
                     isCompleted -> Color.White
+                    isCurrent -> RefGoldPrimary
                     isUnlocked -> Color.White
                     else -> Color(0xFF64748B)
                 }
@@ -336,7 +442,7 @@ private fun ReferenceLevelItem(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Sub-indicator: Stars or Lock
+        // Sub-indicator: Stars, Current Badge, or Lock
         if (isLocked) {
             Icon(
                 imageVector = Icons.Default.Lock,
@@ -344,6 +450,21 @@ private fun ReferenceLevelItem(
                 tint = Color(0xFF64748B),
                 modifier = Modifier.size(13.dp)
             )
+        } else if (isCurrent) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(RefGoldPrimary.copy(alpha = 0.2f))
+                    .border(0.8.dp, RefGoldPrimary.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    text = "CURRENT",
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = RefGoldPrimary
+                )
+            }
         } else {
             // Row of 3 stars
             Row(

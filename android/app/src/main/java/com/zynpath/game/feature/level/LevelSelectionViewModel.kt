@@ -30,7 +30,9 @@ data class LevelSelectionUiState(
     val activeWorldIntro: FeatureTip? = null,
     val nextPlayableLevelId: Int = 1,
     val isReducedMotion: Boolean = false,
-    val currentChapter: com.zynpath.game.core.puzzle.experience.ChapterDefinition? = null
+    val currentChapter: com.zynpath.game.core.puzzle.experience.ChapterDefinition? = null,
+    val isWorldLocked: Boolean = false,
+    val worldUnlockRequirement: String? = null
 )
 
 @HiltViewModel
@@ -47,16 +49,18 @@ class LevelSelectionViewModel @Inject constructor(
         savedStateHandle: SavedStateHandle
     ) : this(progressRepository, preferencesRepository, savedStateHandle, null)
 
-    val initialWorldId: Int = savedStateHandle.get<Int>("worldId") ?: 1
-    private val selectedWorldId = MutableStateFlow(initialWorldId)
+    val initialWorldId: Int = savedStateHandle.get<Int>("worldId") ?: 0
+    private val selectedWorldId = MutableStateFlow(
+        if (initialWorldId in 1..WorldConfiguration.TOTAL_WORLDS) initialWorldId else 1
+    )
     val worldId: Int get() = selectedWorldId.value
 
     private val _uiState = MutableStateFlow(
         LevelSelectionUiState(
-            worldId = initialWorldId,
-            worldName = getWorldName(initialWorldId),
-            gridSize = getGridSize(initialWorldId),
-            levels = generateInitialLevels(initialWorldId)
+            worldId = selectedWorldId.value,
+            worldName = getWorldName(selectedWorldId.value),
+            gridSize = getGridSize(selectedWorldId.value),
+            levels = generateInitialLevels(selectedWorldId.value)
         )
     )
     val uiState: StateFlow<LevelSelectionUiState> = _uiState.asStateFlow()
@@ -79,6 +83,7 @@ class LevelSelectionViewModel @Inject constructor(
 
     private fun observeWorldProgress() {
         viewModelScope.launch {
+            var autoFocused = false
             kotlinx.coroutines.flow.combine(
                 selectedWorldId,
                 progressRepository.observeAllProgress(),
@@ -87,8 +92,22 @@ class LevelSelectionViewModel @Inject constructor(
                 val progressMap = allProgress.associateBy { it.levelId }
                 val completedLevelIds = allProgress.filter { it.isCompleted }.map { it.levelId }.toSet()
 
-                val worldConfig = WorldConfiguration.getWorld(currentWorldId)
-                val levelRange = worldConfig?.levelRange ?: getLevelRange(currentWorldId)
+                val effectiveWorldId = if (!autoFocused && initialWorldId <= 0) {
+                    autoFocused = true
+                    val nextPlayable = WorldConfiguration.getNextPlayableLevel(completedLevelIds)
+                    val nextWorld = WorldConfiguration.getWorldForLevel(nextPlayable).worldId
+                    if (nextWorld != currentWorldId) {
+                        selectedWorldId.value = nextWorld
+                        nextWorld
+                    } else {
+                        currentWorldId
+                    }
+                } else {
+                    currentWorldId
+                }
+
+                val worldConfig = WorldConfiguration.getWorld(effectiveWorldId)
+                val levelRange = worldConfig?.levelRange ?: getLevelRange(effectiveWorldId)
                 var foundFirstIncomplete = false
 
                 val levelCards = levelRange.map { levelNum ->
@@ -135,17 +154,27 @@ class LevelSelectionViewModel @Inject constructor(
                     ?: levelRange.first
                 val currentChapter = com.zynpath.game.core.puzzle.experience.ProgressionPlan.getChapterForLevel(levelRange.first)
 
+                val isWorldLocked = !WorldConfiguration.isWorldUnlocked(effectiveWorldId, completedLevelIds)
+                val worldUnlockRequirement = if (isWorldLocked && effectiveWorldId > 1) {
+                    val prevWorld = WorldConfiguration.getWorld(effectiveWorldId - 1)
+                    val completedInPrev = completedLevelIds.count { it in (prevWorld?.levelRange ?: IntRange.EMPTY) }
+                    val req = worldConfig?.minPreviousWorldCompletedToUnlock ?: 0
+                    "Requires $req levels solved in World ${effectiveWorldId - 1} ($completedInPrev/$req)"
+                } else null
+
                 LevelSelectionUiState(
-                    worldId = currentWorldId,
-                    worldName = getWorldName(currentWorldId),
-                    gridSize = getGridSize(currentWorldId),
+                    worldId = effectiveWorldId,
+                    worldName = getWorldName(effectiveWorldId),
+                    gridSize = getGridSize(effectiveWorldId),
                     levels = levelCards,
                     totalStars = totalStars,
                     completedCount = completedCount,
                     activeWorldIntro = _uiState.value.activeWorldIntro,
                     nextPlayableLevelId = nextPlayableLevelId,
                     isReducedMotion = prefs.isReducedMotion,
-                    currentChapter = currentChapter
+                    currentChapter = currentChapter,
+                    isWorldLocked = isWorldLocked,
+                    worldUnlockRequirement = worldUnlockRequirement
                 )
             }.collect { newState ->
                 _uiState.value = newState
@@ -174,7 +203,7 @@ class LevelSelectionViewModel @Inject constructor(
 
     companion object {
         fun getLevelRange(worldId: Int): IntRange =
-            WorldConfiguration.getWorld(worldId)?.levelRange ?: (1..20)
+            WorldConfiguration.getWorld(worldId)?.levelRange ?: (1..300)
 
         fun getWorldName(worldId: Int): String {
             val world = WorldConfiguration.getWorld(worldId)

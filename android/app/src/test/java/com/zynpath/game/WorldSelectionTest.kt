@@ -22,8 +22,8 @@ class WorldSelectionTest {
         val w1 = worlds[0]
         assertEquals(1, w1.worldId)
         assertEquals("Learn the Path", w1.name)
-        assertEquals("4×4", w1.gridSizeDescription)
-        assertEquals(20, w1.totalLevels)
+        assertEquals("6×6", w1.gridSizeDescription)
+        assertEquals(300, w1.totalLevels)
         assertFalse("World 1 must be unlocked by default", w1.isLocked)
         assertFalse(w1.hasWalls)
 
@@ -31,45 +31,45 @@ class WorldSelectionTest {
         val w2 = worlds[1]
         assertEquals(2, w2.worldId)
         assertEquals("Longer Connections", w2.name)
-        assertEquals("5×5", w2.gridSizeDescription)
-        assertEquals(30, w2.totalLevels)
+        assertEquals("7×7 with walls", w2.gridSizeDescription)
+        assertEquals(300, w2.totalLevels)
 
         // World 3
         val w3 = worlds[2]
         assertEquals(3, w3.worldId)
         assertEquals("Wall Challenge", w3.name)
-        assertEquals("5×5 with walls", w3.gridSizeDescription)
-        assertEquals(50, w3.totalLevels)
+        assertEquals("8×8 with walls", w3.gridSizeDescription)
+        assertEquals(300, w3.totalLevels)
         assertTrue(w3.hasWalls)
 
         // World 4
         val w4 = worlds[3]
         assertEquals(4, w4.worldId)
         assertEquals("Complex Routes", w4.name)
-        assertEquals("6×6", w4.gridSizeDescription)
-        assertEquals(50, w4.totalLevels)
+        assertEquals("9×9 with walls", w4.gridSizeDescription)
+        assertEquals(300, w4.totalLevels)
 
         // World 5
         val w5 = worlds[4]
         assertEquals(5, w5.worldId)
         assertEquals("Advanced Logic", w5.name)
-        assertEquals("7×7 with walls", w5.gridSizeDescription)
-        assertEquals(50, w5.totalLevels)
+        assertEquals("11×11 with walls", w5.gridSizeDescription)
+        assertEquals(300, w5.totalLevels)
 
         // World 6
         val w6 = worlds[5]
         assertEquals(6, w6.worldId)
         assertEquals("Expert Path", w6.name)
-        assertEquals("8×8 with walls", w6.gridSizeDescription)
-        assertEquals(100, w6.totalLevels)
+        assertEquals("12×12 with walls", w6.gridSizeDescription)
+        assertEquals(300, w6.totalLevels)
 
-        // Total 300 base levels
+        // Total 1,800 base levels across 6 worlds
         val totalLevels = worlds.sumOf { it.totalLevels }
-        assertEquals(300, totalLevels)
+        assertEquals(1800, totalLevels)
     }
 
     @Test
-    fun levelRanges_partitionThreeHundredLevelsWithoutGapsOrOverlaps() {
+    fun levelRanges_partitionEighteenHundredLevelsWithoutGapsOrOverlaps() {
         var expectedStart = 1
 
         for (worldId in 1..6) {
@@ -78,7 +78,7 @@ class WorldSelectionTest {
             expectedStart = range.last + 1
         }
 
-        assertEquals(301, expectedStart) // All 300 levels covered
+        assertEquals(1801, expectedStart) // All 1,800 levels covered
     }
 
     @Test
@@ -87,14 +87,14 @@ class WorldSelectionTest {
         assertTrue("World 1 is unlocked by default", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(1, noCompletions))
         assertFalse("World 2 is locked without World 1 completions", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(2, noCompletions))
 
-        // Complete World 1 (levels 1..20)
+        // Complete World 1 threshold (20 levels in World 1: 1..20)
         val world1Completed = (1..20).toSet()
-        assertTrue("World 2 unlocked after completing World 1", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(2, world1Completed))
+        assertTrue("World 2 unlocked after completing World 1 threshold", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(2, world1Completed))
         assertFalse("World 3 remains locked", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(3, world1Completed))
 
-        // Complete World 2 (levels 1..50)
-        val world2Completed = (1..50).toSet()
-        assertTrue("World 3 unlocked after completing World 2", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(3, world2Completed))
+        // Complete World 2 threshold (30 levels in World 2: 301..330)
+        val world2Completed = world1Completed + (301..330).toSet()
+        assertTrue("World 3 unlocked after completing World 2 threshold", com.zynpath.game.core.puzzle.model.WorldConfiguration.isWorldUnlocked(3, world2Completed))
     }
 
     @Test

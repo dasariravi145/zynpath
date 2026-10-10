@@ -4,6 +4,7 @@ import com.zynpath.game.core.puzzle.catalog.CuratedAnchorLevels
 import com.zynpath.game.core.puzzle.catalog.PackagedPuzzles
 import com.zynpath.game.core.puzzle.model.PuzzleDefinition
 import com.zynpath.game.core.puzzle.model.PuzzlePath
+import com.zynpath.game.core.puzzle.model.WorldConfiguration
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -50,6 +51,34 @@ class DeterministicLevelProviderImpl(
         for ((lvlId, sol) in com.zynpath.game.core.puzzle.catalog.CuratedFirst50Levels.SOLUTIONS) {
             solutionCache[lvlId] = sol
         }
+        // Pre-populate curated World 3 levels (51..100)
+        for ((lvlId, def) in com.zynpath.game.core.puzzle.catalog.CuratedWorld3Levels.LEVELS) {
+            puzzleCache[lvlId] = def
+        }
+        for ((lvlId, sol) in com.zynpath.game.core.puzzle.catalog.CuratedWorld3Levels.SOLUTIONS) {
+            solutionCache[lvlId] = sol
+        }
+        // Pre-populate curated World 4 levels (101..150)
+        for ((lvlId, def) in com.zynpath.game.core.puzzle.catalog.CuratedWorld4Levels.LEVELS) {
+            puzzleCache[lvlId] = def
+        }
+        for ((lvlId, sol) in com.zynpath.game.core.puzzle.catalog.CuratedWorld4Levels.SOLUTIONS) {
+            solutionCache[lvlId] = sol
+        }
+        // Pre-populate curated World 5 levels (151..200)
+        for ((lvlId, def) in com.zynpath.game.core.puzzle.catalog.CuratedWorld5Levels.LEVELS) {
+            puzzleCache[lvlId] = def
+        }
+        for ((lvlId, sol) in com.zynpath.game.core.puzzle.catalog.CuratedWorld5Levels.SOLUTIONS) {
+            solutionCache[lvlId] = sol
+        }
+        // Pre-populate curated World 6 levels (201..300)
+        for ((lvlId, def) in com.zynpath.game.core.puzzle.catalog.CuratedWorld6Levels.LEVELS) {
+            puzzleCache[lvlId] = def
+        }
+        for ((lvlId, sol) in com.zynpath.game.core.puzzle.catalog.CuratedWorld6Levels.SOLUTIONS) {
+            solutionCache[lvlId] = sol
+        }
         // Pre-populate curated anchor and milestone puzzles
         for ((lvlId, def) in CuratedAnchorLevels.ANCHOR_LEVELS) {
             puzzleCache[lvlId] = def
@@ -60,7 +89,7 @@ class DeterministicLevelProviderImpl(
     }
 
     override fun getLevel(levelId: Int): PuzzleDefinition? {
-        if (levelId !in 1..300) return null
+        if (levelId !in 1..WorldConfiguration.TOTAL_LEVELS) return null
 
         puzzleCache[levelId]?.let { return it }
 
@@ -92,7 +121,7 @@ class DeterministicLevelProviderImpl(
     }
 
     override fun getSolution(levelId: Int): PuzzlePath? {
-        if (levelId !in 1..300) return null
+        if (levelId !in 1..WorldConfiguration.TOTAL_LEVELS) return null
         solutionCache[levelId]?.let { return it }
         CuratedAnchorLevels.ANCHOR_SOLUTIONS[levelId]?.let {
             solutionCache[levelId] = it
@@ -104,7 +133,6 @@ class DeterministicLevelProviderImpl(
     }
 
     override fun isLevelPackaged(levelId: Int): Boolean {
-        return PackagedPuzzles.ALL_PACKAGED.containsKey(levelId) ||
-                CuratedAnchorLevels.ANCHOR_LEVELS.containsKey(levelId)
+        return levelId in 1..WorldConfiguration.TOTAL_LEVELS
     }
 }

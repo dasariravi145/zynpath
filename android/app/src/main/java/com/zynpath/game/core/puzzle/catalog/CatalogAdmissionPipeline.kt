@@ -60,10 +60,11 @@ object CatalogAdmissionPipeline {
 
         // Step 5 (part 1): Confirm world configuration
         val world = WorldDefinition.forWorld(worldId)
-        if (candidate.gridDimensions != world.gridDimensions) {
+        val expectedDims = WorldDefinition.getExpectedGridDimensions(levelId)
+        if (candidate.gridDimensions != expectedDims) {
             return AdmissionResult.Rejected(
                 levelId, worldId,
-                "Grid dimension mismatch: expected ${world.gridDimensions}, got ${candidate.gridDimensions}"
+                "Grid dimension mismatch: expected $expectedDims, got ${candidate.gridDimensions}"
             )
         }
         if (candidate.checkpoints.size !in world.checkpointRange) {
