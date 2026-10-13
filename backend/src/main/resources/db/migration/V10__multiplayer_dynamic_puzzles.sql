@@ -22,10 +22,10 @@ CREATE TABLE IF NOT EXISTS multiplayer_generated_puzzles (
     created_at BIGINT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_mp_puzzles_lookup
+CREATE INDEX IF NOT EXISTS idx_mp_puzzles_lookup 
     ON multiplayer_generated_puzzles(game_mode, difficulty_tier, inventory_status);
 
-CREATE INDEX IF NOT EXISTS idx_mp_puzzles_tier
+CREATE INDEX IF NOT EXISTS idx_mp_puzzles_tier 
     ON multiplayer_generated_puzzles(difficulty_tier);
 
 -- 2. Puzzle Assignments (Match to puzzle mapping with idempotency protection)
@@ -53,5 +53,5 @@ CREATE TABLE IF NOT EXISTS multiplayer_player_puzzle_history (
     assigned_at BIGINT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_player_puzzle_history_lookup
+CREATE INDEX IF NOT EXISTS idx_player_puzzle_history_lookup 
     ON multiplayer_player_puzzle_history(player_id, assigned_at DESC);
