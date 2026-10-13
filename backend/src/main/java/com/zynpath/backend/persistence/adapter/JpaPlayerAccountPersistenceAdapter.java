@@ -1,5 +1,6 @@
 package com.zynpath.backend.persistence.adapter;
 
+import com.zynpath.backend.auth.model.AuthException;
 import com.zynpath.backend.auth.model.AuthProvider;
 import com.zynpath.backend.auth.model.ExternalIdentity;
 import com.zynpath.backend.auth.model.PlayerAccount;
@@ -144,13 +145,38 @@ public class JpaPlayerAccountPersistenceAdapter implements PlayerAccountPersiste
     @Override
     @Transactional
     public void bindGuestUuid(String guestUuid, String playerId) {
-        ExternalIdentityEntity entity = new ExternalIdentityEntity(
-                "GUEST",
-                guestUuid,
-                playerId,
-                System.currentTimeMillis()
-        );
-        identityRepository.save(entity);
+        if (guestUuid == null || guestUuid.isBlank()) {
+            throw new IllegalArgumentException("guestUuid must not be blank");
+        }
+        if (playerId == null || playerId.isBlank()) {
+            throw new IllegalArgumentException("playerId must not be blank");
+        }
+
+        // 1. Verify existing mapping to prevent rebinding to a different player
+        Optional<ExternalIdentityEntity> existingOpt = identityRepository.findByProviderAndProviderSubjectId("GUEST", guestUuid);
+        if (existingOpt.isPresent()) {
+            ExternalIdentityEntity existing = existingOpt.get();
+            if (playerId.equals(existing.getPlayerId())) {
+                log.debug("PostgreSQL JPA: guest identity mapping already bound to same playerId={}", playerId);
+                return; // Idempotent same-owner binding
+            }
+            log.warn("PostgreSQL JPA: Refusing to rebind existing guest identity to different playerId={}", playerId);
+            throw AuthException.accountLinkConflict("Guest identity is already bound to another player account");
+        }
+
+        // 2. Perform atomic INSERT ON CONFLICT DO NOTHING to prevent race conditions across Cloud Run instances
+        int rows = identityRepository.insertGuestIdentityIfNotExists(guestUuid, playerId, System.currentTimeMillis());
+        if (rows == 0) {
+            // A concurrent request bound this guestUuid concurrently
+            Optional<ExternalIdentityEntity> winnerOpt = identityRepository.findByProviderAndProviderSubjectId("GUEST", guestUuid);
+            if (winnerOpt.isPresent() && playerId.equals(winnerOpt.get().getPlayerId())) {
+                log.debug("PostgreSQL JPA: Concurrent insert succeeded with matching playerId={}", playerId);
+                return;
+            }
+            log.warn("PostgreSQL JPA: Concurrent insert conflict for guest identity, bound to different playerId");
+            throw AuthException.accountLinkConflict("Guest identity is already bound to another player account");
+        }
+        log.info("PostgreSQL JPA: Bound guest identity to playerId={}", playerId);
     }
 
     private PlayerAccount toDomainAccount(PlayerAccountEntity entity) {

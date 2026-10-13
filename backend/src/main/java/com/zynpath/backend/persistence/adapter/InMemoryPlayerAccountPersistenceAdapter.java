@@ -1,5 +1,6 @@
 package com.zynpath.backend.persistence.adapter;
 
+import com.zynpath.backend.auth.model.AuthException;
 import com.zynpath.backend.auth.model.AuthProvider;
 import com.zynpath.backend.auth.model.ExternalIdentity;
 import com.zynpath.backend.auth.model.PlayerAccount;
@@ -96,6 +97,17 @@ public class InMemoryPlayerAccountPersistenceAdapter implements PlayerAccountPer
 
     @Override
     public void bindGuestUuid(String guestUuid, String playerId) {
-        playerIdsByGuestUuid.put(guestUuid, playerId);
+        if (guestUuid == null || guestUuid.isBlank()) {
+            throw new IllegalArgumentException("guestUuid must not be blank");
+        }
+        if (playerId == null || playerId.isBlank()) {
+            throw new IllegalArgumentException("playerId must not be blank");
+        }
+        playerIdsByGuestUuid.compute(guestUuid, (k, existing) -> {
+            if (existing != null && !existing.equals(playerId)) {
+                throw AuthException.accountLinkConflict("Guest identity is already bound to another player account");
+            }
+            return playerId;
+        });
     }
 }

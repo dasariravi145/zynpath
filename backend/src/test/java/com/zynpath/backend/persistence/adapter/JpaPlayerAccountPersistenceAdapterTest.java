@@ -93,4 +93,72 @@ class JpaPlayerAccountPersistenceAdapterTest {
         assertTrue(result.isPresent());
         assertEquals("p_guest_target", result.get());
     }
+
+    @Test
+    void testBindGuestUuid_newMapping_insertsSuccessfully() {
+        when(identityRepository.findByProviderAndProviderSubjectId("GUEST", "new_guest_uuid"))
+                .thenReturn(Optional.empty());
+        when(identityRepository.insertGuestIdentityIfNotExists(org.mockito.ArgumentMatchers.eq("new_guest_uuid"), org.mockito.ArgumentMatchers.eq("p_new"), org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(1);
+
+        adapter.bindGuestUuid("new_guest_uuid", "p_new");
+
+        verify(identityRepository).insertGuestIdentityIfNotExists(org.mockito.ArgumentMatchers.eq("new_guest_uuid"), org.mockito.ArgumentMatchers.eq("p_new"), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void testBindGuestUuid_sameOwner_isIdempotent() {
+        ExternalIdentityEntity existing = new ExternalIdentityEntity("GUEST", "existing_uuid", "p_same", 100L);
+        when(identityRepository.findByProviderAndProviderSubjectId("GUEST", "existing_uuid"))
+                .thenReturn(Optional.of(existing));
+
+        adapter.bindGuestUuid("existing_uuid", "p_same");
+
+        verify(identityRepository, org.mockito.Mockito.never()).insertGuestIdentityIfNotExists(any(), any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void testBindGuestUuid_differentOwner_throwsConflict() {
+        ExternalIdentityEntity existing = new ExternalIdentityEntity("GUEST", "victim_uuid", "p_victim", 100L);
+        when(identityRepository.findByProviderAndProviderSubjectId("GUEST", "victim_uuid"))
+                .thenReturn(Optional.of(existing));
+
+        com.zynpath.backend.auth.model.AuthException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                com.zynpath.backend.auth.model.AuthException.class,
+                () -> adapter.bindGuestUuid("victim_uuid", "p_attacker")
+        );
+
+        assertEquals("ACCOUNT_LINK_CONFLICT", ex.getErrorCode());
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, ex.getHttpStatus());
+        verify(identityRepository, org.mockito.Mockito.never()).insertGuestIdentityIfNotExists(any(), any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void testBindGuestUuid_concurrentConflict_throwsConflict() {
+        when(identityRepository.findByProviderAndProviderSubjectId("GUEST", "race_uuid"))
+                .thenReturn(Optional.empty()) // Initial check
+                .thenReturn(Optional.of(new ExternalIdentityEntity("GUEST", "race_uuid", "p_race_winner", 100L))); // Post-conflict check
+
+        when(identityRepository.insertGuestIdentityIfNotExists(org.mockito.ArgumentMatchers.eq("race_uuid"), org.mockito.ArgumentMatchers.eq("p_race_loser"), org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(0); // Insert failed due to race
+
+        com.zynpath.backend.auth.model.AuthException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                com.zynpath.backend.auth.model.AuthException.class,
+                () -> adapter.bindGuestUuid("race_uuid", "p_race_loser")
+        );
+
+        assertEquals("ACCOUNT_LINK_CONFLICT", ex.getErrorCode());
+    }
+
+    @Test
+    void testBindGuestUuid_concurrentSameOwner_succeedsIdempotently() {
+        when(identityRepository.findByProviderAndProviderSubjectId("GUEST", "race_uuid"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(new ExternalIdentityEntity("GUEST", "race_uuid", "p_same", 100L)));
+
+        when(identityRepository.insertGuestIdentityIfNotExists(org.mockito.ArgumentMatchers.eq("race_uuid"), org.mockito.ArgumentMatchers.eq("p_same"), org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(0);
+
+        adapter.bindGuestUuid("race_uuid", "p_same");
+    }
 }

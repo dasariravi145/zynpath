@@ -193,7 +193,7 @@ public class AuthController {
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @Valid @RequestBody AuthLinkRequest request
     ) {
-        log.info("Processing account link for provider={}, guestUuid={}", request.provider(), request.guestUuid());
+        log.info("Processing account link for provider={}", request.provider());
 
         String callerPlayerId = null;
         if (authHeader != null && !authHeader.isBlank()) {
@@ -221,7 +221,7 @@ public class AuthController {
         PlayerSession session = sessionSecurityService.createSession(account.playerId());
 
         auditLogger.logEvent(SecurityEventType.ACCOUNT_LINKED, account.playerId(),
-                Map.of("provider", request.provider().name(), "guestUuid", String.valueOf(request.guestUuid())));
+                Map.of("provider", request.provider().name(), "hasGuestIdentity", request.guestUuid() != null));
 
         AuthResponse response = new AuthResponse(
                 session.sessionToken(),

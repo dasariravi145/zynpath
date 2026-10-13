@@ -239,4 +239,72 @@ class AuthControllerIntegrationTest {
                 .header("Authorization", "Bearer " + session.sessionToken()))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("Provider token exchange with another player's guest UUID creates account without binding guest UUID")
+    void exchangeToken_withVictimGuestUuid_createsProviderAccountWithoutBindingVictimGuestUuid() throws Exception {
+        // Victim owns guest identity
+        String victimGuestUuid = "victim-guest-uuid-exchange-001";
+        PlayerAccount victimGuest = playerAccountService.getOrCreateGuestAccount(null, "VictimGuest");
+        // Bind victimGuestUuid to victim
+        com.zynpath.backend.persistence.port.PlayerAccountPersistencePort port =
+                org.springframework.test.util.ReflectionTestUtils.getField(playerAccountService, "persistencePort") != null
+                        ? (com.zynpath.backend.persistence.port.PlayerAccountPersistencePort) org.springframework.test.util.ReflectionTestUtils.getField(playerAccountService, "persistencePort")
+                        : null;
+        if (port != null) {
+            port.bindGuestUuid(victimGuestUuid, victimGuest.playerId());
+        }
+
+        long futureExp = (System.currentTimeMillis() / 1000L) + 3600;
+        String googleJwt = createMockGoogleJwt("attacker_sub_exchange_01", "Attacker User", "attacker@example.com", "test-zynpath-client-id.apps.googleusercontent.com", futureExp);
+
+        org.mockito.Mockito.doReturn(new VerifiedProviderIdentity(AuthProvider.GOOGLE, "attacker_sub_exchange_01", "Attacker User", "attacker@example.com", true))
+                .when(tokenVerificationService).verifyProviderToken(org.mockito.ArgumentMatchers.eq(AuthProvider.GOOGLE), org.mockito.ArgumentMatchers.eq(googleJwt));
+
+        AuthTokenExchangeRequest request = new AuthTokenExchangeRequest(AuthProvider.GOOGLE, googleJwt, victimGuestUuid);
+
+        mockMvc.perform(post("/api/v1/auth/exchange")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionToken").isNotEmpty())
+                .andExpect(jsonPath("$.accountType").value("AUTHENTICATED"));
+
+        // Victim's guest identity is NOT stolen
+        if (port != null) {
+            assertThat(port.findGuestPlayerId(victimGuestUuid)).contains(victimGuest.playerId());
+        }
+    }
+
+    @Test
+    @DisplayName("Unauthorized attempt to link existing guest UUID without valid session fails with 401")
+    void linkAccount_existingGuestWithoutValidSession_failsWithUnauthorized() throws Exception {
+        String existingGuestUuid = "victim-guest-uuid-link-002";
+        PlayerAccount victimGuest = playerAccountService.getOrCreateGuestAccount(null, "VictimGuestLink");
+        com.zynpath.backend.persistence.port.PlayerAccountPersistencePort port =
+                (com.zynpath.backend.persistence.port.PlayerAccountPersistencePort) org.springframework.test.util.ReflectionTestUtils.getField(playerAccountService, "persistencePort");
+        if (port != null) {
+            port.bindGuestUuid(existingGuestUuid, victimGuest.playerId());
+        }
+
+        long futureExp = (System.currentTimeMillis() / 1000L) + 3600;
+        String googleJwt = createMockGoogleJwt("attacker_link_sub_02", "Attacker Linker", "attackerlink@example.com", "test-zynpath-client-id.apps.googleusercontent.com", futureExp);
+
+        org.mockito.Mockito.doReturn(new VerifiedProviderIdentity(AuthProvider.GOOGLE, "attacker_link_sub_02", "Attacker Linker", "attackerlink@example.com", true))
+                .when(tokenVerificationService).verifyProviderToken(org.mockito.ArgumentMatchers.eq(AuthProvider.GOOGLE), org.mockito.ArgumentMatchers.eq(googleJwt));
+
+        AuthLinkRequest linkRequest = new AuthLinkRequest(AuthProvider.GOOGLE, googleJwt, existingGuestUuid, "Attacker Name");
+
+        // No Authorization header
+        mockMvc.perform(post("/api/v1/auth/link")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(linkRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_PROVIDER_CREDENTIAL"));
+
+        // Identity mapping remains victim's
+        if (port != null) {
+            assertThat(port.findGuestPlayerId(existingGuestUuid)).contains(victimGuest.playerId());
+        }
+    }
 }

@@ -95,8 +95,11 @@ public class PlayerAccountService {
             persistencePort.saveAccount(newAccount);
             persistencePort.saveExternalIdentity(newLink);
 
+            // SECURITY HARDENING: Do NOT automatically bind client-supplied unverified guestUuid during
+            // external provider account creation. Client-supplied guest UUIDs have no verified ownership
+            // in this flow. Explicit guest linking must occur via /api/v1/auth/link with verified session proof.
             if (optionalGuestUuid != null && !optionalGuestUuid.isBlank()) {
-                persistencePort.bindGuestUuid(optionalGuestUuid, playerId);
+                log.debug("Ignoring unverified client-supplied guest UUID during provider account creation for playerId={}", playerId);
             }
 
             log.info("Created new player account: playerId={}, publicZynpathId={}, provider={}",
@@ -210,19 +213,24 @@ public class PlayerAccountService {
                             ? optionalCallerPlayerId
                             : UUID.randomUUID().toString()
             );
-            String publicZynpathId = generateUniquePublicZynpathId();
+
+            Optional<PlayerAccount> existingAccountOpt = persistencePort.findById(playerId);
+            String publicZynpathId = existingAccountOpt.map(PlayerAccount::publicZynpathId).orElseGet(this::generateUniquePublicZynpathId);
 
             String effectiveName = displayName != null && !displayName.isBlank()
                     ? displayName
-                    : (verifiedIdentity.displayName() != null ? verifiedIdentity.displayName() : "Player " + publicZynpathId.substring(4, 8));
+                    : (existingAccountOpt.map(PlayerAccount::displayName).filter(n -> !n.startsWith("Guest_")).orElse(
+                            verifiedIdentity.displayName() != null ? verifiedIdentity.displayName() : "Player " + publicZynpathId.substring(4, 8)
+                      ));
 
             long now = System.currentTimeMillis();
+            long createdAt = existingAccountOpt.map(PlayerAccount::createdAt).orElse(now);
             PlayerAccount linkedAccount = new PlayerAccount(
                     playerId,
                     publicZynpathId,
                     effectiveName,
                     "LINKED",
-                    now,
+                    createdAt,
                     now
             );
 
@@ -237,8 +245,8 @@ public class PlayerAccountService {
             persistencePort.saveExternalIdentity(newLink);
             persistencePort.bindGuestUuid(guestUuid, playerId);
 
-            log.info("Successfully linked guestUuid={} to provider={} playerId={}",
-                    guestUuid, verifiedIdentity.provider(), playerId);
+            log.info("Successfully linked guest identity to provider={} playerId={}",
+                    verifiedIdentity.provider(), playerId);
 
             return linkedAccount;
         }
