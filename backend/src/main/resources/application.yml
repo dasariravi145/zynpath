@@ -61,6 +61,9 @@ management:
       show-details: never
 
 zynpath:
+  multiplayer:
+    puzzle-inventory:
+      startup-prewarm-enabled: ${STARTUP_PREWARM_ENABLED:false}
   api:
     version: v1
     prefix: /api/v1

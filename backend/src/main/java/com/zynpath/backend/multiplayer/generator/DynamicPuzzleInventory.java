@@ -6,6 +6,8 @@ import com.zynpath.backend.multiplayer.puzzle.MultiplayerPuzzlePool;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -29,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * - Durable persistence: Interacts with MultiplayerPuzzlePersistencePort (in-memory or JPA).
  * - Safe fallback: Falls back to the 16 handcrafted puzzles in MultiplayerPuzzlePool if dynamic inventory is depleted.
  * - Bounded asynchronous replenishment safe for Cloud Run.
+ * - Configuration-controlled startup prewarming (disabled by default to prevent startup database writes).
  */
 @Service
 public class DynamicPuzzleInventory {
@@ -41,7 +44,8 @@ public class DynamicPuzzleInventory {
     private final ProceduralPuzzleGenerator generator;
     private final MultiplayerPuzzlePersistencePort persistencePort;
     private final MultiplayerPuzzlePool fallbackPool;
-    private final ExecutorService replenishmentExecutor = Executors.newSingleThreadExecutor();
+    private final boolean startupPrewarmEnabled;
+    private final ExecutorService replenishmentExecutor;
     private final AtomicBoolean isReplenishing = new AtomicBoolean(false);
 
     private final Object assignmentLock = new Object();
@@ -51,13 +55,40 @@ public class DynamicPuzzleInventory {
             MultiplayerPuzzlePersistencePort persistencePort,
             MultiplayerPuzzlePool fallbackPool
     ) {
+        this(generator, persistencePort, fallbackPool, false);
+    }
+
+    @Autowired
+    public DynamicPuzzleInventory(
+            ProceduralPuzzleGenerator generator,
+            MultiplayerPuzzlePersistencePort persistencePort,
+            MultiplayerPuzzlePool fallbackPool,
+            @Value("${zynpath.multiplayer.puzzle-inventory.startup-prewarm-enabled:false}") boolean startupPrewarmEnabled
+    ) {
+        this(generator, persistencePort, fallbackPool, startupPrewarmEnabled, Executors.newSingleThreadExecutor());
+    }
+
+    DynamicPuzzleInventory(
+            ProceduralPuzzleGenerator generator,
+            MultiplayerPuzzlePersistencePort persistencePort,
+            MultiplayerPuzzlePool fallbackPool,
+            boolean startupPrewarmEnabled,
+            ExecutorService replenishmentExecutor
+    ) {
         this.generator = generator;
         this.persistencePort = persistencePort;
         this.fallbackPool = fallbackPool;
+        this.startupPrewarmEnabled = startupPrewarmEnabled;
+        this.replenishmentExecutor = replenishmentExecutor;
     }
 
     @PostConstruct
     public void init() {
+        if (!startupPrewarmEnabled) {
+            log.info("Multiplayer dynamic puzzle inventory startup prewarming is disabled (zynpath.multiplayer.puzzle-inventory.startup-prewarm-enabled=false).");
+            return;
+        }
+
         // Asynchronously populate baseline inventory on startup
         replenishmentExecutor.submit(() -> {
             try {
@@ -72,6 +103,10 @@ public class DynamicPuzzleInventory {
                 log.warn("Non-fatal exception during initial puzzle inventory pre-generation", e);
             }
         });
+    }
+
+    public boolean isStartupPrewarmEnabled() {
+        return startupPrewarmEnabled;
     }
 
     /**

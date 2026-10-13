@@ -55,6 +55,9 @@ zynpath:
   environment: production
   persistence:
     mode: jpa
+  multiplayer:
+    puzzle-inventory:
+      startup-prewarm-enabled: false
   api:
     base-url: ${BACKEND_BASE_URL:}
     ws-url: ${BACKEND_WS_URL:}
