@@ -1,0 +1,41 @@
+# =========================================================================
+# Zynpath Backend - Local / Staging PostgreSQL Persistence Profile
+# Activate via: --spring.profiles.active=dev,postgres
+# =========================================================================
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:zynpath}?sslmode=${DB_SSL_MODE:prefer}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:zynpath_app}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:zynpath_secret}}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: ZynpathPostgresHikariPool
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:2}
+      idle-timeout: 30000
+      connection-timeout: 20000
+      max-lifetime: 1800000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          batch_size: 25
+          order_inserts: true
+          order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+zynpath:
+  persistence:
+    mode: jpa

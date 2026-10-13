@@ -44,6 +44,8 @@ public class PresenceWebSocketHandler extends TextWebSocketHandler {
 
     // Track active sessions: webSocketSessionId -> playerId
     private final Map<String, String> sessionPlayerMap = new ConcurrentHashMap<>();
+    // Track session token: webSocketSessionId -> token
+    private final Map<String, String> sessionTokenMap = new ConcurrentHashMap<>();
     // Track reverse: playerId -> webSocketSession
     private final Map<String, WebSocketSession> playerActiveSocketMap = new ConcurrentHashMap<>();
 
@@ -111,6 +113,18 @@ public class PresenceWebSocketHandler extends TextWebSocketHandler {
                 case "HEARTBEAT" -> {
                     String playerId = sessionPlayerMap.get(session.getId());
                     if (playerId != null) {
+                        String token = sessionTokenMap.get(session.getId());
+                        if (token != null) {
+                            try {
+                                sessionSecurityService.validateSession("Bearer " + token);
+                            } catch (Exception ex) {
+                                sendJson(session, Map.of("type", "SESSION_EXPIRED", "message", "Session has expired or been revoked"));
+                                try {
+                                    session.close(CloseStatus.POLICY_VIOLATION.withReason("Session expired"));
+                                } catch (IOException ignored) {}
+                                return;
+                            }
+                        }
                         String stateStr = root.has("state") ? root.get("state").asText() : "ONLINE";
                         PlayerPresenceState state = "AWAY".equalsIgnoreCase(stateStr)
                                 ? PlayerPresenceState.AWAY
@@ -135,6 +149,7 @@ public class PresenceWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         socketMessageCounts.remove(session.getId());
         socketWindowStarts.remove(session.getId());
+        sessionTokenMap.remove(session.getId());
         String playerId = sessionPlayerMap.remove(session.getId());
         if (playerId != null) {
             playerActiveSocketMap.remove(playerId);
@@ -146,6 +161,7 @@ public class PresenceWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
         log.warn("WebSocket transport error for session {}: {}", session.getId(), exception.getMessage());
+        sessionTokenMap.remove(session.getId());
         String playerId = sessionPlayerMap.remove(session.getId());
         if (playerId != null) {
             playerActiveSocketMap.remove(playerId);
@@ -167,6 +183,7 @@ public class PresenceWebSocketHandler extends TextWebSocketHandler {
             }
 
             sessionPlayerMap.put(session.getId(), playerId);
+            sessionTokenMap.put(session.getId(), token);
             presenceService.recordHeartbeat(playerId, PlayerPresenceState.ONLINE);
 
             sendJson(session, Map.of(

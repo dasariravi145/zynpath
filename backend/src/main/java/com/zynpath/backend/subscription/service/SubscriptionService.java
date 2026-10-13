@@ -1,5 +1,6 @@
 package com.zynpath.backend.subscription.service;
 
+import com.zynpath.backend.persistence.port.SubscriptionPersistencePort;
 import com.zynpath.backend.subscription.model.EntitlementStatus;
 import com.zynpath.backend.subscription.model.SubscriptionDto.SubscriptionEntitlementDto;
 import com.zynpath.backend.subscription.model.SubscriptionDto.SubscriptionRestoreRequest;
@@ -18,8 +19,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
 
 /**
  * Authoritative backend subscription and entitlement management service.
@@ -32,6 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * - Section 23 & 24: Authoritative entitlement models and state transitions.
  * - Section 29: Restore purchases validation.
  * - Section 40: Premium feature keys.
+ *
+ * Delegates state persistence to SubscriptionPersistencePort (supporting both PostgreSQL JPA and In-Memory storage).
  */
 @Service
 public class SubscriptionService implements EntitlementService {
@@ -51,19 +53,18 @@ public class SubscriptionService implements EntitlementService {
     private final String serviceAccountJsonPath;
     private final String expectedPackageName;
     private final String defaultProductId;
-
-    // Concurrent stores for in-memory entitlement state
-    private final Map<String, SubscriptionEntitlement> entitlementsByAccount = new ConcurrentHashMap<>();
-    private final Map<String, String> accountByTokenHash = new ConcurrentHashMap<>();
+    private final SubscriptionPersistencePort persistencePort;
 
     public SubscriptionService(
             @Value("${zynpath.billing.service-account-json-path:}") String serviceAccountJsonPath,
             @Value("${zynpath.billing.package-name:com.zynpath.game}") String expectedPackageName,
-            @Value("${zynpath.billing.subscription-product-id:zynpath_premium}") String defaultProductId
+            @Value("${zynpath.billing.subscription-product-id:zynpath_premium}") String defaultProductId,
+            SubscriptionPersistencePort persistencePort
     ) {
         this.serviceAccountJsonPath = serviceAccountJsonPath != null ? serviceAccountJsonPath.trim() : "";
         this.expectedPackageName = expectedPackageName;
         this.defaultProductId = defaultProductId;
+        this.persistencePort = persistencePort;
     }
 
     @Override
@@ -80,7 +81,7 @@ public class SubscriptionService implements EntitlementService {
             return SubscriptionEntitlement.free("anonymous");
         }
 
-        SubscriptionEntitlement entitlement = entitlementsByAccount.get(accountId);
+        SubscriptionEntitlement entitlement = persistencePort.getEntitlement(accountId);
         if (entitlement == null) {
             return SubscriptionEntitlement.free(accountId);
         }
@@ -100,7 +101,7 @@ public class SubscriptionService implements EntitlementService {
                         entitlement.source(),
                         false
                 );
-                entitlementsByAccount.put(accountId, expired);
+                persistencePort.saveEntitlement(expired);
                 return expired;
             }
         }
@@ -156,9 +157,9 @@ public class SubscriptionService implements EntitlementService {
         String tokenHash = hashToken(request.purchaseToken());
 
         // Check ownership conflicts: token already bound to a different account
-        String existingOwner = accountByTokenHash.get(tokenHash);
-        if (existingOwner != null && !existingOwner.equals(accountId)) {
-            log.warn("Ownership conflict: token {} owned by {} but submitted by {}", tokenHash, existingOwner, accountId);
+        Optional<String> existingOwner = persistencePort.getAccountByTokenHash(tokenHash);
+        if (existingOwner.isPresent() && !existingOwner.get().equals(accountId)) {
+            log.warn("Ownership conflict: token {} owned by {} but submitted by {}", tokenHash, existingOwner.get(), accountId);
             return new SubscriptionVerificationResponse(
                     false,
                     "OWNERSHIP_CONFLICT",
@@ -208,8 +209,8 @@ public class SubscriptionService implements EntitlementService {
         if (request.purchaseTokens() != null) {
             for (String token : request.purchaseTokens()) {
                 String tokenHash = hashToken(token);
-                String owner = accountByTokenHash.get(tokenHash);
-                if (owner != null && owner.equals(accountId)) {
+                Optional<String> owner = persistencePort.getAccountByTokenHash(tokenHash);
+                if (owner.isPresent() && owner.get().equals(accountId)) {
                     return new SubscriptionRestoreResponse(
                             true,
                             "Restored subscription associated with this account",
@@ -227,7 +228,7 @@ public class SubscriptionService implements EntitlementService {
     }
 
     /**
-     * Hashes sensitive purchase token with SHA-256 for secure in-memory indexing.
+     * Hashes sensitive purchase token with SHA-256 for secure indexing.
      */
     private String hashToken(String token) {
         try {
@@ -276,8 +277,7 @@ public class SubscriptionService implements EntitlementService {
                 true
         );
 
-        accountByTokenHash.put(tokenHash, accountId);
-        entitlementsByAccount.put(accountId, entitlement);
+        persistencePort.saveEntitlement(entitlement);
 
         log.info("Successfully verified Google Play subscription for account={}, tier={}, expires={}",
                 accountId, tier, periodEnd);

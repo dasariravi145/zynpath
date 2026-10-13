@@ -22,7 +22,11 @@ class FlywayMigrationAuditTest {
             "db/migration/V3__multiplayer_sessions_and_results.sql",
             "db/migration/V4__cosmetics_and_ad_rewards.sql",
             "db/migration/V5__notifications_and_privacy.sql",
-            "db/migration/V6__indexes_and_performance_tuning.sql"
+            "db/migration/V6__indexes_and_performance_tuning.sql",
+            "db/migration/V7__wallet_and_multiplayer_settlement.sql",
+            "db/migration/V8__update_welcome_coins_and_solo_economy.sql",
+            "db/migration/V9__player_level_progress_and_sync_operations.sql",
+            "db/migration/V10__multiplayer_dynamic_puzzles.sql"
     );
 
     @Test
@@ -69,6 +73,13 @@ class FlywayMigrationAuditTest {
         assertThat(allTablesCombined).contains("MATCH_RESULTS");
         assertThat(allTablesCombined).contains("REWARD_EVENTS");
         assertThat(allTablesCombined).contains("PLAYER_PRIVACY_SETTINGS");
+        assertThat(allTablesCombined).contains("PLAYER_WALLET_BALANCES");
+        assertThat(allTablesCombined).contains("WALLET_TRANSACTIONS");
+        assertThat(allTablesCombined).contains("PLAYER_LEVEL_PROGRESS");
+        assertThat(allTablesCombined).contains("SYNC_OPERATIONS");
+        assertThat(allTablesCombined).contains("MULTIPLAYER_GENERATED_PUZZLES");
+        assertThat(allTablesCombined).contains("MULTIPLAYER_PUZZLE_ASSIGNMENTS");
+        assertThat(allTablesCombined).contains("MULTIPLAYER_PLAYER_PUZZLE_HISTORY");
     }
 
     @Test

@@ -31,7 +31,7 @@ public class WebSecurityConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // Enforce centralized session validation & deny-by-default access
         registry.addInterceptor(securityInterceptor)
-                .addPathPatterns("/api/**")
+                .addPathPatterns("/api/**", "/actuator/**")
                 .order(1);
 
         // Enforce tiered sliding-window rate limiting

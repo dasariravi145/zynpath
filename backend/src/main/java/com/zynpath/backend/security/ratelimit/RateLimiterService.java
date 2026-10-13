@@ -77,4 +77,11 @@ public class RateLimiterService {
             return (now - entry.getValue().windowStartEpochMs) > windowMs;
         });
     }
+
+    /**
+     * Clears all active rate limit window counters (for testing and administrative reset).
+     */
+    public void reset() {
+        windowMap.clear();
+    }
 }

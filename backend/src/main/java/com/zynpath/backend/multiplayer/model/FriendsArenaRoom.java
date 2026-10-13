@@ -145,6 +145,32 @@ public class FriendsArenaRoom {
         return members.removeIf(m -> m.playerId().equals(playerId));
     }
 
+    public int getReadyCount() {
+        int count = 0;
+        for (FriendsArenaMember m : members) {
+            if (m.isReady()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public List<FriendsArenaMember> getReadyMembers() {
+        List<FriendsArenaMember> ready = new ArrayList<>();
+        for (FriendsArenaMember m : members) {
+            if (m.isReady()) {
+                ready.add(m);
+            }
+        }
+        return ready;
+    }
+
+    public void resetReadiness() {
+        for (FriendsArenaMember m : members) {
+            m.setReady(false);
+        }
+    }
+
     public MultiplayerDto.FriendsArenaRoomDto toDto() {
         List<MultiplayerDto.FriendsArenaMemberDto> memberDtos = new ArrayList<>();
         for (FriendsArenaMember m : members) {

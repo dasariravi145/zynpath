@@ -76,11 +76,12 @@ public class MatchmakingService {
     /**
      * Enqueues an authenticated player into the Quick Duel queue or pairs with a waiting opponent.
      */
-    public synchronized MultiplayerDto.MatchmakingStatusResponse enqueueQuickDuel(String playerId) {
+    public MultiplayerDto.MatchmakingStatusResponse enqueueQuickDuel(String playerId) {
         PlayerAccount account = playerAccountService.findById(playerId)
                 .orElseThrow(() -> new AuthException("PLAYER_NOT_FOUND", "Player account not found", HttpStatus.NOT_FOUND));
 
-        // 1. Check if player already has an active waiting ticket
+        synchronized (this) {
+            // 1. Check if player already has an active waiting ticket
         String existingTicketId = playerActiveTicketMap.get(playerId);
         if (existingTicketId != null) {
             QueueTicket existing = ticketsById.get(existingTicketId);
@@ -212,6 +213,7 @@ public class MatchmakingService {
 
         log.info("Enqueued Quick Duel ticket: id={}, player={}", ticketId, playerId);
         return new MultiplayerDto.MatchmakingStatusResponse(ticketId, "SEARCHING", null, now, 0L);
+        }
     }
 
     /**

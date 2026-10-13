@@ -11,6 +11,8 @@ import com.zynpath.backend.multiplayer.model.MultiplayerEventEnvelope;
 import com.zynpath.backend.multiplayer.model.MultiplayerEventType;
 import com.zynpath.backend.multiplayer.model.PuzzleAssignment;
 import com.zynpath.backend.multiplayer.model.ReconnectionSnapshot;
+import com.zynpath.backend.multiplayer.generator.CompetitiveDifficultyTier;
+import com.zynpath.backend.multiplayer.generator.DynamicPuzzleInventory;
 import com.zynpath.backend.multiplayer.puzzle.MultiplayerPuzzlePool;
 import com.zynpath.backend.multiplayer.puzzle.ServerPuzzleValidator;
 import com.zynpath.backend.puzzle.model.ValidationOutcome;
@@ -20,6 +22,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,6 +49,7 @@ public class MatchSessionService {
     private static final long COUNTDOWN_DURATION_MS = 3_000L; // 3 seconds synchronized countdown
 
     private final MultiplayerPuzzlePool puzzlePool;
+    private final DynamicPuzzleInventory puzzleInventory;
     private final ServerPuzzleValidator serverPuzzleValidator;
     private final MatchEventDispatcher eventDispatcher;
     private final CompetitiveService competitiveService;
@@ -56,12 +60,14 @@ public class MatchSessionService {
 
     public MatchSessionService(
             MultiplayerPuzzlePool puzzlePool,
+            @Lazy DynamicPuzzleInventory puzzleInventory,
             ServerPuzzleValidator serverPuzzleValidator,
             @Lazy MatchEventDispatcher eventDispatcher,
             @Lazy CompetitiveService competitiveService,
             @Lazy com.zynpath.backend.notification.service.NotificationService notificationService
     ) {
         this.puzzlePool = puzzlePool;
+        this.puzzleInventory = puzzleInventory;
         this.serverPuzzleValidator = serverPuzzleValidator;
         this.eventDispatcher = eventDispatcher;
         this.competitiveService = competitiveService;
@@ -81,9 +87,35 @@ public class MatchSessionService {
      * Implements Prompt 22 Section 40 & 41.
      */
     public MatchSession createMatchSession(GameMode mode, String hostPlayerId, String excludePuzzleId) {
+        return createMatchSession(mode, hostPlayerId, excludePuzzleId, CompetitiveDifficultyTier.EXPERT);
+    }
+
+    /**
+     * Initializes a new match session with an authoritative solver-verified puzzle of specified tier.
+     */
+    public MatchSession createMatchSession(
+            GameMode mode,
+            String hostPlayerId,
+            String excludePuzzleId,
+            CompetitiveDifficultyTier tier
+    ) {
         String matchId = "match_" + UUID.randomUUID().toString().substring(0, 12);
         long seed = System.currentTimeMillis();
-        PuzzleAssignment puzzle = puzzlePool.selectPuzzleForModeExcluding(mode, seed, excludePuzzleId);
+        CompetitiveDifficultyTier targetTier = (tier != null) ? tier : CompetitiveDifficultyTier.EXPERT;
+
+        PuzzleAssignment puzzle;
+        if (puzzleInventory != null) {
+            puzzle = puzzleInventory.acquirePuzzleForMatch(
+                    mode,
+                    targetTier,
+                    matchId,
+                    List.of(hostPlayerId),
+                    excludePuzzleId,
+                    seed
+            );
+        } else {
+            puzzle = puzzlePool.selectPuzzleForModeExcluding(mode, seed, excludePuzzleId);
+        }
 
         MatchSession session = new MatchSession(
                 matchId,
@@ -95,7 +127,8 @@ public class MatchSessionService {
         );
 
         activeSessions.put(matchId, session);
-        log.info("Created match session: id={}, mode={}, host={}, excludePuzzleId={}", matchId, mode, hostPlayerId, excludePuzzleId);
+        log.info("Created match session: id={}, mode={}, tier={}, host={}, excludePuzzleId={}",
+                matchId, mode, targetTier, hostPlayerId, excludePuzzleId);
 
         // Bounded ready window (20 seconds) - Prompt 21 Section 15
         scheduler.schedule(() -> {
@@ -326,7 +359,7 @@ public class MatchSessionService {
 
             // Check if match should conclude
             if (session.getGameMode() == GameMode.QUICK_DUEL || session.getGameMode() == GameMode.FRIEND_DUEL) {
-                // Duel completes on first solver: assign defeat result to opponent
+                // Duel completes on first solver: assign defeat result to opponent with null solveTimeMs (DNF)
                 for (MatchParticipant other : session.getParticipants().values()) {
                     if (!other.getPlayerId().equals(playerId) && other.getCompletedAt() == null) {
                         session.addResult(new MatchResult(
@@ -335,7 +368,7 @@ public class MatchSessionService {
                                 other.getPublicZynpathId(),
                                 other.getDisplayName(),
                                 false,
-                                solveTimeMs,
+                                null, // Opponent did not complete the puzzle; solve time must be null (DNF)
                                 2,
                                 false,
                                 "DEFEAT"
@@ -372,6 +405,52 @@ public class MatchSessionService {
 
         return outcome;
     }
+
+    /**
+     * Records completion for testing and direct simulation.
+     */
+    public void recordCompletion(String matchId, String playerId, long solveTimeMs) {
+        MatchSession session = getSession(matchId);
+        MatchParticipant participant = session.getParticipant(playerId);
+        if (participant == null) return;
+        long now = System.currentTimeMillis();
+        synchronized (session) {
+            int finishOrder = session.getNextFinishOrder();
+            boolean isWinner = (finishOrder == 1);
+            participant.setCompleted(now, solveTimeMs, isWinner, finishOrder);
+            MatchResult result = new MatchResult(
+                    matchId,
+                    playerId,
+                    participant.getPublicZynpathId(),
+                    participant.getDisplayName(),
+                    true,
+                    solveTimeMs,
+                    finishOrder,
+                    isWinner,
+                    isWinner ? "VICTORY" : "COMPLETED"
+            );
+            session.addResult(result);
+            if (session.getGameMode() == GameMode.QUICK_DUEL || session.getGameMode() == GameMode.FRIEND_DUEL) {
+                for (MatchParticipant other : session.getParticipants().values()) {
+                    if (!other.getPlayerId().equals(playerId) && other.getCompletedAt() == null) {
+                        session.addResult(new MatchResult(
+                                matchId,
+                                other.getPlayerId(),
+                                other.getPublicZynpathId(),
+                                other.getDisplayName(),
+                                false,
+                                null,
+                                2,
+                                false,
+                                "DEFEAT"
+                        ));
+                    }
+                }
+                concludeMatch(session);
+            }
+        }
+    }
+
 
     public void concludeMiniLeague(MatchSession session) {
         synchronized (session) {
@@ -470,7 +549,7 @@ public class MatchSessionService {
                     forfeiter != null ? forfeiter.getPublicZynpathId() : "",
                     forfeiter != null ? forfeiter.getDisplayName() : "Player",
                     false,
-                    solveTime,
+                    null, // Forfeiting player did not complete the puzzle
                     2,
                     false,
                     "ABANDONED"
@@ -481,13 +560,17 @@ public class MatchSessionService {
                     if (!other.getPlayerId().equals(playerId)) {
                         other.setWinner(true);
                         other.setFinishOrder(1);
+                        Long otherSolveTime = (other.getCompletedAt() != null && session.getStartedAt() != null)
+                                ? (other.getCompletedAt() - session.getStartedAt())
+                                : null;
+                        boolean otherCompleted = other.getCompletedAt() != null;
                         session.addResult(new MatchResult(
                                 matchId,
                                 other.getPlayerId(),
                                 other.getPublicZynpathId(),
                                 other.getDisplayName(),
-                                true,
-                                solveTime,
+                                otherCompleted,
+                                otherSolveTime,
                                 1,
                                 true,
                                 "VICTORY_BY_FORFEIT"

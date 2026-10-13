@@ -24,7 +24,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final PresenceWebSocketHandler presenceWebSocketHandler;
     private final MultiplayerWebSocketHandler multiplayerWebSocketHandler;
 
-    @Value("${zynpath.websocket.allowed-origins:*}")
+    @Value("${zynpath.websocket.allowed-origins:https://zynpath-backend-552673599287.us-east4.run.app,http://localhost:8080,http://10.0.2.2:8080,*}")
     private String allowedOrigins;
 
     public WebSocketConfig(

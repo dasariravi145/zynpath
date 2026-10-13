@@ -9,6 +9,8 @@ import com.zynpath.backend.multiplayer.model.FriendsArenaRoomStatus;
 import com.zynpath.backend.multiplayer.model.MultiplayerDto;
 import com.zynpath.backend.multiplayer.model.MultiplayerEventEnvelope;
 import com.zynpath.backend.multiplayer.model.MultiplayerEventType;
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -21,6 +23,8 @@ import com.zynpath.backend.multiplayer.model.FriendsArenaMatchParticipant;
 import com.zynpath.backend.multiplayer.model.FriendsArenaMatchStatus;
 import com.zynpath.backend.multiplayer.model.GameMode;
 import com.zynpath.backend.multiplayer.model.MatchResult;
+import com.zynpath.backend.multiplayer.generator.CompetitiveDifficultyTier;
+import com.zynpath.backend.multiplayer.generator.DynamicPuzzleInventory;
 import com.zynpath.backend.multiplayer.model.PuzzleAssignment;
 import com.zynpath.backend.multiplayer.puzzle.MultiplayerPuzzlePool;
 import com.zynpath.backend.multiplayer.puzzle.ServerPuzzleValidator;
@@ -65,6 +69,7 @@ public class FriendsArenaService {
     private final PlayerAccountService playerAccountService;
     private final MatchEventDispatcher eventDispatcher;
     private final MultiplayerPuzzlePool puzzlePool;
+    private final DynamicPuzzleInventory puzzleInventory;
     private final ServerPuzzleValidator serverPuzzleValidator;
     private final SecureRandom secureRandom = new SecureRandom();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -81,11 +86,13 @@ public class FriendsArenaService {
             PlayerAccountService playerAccountService,
             @Lazy MatchEventDispatcher eventDispatcher,
             @Lazy MultiplayerPuzzlePool puzzlePool,
+            @Lazy DynamicPuzzleInventory puzzleInventory,
             @Lazy ServerPuzzleValidator serverPuzzleValidator
     ) {
         this.playerAccountService = playerAccountService;
         this.eventDispatcher = eventDispatcher;
         this.puzzlePool = puzzlePool;
+        this.puzzleInventory = puzzleInventory;
         this.serverPuzzleValidator = serverPuzzleValidator;
     }
 
@@ -317,6 +324,49 @@ public class FriendsArenaService {
     }
 
     /**
+     * Toggles or sets a participant's readiness in a Friends Arena room.
+     */
+    public MultiplayerDto.FriendsArenaRoomDto setReady(String roomId, String playerId, boolean ready) {
+        FriendsArenaRoom room = roomsById.get(roomId);
+        if (room == null) {
+            throw new AuthException("ROOM_NOT_FOUND", "Friends Arena room not found: " + roomId, HttpStatus.NOT_FOUND);
+        }
+
+        MultiplayerDto.FriendsArenaRoomDto snapshot;
+        int readyCount;
+        synchronized (room) {
+            FriendsArenaMember member = room.getMember(playerId);
+            if (member == null) {
+                throw new AuthException("NOT_IN_ROOM", "Player is not a member of this room", HttpStatus.FORBIDDEN);
+            }
+
+            member.setReady(ready);
+            room.incrementVersion();
+            snapshot = room.toDto();
+            readyCount = room.getReadyCount();
+        }
+
+        log.info("Player {} set readiness to {} in Friends Arena room {} (ready: {}/{})",
+                playerId, ready, roomId, readyCount, room.getMemberCount());
+
+        eventDispatcher.dispatchToFriendsArenaRoom(roomId, MultiplayerEventEnvelope.create(
+                MultiplayerEventType.FRIENDS_ARENA_READINESS_CHANGED,
+                roomId,
+                snapshot.version(),
+                Map.of(
+                        "roomId", roomId,
+                        "playerId", playerId,
+                        "isReady", ready,
+                        "readyCount", readyCount,
+                        "totalCount", room.getMemberCount(),
+                        "room", snapshot
+                )
+        ));
+
+        return snapshot;
+    }
+
+    /**
      * Host start-match command with all 6 eligibility checks:
      * 1. Requester is actual host.
      * 2. Room exists and is in startable state.
@@ -365,7 +415,9 @@ public class FriendsArenaService {
             List<String> participantIds = room.getMembers().stream().map(FriendsArenaMember::playerId).toList();
 
             // Sourcing one authoritative solver-verified puzzle for all participants (Prompt 19 Task 4)
-            PuzzleAssignment puzzle = puzzlePool.selectPuzzleForModeExcluding(GameMode.FRIENDS_ARENA, now, null);
+            PuzzleAssignment puzzle = (puzzleInventory != null)
+                    ? puzzleInventory.acquirePuzzleForMatch(GameMode.FRIENDS_ARENA, CompetitiveDifficultyTier.EXPERT, matchId, participantIds, null, now)
+                    : puzzlePool.selectPuzzleForModeExcluding(GameMode.FRIENDS_ARENA, now, null);
 
             match = new FriendsArenaMatch(
                     matchId,
@@ -393,6 +445,7 @@ public class FriendsArenaService {
 
             // Transition to STARTING
             room.setStatus(FriendsArenaRoomStatus.STARTING);
+            room.resetReadiness();
             room.incrementVersion();
             snapshot = room.toDto();
         }
@@ -702,6 +755,7 @@ public class FriendsArenaService {
             FriendsArenaRoom room = roomsById.get(match.getSourceRoomId());
             if (room != null && (room.getStatus() == FriendsArenaRoomStatus.IN_GAME || room.getStatus() == FriendsArenaRoomStatus.STARTING)) {
                 room.setStatus(FriendsArenaRoomStatus.WAITING);
+                room.resetReadiness();
                 room.incrementVersion();
             }
 
@@ -764,10 +818,24 @@ public class FriendsArenaService {
 
         long now = System.currentTimeMillis();
         String newMatchId = "famatch_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        List<String> participantIds = room.getMembers().stream().map(FriendsArenaMember::playerId).toList();
+
+        // Host is implicitly ready for next round
+        FriendsArenaMember hostMember = room.getMember(requesterPlayerId);
+        if (hostMember != null) {
+            hostMember.setReady(true);
+        }
+
+        List<FriendsArenaMember> startingMembers = room.getReadyMembers();
+        if (startingMembers.size() < FriendsArenaRoom.MIN_PLAYERS_TO_START) {
+            throw new AuthException("INSUFFICIENT_PLAYERS", "At least 2 ready players required to start next round", HttpStatus.BAD_REQUEST);
+        }
+
+        List<String> participantIds = startingMembers.stream().map(FriendsArenaMember::playerId).toList();
 
         // Select fresh puzzle excluding previous match's puzzle
-        PuzzleAssignment puzzle = puzzlePool.selectPuzzleForModeExcluding(GameMode.FRIENDS_ARENA, now, prevPuzzleId);
+        PuzzleAssignment puzzle = (puzzleInventory != null)
+                ? puzzleInventory.acquirePuzzleForMatch(GameMode.FRIENDS_ARENA, CompetitiveDifficultyTier.EXPERT, newMatchId, participantIds, prevPuzzleId, now)
+                : puzzlePool.selectPuzzleForModeExcluding(GameMode.FRIENDS_ARENA, now, prevPuzzleId);
 
         FriendsArenaMatch newMatch = new FriendsArenaMatch(
                 newMatchId,
@@ -778,7 +846,7 @@ public class FriendsArenaService {
                 now
         );
 
-        for (FriendsArenaMember m : room.getMembers()) {
+        for (FriendsArenaMember m : startingMembers) {
             newMatch.addParticipant(new FriendsArenaMatchParticipant(
                     m.playerId(),
                     m.publicZynpathId(),
@@ -795,6 +863,7 @@ public class FriendsArenaService {
         synchronized (room) {
             room.setActiveMatchId(newMatchId);
             room.setStatus(FriendsArenaRoomStatus.STARTING);
+            room.resetReadiness(); // Reset readiness for the next voting cycle
             room.incrementVersion();
         }
 

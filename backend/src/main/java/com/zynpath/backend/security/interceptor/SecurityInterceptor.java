@@ -25,25 +25,27 @@ import java.util.Set;
 /**
  * Centralized security interceptor enforcing authentication and deny-by-default access policies.
  *
- * Implements Prompt 36 Section 5, 7, 8, 9, 15, 16:
- * - Deny-by-default: protected endpoints require a valid, non-expired PlayerSession bearer token.
+ * Implements Production Security Controls:
+ * - Deny-by-default: protected endpoints require a valid, non-expired, non-revoked PlayerSession.
+ * - Strict route matching without loose prefix wildcards (prevents bypassing /auth/refresh or pack downloads).
+ * - Prioritizes @RequireAccess(AUTHENTICATED) over any fallback path matches.
  * - Extracts client IP and user-agent into SecurityContext.
- * - Protects authenticated resources while maintaining public access to login, catalog, and health.
  */
 @Component
 public class SecurityInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityInterceptor.class);
 
-    private static final Set<String> PUBLIC_PATH_PREFIXES = Set.of(
+    // Exact constrained public routes - NEVER contains /refresh, wildcard prefixes, or admin actuator endpoints
+    private static final Set<String> EXACT_PUBLIC_PATHS = Set.of(
             "/api/v1/auth/exchange",
             "/api/v1/auth/google",
             "/api/v1/auth/facebook",
             "/api/v1/auth/guest",
             "/api/v1/auth/link",
-            "/api/v1/auth/refresh",
             "/api/v1/health",
-            "/actuator",
+            "/actuator/health",
+            "/actuator/info",
             "/api/v1/cosmetics/catalog",
             "/api/v1/cosmetics/public",
             "/api/v1/daily/challenge",
@@ -73,7 +75,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
         String userAgent = request.getHeader("User-Agent");
         String uri = request.getRequestURI();
 
-        // 1. Check if resource is public via path whitelist or @RequireAccess annotation
+        // 1. Check if resource is public via annotation and strict exact path matching
         boolean isPublic = isPublicEndpoint(uri, handler);
 
         String authHeader = request.getHeader("Authorization");
@@ -122,21 +124,37 @@ public class SecurityInterceptor implements HandlerInterceptor {
     }
 
     private boolean isPublicEndpoint(String uri, Object handler) {
-        for (String publicPrefix : PUBLIC_PATH_PREFIXES) {
-            if (uri.startsWith(publicPrefix)) {
-                return true;
-            }
-        }
-
+        // 1. Handler annotation takes precedence: @RequireAccess(AUTHENTICATED) must NEVER be bypassed
         if (handler instanceof HandlerMethod handlerMethod) {
             RequireAccess methodAnnotation = handlerMethod.getMethodAnnotation(RequireAccess.class);
             if (methodAnnotation != null) {
-                return methodAnnotation.value() == EndpointAccessTier.PUBLIC;
+                if (methodAnnotation.value() == EndpointAccessTier.AUTHENTICATED) {
+                    return false;
+                }
+                if (methodAnnotation.value() == EndpointAccessTier.PUBLIC) {
+                    return true;
+                }
             }
             RequireAccess classAnnotation = handlerMethod.getBeanType().getAnnotation(RequireAccess.class);
             if (classAnnotation != null) {
-                return classAnnotation.value() == EndpointAccessTier.PUBLIC;
+                if (classAnnotation.value() == EndpointAccessTier.AUTHENTICATED) {
+                    return false;
+                }
+                if (classAnnotation.value() == EndpointAccessTier.PUBLIC) {
+                    return true;
+                }
             }
+        }
+
+        // 2. Strict exact path checks for unannotated or actuator routes
+        String normalizedUri = (uri.length() > 1 && uri.endsWith("/")) ? uri.substring(0, uri.length() - 1) : uri;
+        if (EXACT_PUBLIC_PATHS.contains(normalizedUri)) {
+            return true;
+        }
+
+        // Strict actuator subpaths whitelist (only health and info)
+        if ("/actuator/health".equals(normalizedUri) || "/actuator/info".equals(normalizedUri)) {
+            return true;
         }
 
         return false;

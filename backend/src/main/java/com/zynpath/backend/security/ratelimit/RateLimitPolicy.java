@@ -23,6 +23,9 @@ public enum RateLimitPolicy {
     /** Sensitive actions: Account deletion and data export. */
     SENSITIVE(3, 300),
 
+    /** Dedicated webhook policy for Google AdMob Server-Side Verification callbacks to accommodate legitimate bursts from shared Google proxy IPs. */
+    SSV_CALLBACK(240, 60),
+
     /** General read/write APIs. */
     DEFAULT_API(120, 60);
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zynpath.backend.daily.model.DailyChallengeDto.DailyProvisionalSyncRequest;
 import com.zynpath.backend.daily.service.DailyChallengeService;
+import com.zynpath.backend.persistence.port.SyncPersistencePort;
 import com.zynpath.backend.sync.model.SyncDto.BatchSyncRequest;
 import com.zynpath.backend.sync.model.SyncDto.BatchSyncResponse;
 import com.zynpath.backend.sync.model.SyncDto.LevelProgressDto;
@@ -15,10 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service orchestrating offline-first synchronization, idempotent reconciliation,
@@ -29,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * - Non-destructive Solo progress merging (completions never lost, personal best preserved).
  * - Offline Daily Challenge reconciliation into provisional participation without corrupting competitive leaderboards.
  * - Partial batch tolerance ensuring individual operations succeed or fail independently.
+ *
+ * Delegates state persistence to SyncPersistencePort (supporting both PostgreSQL JPA and In-Memory storage).
  */
 @Service
 public class SyncService {
@@ -37,19 +37,16 @@ public class SyncService {
 
     private final DailyChallengeService dailyChallengeService;
     private final ObjectMapper objectMapper;
-
-    // Idempotent operation cache: operationId -> previous result
-    private final Map<String, SyncOperationResultDto> processedOperations = new ConcurrentHashMap<>();
-
-    // Authoritative remote level progress: playerId -> (levelId -> LevelProgressDto)
-    private final Map<String, Map<Integer, LevelProgressDto>> playerLevelProgress = new ConcurrentHashMap<>();
+    private final SyncPersistencePort syncPersistencePort;
 
     public SyncService(
             DailyChallengeService dailyChallengeService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            SyncPersistencePort syncPersistencePort
     ) {
         this.dailyChallengeService = dailyChallengeService;
         this.objectMapper = objectMapper;
+        this.syncPersistencePort = syncPersistencePort;
     }
 
     /**
@@ -91,7 +88,7 @@ public class SyncService {
         }
 
         // Section 11: Idempotency check. Repeated delivery of previously acknowledged operation
-        SyncOperationResultDto cached = processedOperations.get(op.operationId());
+        SyncOperationResultDto cached = syncPersistencePort.getCachedOperation(op.operationId());
         if (cached != null) {
             log.info("Idempotent deduplication for operationId={}", op.operationId());
             return new SyncOperationResultDto(
@@ -109,19 +106,19 @@ public class SyncService {
                 case "SOLO_LEVEL_COMPLETION" -> {
                     reconcileSoloCompletion(playerId, op);
                     SyncOperationResultDto success = new SyncOperationResultDto(op.operationId(), "SUCCESS", null, now);
-                    processedOperations.put(op.operationId(), success);
+                    syncPersistencePort.recordOperation(playerId, success, op.operationType());
                     return success;
                 }
                 case "DAILY_CHALLENGE_SUBMISSION" -> {
                     reconcileDailyChallenge(playerId, op);
                     SyncOperationResultDto success = new SyncOperationResultDto(op.operationId(), "SUCCESS", null, now);
-                    processedOperations.put(op.operationId(), success);
+                    syncPersistencePort.recordOperation(playerId, success, op.operationType());
                     return success;
                 }
                 case "PREFERENCE_UPDATE" -> {
                     // Preferences acknowledged
                     SyncOperationResultDto success = new SyncOperationResultDto(op.operationId(), "SUCCESS", null, now);
-                    processedOperations.put(op.operationId(), success);
+                    syncPersistencePort.recordOperation(playerId, success, op.operationType());
                     return success;
                 }
                 default -> {
@@ -161,70 +158,23 @@ public class SyncService {
                 ? node.get("completedAt").asLong()
                 : System.currentTimeMillis();
 
-        // Validate canonical level boundaries (Prompt 35 Section 23: 300 levels, 6 worlds)
-        if (levelId < 1 || levelId > 300) {
-            throw new IllegalArgumentException("Level ID " + levelId + " out of canonical range 1..300");
+        // Validate canonical level boundaries (6 worlds * 300 levels = 1,800 levels)
+        if (levelId < 1 || levelId > 1800) {
+            throw new IllegalArgumentException("Level ID " + levelId + " out of canonical range 1..1800");
         }
 
-        Map<Integer, LevelProgressDto> progressMap = playerLevelProgress.computeIfAbsent(
-                playerId,
-                k -> new ConcurrentHashMap<>()
+        LevelProgressDto progress = new LevelProgressDto(
+                levelId,
+                worldId,
+                stars,
+                bestTimeMs,
+                movesCount,
+                isCompleted,
+                bestHintCount,
+                completedAt
         );
 
-        synchronized (progressMap) {
-            LevelProgressDto existing = progressMap.get(levelId);
-            if (existing == null) {
-                progressMap.put(
-                        levelId,
-                        new LevelProgressDto(
-                                levelId,
-                                worldId,
-                                stars,
-                                bestTimeMs,
-                                movesCount,
-                                isCompleted,
-                                bestHintCount,
-                                completedAt
-                        )
-                );
-            } else {
-                // Non-destructive personal-best and completion merge
-                boolean mergedCompleted = existing.isCompleted() || isCompleted;
-                int mergedStars = Math.max(existing.stars(), stars);
-
-                // Best time: non-zero minimum
-                long mergedTime = (existing.bestTimeMs() <= 0L)
-                        ? bestTimeMs
-                        : (bestTimeMs <= 0L ? existing.bestTimeMs() : Math.min(existing.bestTimeMs(), bestTimeMs));
-
-                // Moves count: non-zero minimum
-                int mergedMoves = (existing.movesCount() <= 0)
-                        ? movesCount
-                        : (movesCount <= 0 ? existing.movesCount() : Math.min(existing.movesCount(), movesCount));
-
-                // Best hint count: minimum hints used
-                int mergedHints = Math.min(existing.bestHintCount(), bestHintCount);
-
-                // Preserve earliest completion timestamp
-                Long mergedCompletedAt = existing.completedAt() != null
-                        ? (completedAt != null ? Math.min(existing.completedAt(), completedAt) : existing.completedAt())
-                        : completedAt;
-
-                progressMap.put(
-                        levelId,
-                        new LevelProgressDto(
-                                levelId,
-                                worldId,
-                                mergedStars,
-                                mergedTime,
-                                mergedMoves,
-                                mergedCompleted,
-                                mergedHints,
-                                mergedCompletedAt
-                        )
-                );
-            }
-        }
+        syncPersistencePort.saveOrUpdateLevelProgress(playerId, progress);
     }
 
     /**
@@ -263,12 +213,6 @@ public class SyncService {
      * Fetch authoritative level progress for a player.
      */
     public List<LevelProgressDto> getPlayerProgressList(String playerId) {
-        Map<Integer, LevelProgressDto> map = playerLevelProgress.get(playerId);
-        if (map == null || map.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<LevelProgressDto> list = new ArrayList<>(map.values());
-        list.sort(Comparator.comparingInt(LevelProgressDto::levelId));
-        return list;
+        return syncPersistencePort.getPlayerProgressList(playerId);
     }
 }

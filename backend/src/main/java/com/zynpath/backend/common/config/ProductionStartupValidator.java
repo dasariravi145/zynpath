@@ -44,6 +44,24 @@ public class ProductionStartupValidator implements ApplicationListener<Applicati
     @Value("${server.shutdown:immediate}")
     private String serverShutdown;
 
+    @Value("${zynpath.persistence.mode:in-memory}")
+    private String persistenceMode;
+
+    @Value("${spring.datasource.url:}")
+    private String datasourceUrl;
+
+    @Value("${spring.datasource.username:}")
+    private String datasourceUsername;
+
+    @Value("${spring.datasource.password:}")
+    private String datasourcePassword;
+
+    @Value("${zynpath.api.base-url:}")
+    private String backendBaseUrl;
+
+    @Value("${zynpath.ads.ssv.enforce-signature:true}")
+    private boolean enforceSsvSignature = true;
+
     public ProductionStartupValidator(Environment environment) {
         this.environment = environment;
     }
@@ -73,16 +91,56 @@ public class ProductionStartupValidator implements ApplicationListener<Applicati
         }
 
         // 3. Validate WebSocket Origin Restrictions
-        if (wsOrigins != null && wsOrigins.trim().equals("*")) {
+        if (wsOrigins == null || wsOrigins.isBlank()) {
+            errors.add("WebSocket allowed origins (zynpath.websocket.allowed-origins / WS_ALLOWED_ORIGINS) must be explicitly configured in production.");
+        } else if (wsOrigins.trim().equals("*")) {
             errors.add("WebSocket allowed origins (zynpath.websocket.allowed-origins) cannot be wildcard '*' in production.");
         }
 
         // 4. Validate CORS Origin Restrictions
-        if (corsOrigins != null && (corsOrigins.contains("*") || corsOrigins.contains("http://localhost:*"))) {
+        if (corsOrigins == null || corsOrigins.isEmpty() || corsOrigins.stream().allMatch(String::isBlank)) {
+            errors.add("CORS allowed origins (zynpath.cors.allowed-origins / CORS_ALLOWED_ORIGINS) must be explicitly configured in production.");
+        } else if (corsOrigins.contains("*") || corsOrigins.contains("http://localhost:*")) {
             errors.add("CORS allowed origins (zynpath.cors.allowed-origins) cannot contain wildcards or localhost in production.");
         }
 
-        // 5. Fail Fast if Validation Errors Detected
+        // 5. Validate PostgreSQL Persistence in Production
+        if ("in-memory".equalsIgnoreCase(persistenceMode)) {
+            errors.add("Production CANNOT run with volatile in-memory storage (zynpath.persistence.mode=in-memory). "
+                    + "Set zynpath.persistence.mode=jpa to enable durable PostgreSQL persistence.");
+        }
+        if (datasourceUrl == null || datasourceUrl.isBlank() || datasourceUrl.contains("localhost")) {
+            errors.add("SPRING_DATASOURCE_URL must be set to a valid remote PostgreSQL database in production.");
+        }
+        if (datasourceUsername == null || datasourceUsername.isBlank()) {
+            errors.add("SPRING_DATASOURCE_USERNAME must be set for PostgreSQL in production.");
+        }
+        if (datasourcePassword == null || datasourcePassword.isBlank()) {
+            errors.add("SPRING_DATASOURCE_PASSWORD must be set for PostgreSQL in production.");
+        }
+
+        // 6. Validate Production Backend Endpoint Configuration
+        if (backendBaseUrl == null || backendBaseUrl.isBlank()) {
+            errors.add("BACKEND_BASE_URL (zynpath.api.base-url) must be configured with a verified HTTPS endpoint in production (e.g. Cloud Run https://<service>-<hash>-<region>.a.run.app or verified custom domain).");
+        } else {
+            String lowerUrl = backendBaseUrl.trim().toLowerCase();
+            if (!lowerUrl.startsWith("https://")) {
+                errors.add("BACKEND_BASE_URL must use HTTPS in production. Cleartext HTTP is prohibited: " + backendBaseUrl);
+            }
+            if (lowerUrl.contains("localhost") || lowerUrl.contains("127.0.0.1") || lowerUrl.contains("10.0.2.2") || lowerUrl.contains("192.168.")) {
+                errors.add("BACKEND_BASE_URL cannot use localhost, emulator, or private LAN addresses in production: " + backendBaseUrl);
+            }
+            if (lowerUrl.contains("api.zynpath.com") || lowerUrl.contains("api.zynpath.app")) {
+                errors.add("BACKEND_BASE_URL uses an unverified placeholder domain (" + backendBaseUrl + "). Production requires a deployed and verified HTTPS endpoint.");
+            }
+        }
+
+        // 7. Validate AdMob SSV Signature Verification Enforcement in Production
+        if (!enforceSsvSignature) {
+            errors.add("AdMob SSV signature verification (zynpath.ads.ssv.enforce-signature) cannot be disabled in production.");
+        }
+
+        // 8. Fail Fast if Validation Errors Detected
         if (!errors.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("\n=================================================================================\n");

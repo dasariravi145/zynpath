@@ -1,8 +1,18 @@
 server:
   port: ${PORT:8080}
 
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+
 zynpath:
   environment: development
+  api:
+    base-url: ${BACKEND_BASE_URL:http://10.0.2.2:8080/api/v1}
+    ws-url: ${BACKEND_WS_URL:ws://10.0.2.2:8080/ws}
   cors:
     allowed-origins:
       - "http://localhost:*"
@@ -10,6 +20,8 @@ zynpath:
       - "http://127.0.0.1:*"
       - "http://192.168.*:*"
       - "*"
+  websocket:
+    allowed-origins: "*"
   logging:
     level:
       com.zynpath.backend: DEBUG

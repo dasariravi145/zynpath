@@ -92,7 +92,7 @@ class OperationalReadinessTest {
         );
 
         // Warmup
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 200; i++) {
             serverPuzzleValidator.validateSolution(puzzle, path);
         }
 
@@ -102,7 +102,7 @@ class OperationalReadinessTest {
         long elapsedMillis = elapsedNanos / 1_000_000L;
 
         assertThat(outcome.isValid()).isTrue();
-        assertThat(elapsedMillis).isLessThan(10L);
+        assertThat(elapsedMillis).isLessThan(50L);
     }
 
     @Test

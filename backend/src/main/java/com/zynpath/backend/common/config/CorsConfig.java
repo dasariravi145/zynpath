@@ -25,8 +25,15 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowCredentials(true)
                 .maxAge(3600);
 
-        if (configuredAllowedOrigins != null && !configuredAllowedOrigins.isEmpty() && !configuredAllowedOrigins.get(0).isBlank()) {
-            registration.allowedOrigins(configuredAllowedOrigins.toArray(new String[0]));
+        List<String> origins = configuredAllowedOrigins != null
+                ? configuredAllowedOrigins.stream()
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList()
+                : List.of();
+
+        if (!origins.isEmpty()) {
+            registration.allowedOrigins(origins.toArray(new String[0]));
         } else {
             registration.allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "http://10.0.2.2:*", "http://192.168.*.*");
         }

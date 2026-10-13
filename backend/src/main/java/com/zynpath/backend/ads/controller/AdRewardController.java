@@ -15,6 +15,7 @@ import com.zynpath.backend.security.integrity.BillingIntegrityGuard;
 import com.zynpath.backend.security.model.EndpointAccessTier;
 import com.zynpath.backend.security.ratelimit.RateLimitPolicy;
 import com.zynpath.backend.security.ratelimit.RateLimited;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +30,9 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * REST Controller for rewarded ad verification, balance lookups, and AdMob SSV webhooks.
  *
- * Implements Prompt 29 Sections 27, 47 & 50 and Prompt 36 Sections 48, 49:
- * - Deduplicates reward transaction grants via BillingIntegrityGuard.
+ * Implements Prompt Requirements:
+ * - Authoritative Server-Side Verification (SSV) before reward credit grants.
+ * - Deduplicates reward transaction grants via database-backed AdRewardPersistencePort.
  * - Enforces rate limiting on reward claim submissions.
  */
 @RestController
@@ -56,6 +58,7 @@ public class AdRewardController {
 
     /**
      * Submit an earned rewarded ad completion for authoritative verification and credit grant.
+     * Supports safe polling while claim is PENDING_VERIFICATION.
      */
     @PostMapping("/reward/verify")
     @RequireAccess(EndpointAccessTier.AUTHENTICATED)
@@ -79,9 +82,6 @@ public class AdRewardController {
                 )
             );
         }
-
-        // Anti-abuse: ensure reward event ID is not replayed
-        billingIntegrityGuard.assertRewardTransactionUnique(request.rewardEventId());
 
         VerifyRewardResponse response = adRewardService.verifyReward(playerId, request);
         if (!response.granted() && response.status() == RewardVerificationStatus.REJECTED) {
@@ -115,8 +115,9 @@ public class AdRewardController {
      */
     @GetMapping("/ssv-callback")
     @RequireAccess(EndpointAccessTier.PUBLIC)
-    @RateLimited(RateLimitPolicy.SUBMISSIONS)
+    @RateLimited(RateLimitPolicy.SSV_CALLBACK)
     public ResponseEntity<String> handleSsvCallback(
+        HttpServletRequest request,
         @RequestParam(value = "ad_network", required = false) String adNetwork,
         @RequestParam(value = "ad_unit", required = false) String adUnit,
         @RequestParam(value = "custom_data", required = false) String customData,
@@ -141,7 +142,8 @@ public class AdRewardController {
             keyId
         );
 
-        boolean success = adRewardService.handleSsvCallback(params);
+        String rawQuery = request != null ? request.getQueryString() : null;
+        boolean success = adRewardService.handleSsvCallback(params, rawQuery);
         if (success) {
             return ResponseEntity.ok("OK");
         } else {

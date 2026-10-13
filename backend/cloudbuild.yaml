@@ -1,0 +1,24 @@
+# Google Cloud Build definition for Zynpath Backend v4
+# Builds reproducible container images tagged by release version and Git commit SHA.
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-east4-docker.pkg.dev/agrolynch/zynpath-repo/zynpath-backend:${_TAG}'
+      - '-t'
+      - 'us-east4-docker.pkg.dev/agrolynch/zynpath-repo/zynpath-backend:${_COMMIT_SHA}'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+
+images:
+  - 'us-east4-docker.pkg.dev/agrolynch/zynpath-repo/zynpath-backend:${_TAG}'
+  - 'us-east4-docker.pkg.dev/agrolynch/zynpath-repo/zynpath-backend:${_COMMIT_SHA}'
+
+substitutions:
+  _TAG: 'v4'
+  _COMMIT_SHA: 'v4'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -95,6 +95,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         if (uri.contains("/delete") || uri.contains("/export")) return RateLimitPolicy.SENSITIVE;
         if (uri.contains("/invitations") || uri.contains("/leagues") || uri.contains("/presence")) return RateLimitPolicy.INVITATIONS_AND_ROOMS;
         if (uri.contains("/matchmaking")) return RateLimitPolicy.MATCHMAKING;
+        if (uri.contains("/ssv-callback")) return RateLimitPolicy.SSV_CALLBACK;
         if (uri.contains("/claim") || uri.contains("/sync") || uri.contains("/verify")) return RateLimitPolicy.SUBMISSIONS;
 
         return RateLimitPolicy.DEFAULT_API;

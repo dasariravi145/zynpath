@@ -5,18 +5,16 @@ import com.zynpath.backend.auth.model.AuthProvider;
 import com.zynpath.backend.auth.model.ExternalIdentity;
 import com.zynpath.backend.auth.model.PlayerAccount;
 import com.zynpath.backend.auth.model.VerifiedProviderIdentity;
+import com.zynpath.backend.persistence.port.PlayerAccountPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.http.HttpStatus;
 
 /**
  * Manages player account lifecycle, external identity mappings, and Public Zynpath ID issuance.
@@ -26,6 +24,8 @@ import org.springframework.http.HttpStatus;
  * - Globally unique Public Zynpath IDs (ZYN-XXXX-YYYY) for safe friend discovery.
  * - Strict uniqueness for (provider, providerSubjectId) external identities.
  * - Safe guest linking with explicit ACCOUNT_LINK_CONFLICT handling when identities are already claimed.
+ *
+ * Delegates state persistence to PlayerAccountPersistencePort (supporting both PostgreSQL JPA and In-Memory storage).
  */
 @Service
 public class PlayerAccountService {
@@ -34,23 +34,27 @@ public class PlayerAccountService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final char[] ID_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ".toCharArray(); // Crockford-style Base32 subset
 
-    // In-memory repositories for modular monolith (thread-safe, ready for DB migration)
-    private final Map<String, PlayerAccount> playerAccountsById = new ConcurrentHashMap<>();
-    private final Map<String, PlayerAccount> playerAccountsByPublicId = new ConcurrentHashMap<>();
-    private final Map<String, ExternalIdentity> externalIdentitiesByKey = new ConcurrentHashMap<>();
-    private final Map<String, String> playerIdsByGuestUuid = new ConcurrentHashMap<>();
+    private final PlayerAccountPersistencePort persistencePort;
+
+    public PlayerAccountService(PlayerAccountPersistencePort persistencePort) {
+        this.persistencePort = persistencePort;
+    }
 
     /**
      * Resolves or creates a player account for an authenticated external provider identity.
      */
     public PlayerAccount getOrCreateForExternalIdentity(VerifiedProviderIdentity verifiedIdentity, String optionalGuestUuid) {
-        String identityKey = buildIdentityKey(verifiedIdentity.provider(), verifiedIdentity.subjectId());
-
         synchronized (this) {
-            ExternalIdentity existingLink = externalIdentitiesByKey.get(identityKey);
-            if (existingLink != null) {
-                PlayerAccount account = playerAccountsById.get(existingLink.playerId());
-                if (account != null) {
+            Optional<ExternalIdentity> existingLinkOpt = persistencePort.findExternalIdentity(
+                    verifiedIdentity.provider(),
+                    verifiedIdentity.subjectId()
+            );
+
+            if (existingLinkOpt.isPresent()) {
+                ExternalIdentity existingLink = existingLinkOpt.get();
+                Optional<PlayerAccount> accountOpt = persistencePort.findById(existingLink.playerId());
+                if (accountOpt.isPresent()) {
+                    PlayerAccount account = accountOpt.get();
                     PlayerAccount updated = new PlayerAccount(
                             account.playerId(),
                             account.publicZynpathId(),
@@ -59,7 +63,7 @@ public class PlayerAccountService {
                             account.createdAt(),
                             System.currentTimeMillis()
                     );
-                    playerAccountsById.put(updated.playerId(), updated);
+                    persistencePort.saveAccount(updated);
                     return updated;
                 }
             }
@@ -88,12 +92,11 @@ public class PlayerAccountService {
                     now
             );
 
-            playerAccountsById.put(playerId, newAccount);
-            playerAccountsByPublicId.put(publicZynpathId, newAccount);
-            externalIdentitiesByKey.put(identityKey, newLink);
+            persistencePort.saveAccount(newAccount);
+            persistencePort.saveExternalIdentity(newLink);
 
             if (optionalGuestUuid != null && !optionalGuestUuid.isBlank()) {
-                playerIdsByGuestUuid.put(optionalGuestUuid, playerId);
+                persistencePort.bindGuestUuid(optionalGuestUuid, playerId);
             }
 
             log.info("Created new player account: playerId={}, publicZynpathId={}, provider={}",
@@ -107,21 +110,35 @@ public class PlayerAccountService {
      * Resolves or creates an opaque server-recognized guest account.
      * Ensures real Quick Duel matchmaking without requiring third-party authentication.
      */
+    /**
+     * Resolves or creates an opaque server-recognized guest account.
+     * Prevents arbitrary guest identifier impersonation of existing accounts.
+     */
     public PlayerAccount getOrCreateGuestAccount(String optionalGuestUuid, String optionalDisplayName) {
-        synchronized (this) {
-            String guestUuid = (optionalGuestUuid != null && !optionalGuestUuid.isBlank())
-                    ? optionalGuestUuid
-                    : UUID.randomUUID().toString();
+        return getOrCreateGuestAccount(optionalGuestUuid, optionalDisplayName, null);
+    }
 
-            String existingPlayerId = playerIdsByGuestUuid.get(guestUuid);
-            if (existingPlayerId != null) {
-                PlayerAccount account = playerAccountsById.get(existingPlayerId);
-                if (account != null) {
-                    return account;
+    public PlayerAccount getOrCreateGuestAccount(String optionalGuestUuid, String optionalDisplayName, String optionalCallerPlayerId) {
+        synchronized (this) {
+            String guestUuid;
+            if (optionalGuestUuid != null && !optionalGuestUuid.isBlank()) {
+                Optional<String> existingPlayerIdOpt = persistencePort.findGuestPlayerId(optionalGuestUuid);
+                if (existingPlayerIdOpt.isPresent()) {
+                    // Only return existing account if the caller has verified possession via active session
+                    if (optionalCallerPlayerId != null && optionalCallerPlayerId.equals(existingPlayerIdOpt.get())) {
+                        Optional<PlayerAccount> accountOpt = persistencePort.findById(existingPlayerIdOpt.get());
+                        if (accountOpt.isPresent()) {
+                            return accountOpt.get();
+                        }
+                    } else {
+                        log.warn("Unverified guestUuid access attempt rejected for existing account. Generating new guest identity.");
+                    }
                 }
             }
 
-            String playerId = (existingPlayerId != null) ? existingPlayerId : UUID.randomUUID().toString();
+            // Generate fresh, cryptographically isolated guest identity
+            guestUuid = UUID.randomUUID().toString();
+            String playerId = UUID.randomUUID().toString();
             String publicZynpathId = generateUniquePublicZynpathId();
             String displayName = (optionalDisplayName != null && !optionalDisplayName.isBlank())
                     ? optionalDisplayName
@@ -137,9 +154,8 @@ public class PlayerAccountService {
                     now
             );
 
-            playerAccountsById.put(playerId, newAccount);
-            playerAccountsByPublicId.put(publicZynpathId, newAccount);
-            playerIdsByGuestUuid.put(guestUuid, playerId);
+            persistencePort.saveAccount(newAccount);
+            persistencePort.bindGuestUuid(guestUuid, playerId);
 
             log.info("Resolved guest player account: playerId={}, publicZynpathId={}, displayName={}",
                     playerId, publicZynpathId, displayName);
@@ -149,31 +165,51 @@ public class PlayerAccountService {
 
     /**
      * Links an existing guest identity to an external provider identity.
+     * Requires verified proof of ownership for existing accounts.
      * Throws ACCOUNT_LINK_CONFLICT if provider identity is already linked to another Zynpath account.
      */
     public PlayerAccount linkGuestAccount(VerifiedProviderIdentity verifiedIdentity, String guestUuid, String displayName) {
+        return linkGuestAccount(verifiedIdentity, guestUuid, displayName, null);
+    }
+
+    public PlayerAccount linkGuestAccount(VerifiedProviderIdentity verifiedIdentity, String guestUuid, String displayName, String optionalCallerPlayerId) {
         if (guestUuid == null || guestUuid.isBlank()) {
             throw new IllegalArgumentException("Guest UUID is required for account linking");
         }
 
-        String identityKey = buildIdentityKey(verifiedIdentity.provider(), verifiedIdentity.subjectId());
-
         synchronized (this) {
-            ExternalIdentity existingLink = externalIdentitiesByKey.get(identityKey);
-            if (existingLink != null) {
-                // Identity is already linked to another player account - report conflict
-                PlayerAccount existingAccount = playerAccountsById.get(existingLink.playerId());
-                log.warn("Account link conflict: Provider identity {} already linked to playerId={}",
-                        identityKey, existingLink.playerId());
+            Optional<ExternalIdentity> existingLinkOpt = persistencePort.findExternalIdentity(
+                    verifiedIdentity.provider(),
+                    verifiedIdentity.subjectId()
+            );
+
+            if (existingLinkOpt.isPresent()) {
+                ExternalIdentity existingLink = existingLinkOpt.get();
+                Optional<PlayerAccount> existingAccount = persistencePort.findById(existingLink.playerId());
+                log.warn("Account link conflict: Provider identity {}:{} already linked to playerId={}",
+                        verifiedIdentity.provider(), verifiedIdentity.subjectId(), existingLink.playerId());
                 throw AuthException.accountLinkConflict(
                         "This " + verifiedIdentity.provider() + " account is already linked to another Zynpath player (" +
-                                (existingAccount != null ? existingAccount.publicZynpathId() : "existing") + ")."
+                                (existingAccount.isPresent() ? existingAccount.get().publicZynpathId() : "existing") + ")."
                 );
             }
 
-            // Check if guest already has a recorded playerId
-            String existingPlayerId = playerIdsByGuestUuid.get(guestUuid);
-            String playerId = existingPlayerId != null ? existingPlayerId : UUID.randomUUID().toString();
+            Optional<String> existingPlayerIdOpt = persistencePort.findGuestPlayerId(guestUuid);
+
+            // Security verification: If guestUuid belongs to an existing account, caller must be authenticated as that account
+            if (existingPlayerIdOpt.isPresent()) {
+                String existingPlayerId = existingPlayerIdOpt.get();
+                if (optionalCallerPlayerId == null || !optionalCallerPlayerId.equals(existingPlayerId)) {
+                    log.warn("Unauthorized attempt to link existing guest account playerId={} without valid session", existingPlayerId);
+                    throw AuthException.invalidCredential("Valid session token required to link existing guest account");
+                }
+            }
+
+            String playerId = existingPlayerIdOpt.orElseGet(() ->
+                    (optionalCallerPlayerId != null && !optionalCallerPlayerId.isBlank())
+                            ? optionalCallerPlayerId
+                            : UUID.randomUUID().toString()
+            );
             String publicZynpathId = generateUniquePublicZynpathId();
 
             String effectiveName = displayName != null && !displayName.isBlank()
@@ -197,10 +233,9 @@ public class PlayerAccountService {
                     now
             );
 
-            playerAccountsById.put(playerId, linkedAccount);
-            playerAccountsByPublicId.put(publicZynpathId, linkedAccount);
-            externalIdentitiesByKey.put(identityKey, newLink);
-            playerIdsByGuestUuid.put(guestUuid, playerId);
+            persistencePort.saveAccount(linkedAccount);
+            persistencePort.saveExternalIdentity(newLink);
+            persistencePort.bindGuestUuid(guestUuid, playerId);
 
             log.info("Successfully linked guestUuid={} to provider={} playerId={}",
                     guestUuid, verifiedIdentity.provider(), playerId);
@@ -213,27 +248,21 @@ public class PlayerAccountService {
      * Retrieves an account by internal playerId.
      */
     public Optional<PlayerAccount> findById(String playerId) {
-        return Optional.ofNullable(playerAccountsById.get(playerId));
+        return persistencePort.findById(playerId);
     }
 
     /**
      * Retrieves an account by publicZynpathId.
      */
     public Optional<PlayerAccount> findByPublicId(String publicZynpathId) {
-        return Optional.ofNullable(playerAccountsByPublicId.get(publicZynpathId));
+        return persistencePort.findByPublicId(publicZynpathId);
     }
 
     /**
      * Retrieves all external authentication providers linked to a player account.
      */
     public List<AuthProvider> getLinkedProviders(String playerId) {
-        List<AuthProvider> providers = new ArrayList<>();
-        for (ExternalIdentity identity : externalIdentitiesByKey.values()) {
-            if (identity.playerId().equals(playerId)) {
-                providers.add(identity.provider());
-            }
-        }
-        return providers;
+        return persistencePort.getLinkedProviders(playerId);
     }
 
     /**
@@ -246,12 +275,8 @@ public class PlayerAccountService {
             if (current.size() <= 1 && current.contains(provider)) {
                 throw new AuthException("LAST_SIGN_IN_METHOD", "Cannot unlink your only sign-in method", HttpStatus.BAD_REQUEST);
             }
-            boolean removed = externalIdentitiesByKey.entrySet().removeIf(entry ->
-                entry.getValue().playerId().equals(playerId) && entry.getValue().provider() == provider
-            );
-            if (removed) {
-                log.info("Unlinked provider {} for playerId={}", provider, playerId);
-            }
+            persistencePort.unlinkProvider(playerId, provider);
+            log.info("Unlinked provider {} for playerId={}", provider, playerId);
         }
     }
 
@@ -260,18 +285,9 @@ public class PlayerAccountService {
      */
     public void deleteAccount(String playerId) {
         synchronized (this) {
-            PlayerAccount account = playerAccountsById.remove(playerId);
-            if (account != null) {
-                playerAccountsByPublicId.remove(account.publicZynpathId());
-            }
-            externalIdentitiesByKey.entrySet().removeIf(entry -> entry.getValue().playerId().equals(playerId));
-            playerIdsByGuestUuid.entrySet().removeIf(entry -> entry.getValue().equals(playerId));
+            persistencePort.deleteAccount(playerId);
             log.info("Permanently deleted player account and identity links for playerId={}", playerId);
         }
-    }
-
-    private String buildIdentityKey(AuthProvider provider, String subjectId) {
-        return provider.name() + ":" + subjectId;
     }
 
     /**
@@ -289,7 +305,7 @@ public class PlayerAccountService {
                 sb.append(ID_ALPHABET[RANDOM.nextInt(ID_ALPHABET.length)]);
             }
             String candidate = sb.toString();
-            if (!playerAccountsByPublicId.containsKey(candidate)) {
+            if (!persistencePort.existsByPublicId(candidate)) {
                 return candidate;
             }
         }

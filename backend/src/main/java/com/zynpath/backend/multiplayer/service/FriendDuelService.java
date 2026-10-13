@@ -409,8 +409,8 @@ public class FriendDuelService {
                 .findFirst()
                 .orElseThrow(() -> new AuthException("OPPONENT_NOT_FOUND", "No opponent found for rematch"));
 
-        // Check friendship and blocks
-        if (!socialService.areFriends(playerId, opponent.getPlayerId())) {
+        // Check friendship for Friend Duel; Quick Duel permits rematch between recent duel opponents
+        if (prevSession.getGameMode() == GameMode.FRIEND_DUEL && !socialService.areFriends(playerId, opponent.getPlayerId())) {
             throw new AuthException("NOT_FRIENDS", "Rematch requires an established friendship");
         }
 
@@ -496,6 +496,36 @@ public class FriendDuelService {
         return toRematchDto(accepted);
     }
 
+    /**
+     * Cancel an active rematch request by the requester.
+     */
+    public MultiplayerDto.RematchStatusDto cancelRematch(String previousMatchId, String playerId) {
+        RematchRecord record = rematchesByPreviousMatch.get(previousMatchId);
+        if (record == null) {
+            throw new AuthException("REMATCH_NOT_FOUND", "No active rematch request for match: " + previousMatchId, HttpStatus.NOT_FOUND);
+        }
+
+        if (!record.getRequesterPlayerId().equals(playerId)) {
+            throw new AuthException("UNAUTHORIZED_CANCEL", "Only the requester may cancel this rematch request", HttpStatus.FORBIDDEN);
+        }
+
+        if (record.getStatus() != InvitationStatus.PENDING) {
+            return toRematchDto(record);
+        }
+
+        record.setStatus(InvitationStatus.CANCELLED);
+        log.info("Rematch cancelled for matchId={} by playerId={}", previousMatchId, playerId);
+
+        eventDispatcher.dispatchToPlayer(record.getOpponentPlayerId(), MultiplayerEventEnvelope.create(
+                MultiplayerEventType.REMATCH_CANCELLED,
+                previousMatchId,
+                1,
+                Map.of("previousMatchId", previousMatchId, "message", "Opponent cancelled rematch request")
+        ));
+
+        return toRematchDto(record);
+    }
+
     public MultiplayerDto.RematchStatusDto getRematchStatus(String previousMatchId, String playerId) {
         RematchRecord record = rematchesByPreviousMatch.get(previousMatchId);
         if (record == null) {
@@ -520,8 +550,9 @@ public class FriendDuelService {
             MatchSession prevSession = matchSessionService.getSession(previousMatchId);
             String excludePuzzleId = prevSession.getPuzzleAssignment() != null ? prevSession.getPuzzleAssignment().puzzleId() : null;
 
-            // Create new match session with a fresh puzzle avoiding the previous puzzle
-            MatchSession newSession = matchSessionService.createMatchSession(GameMode.FRIEND_DUEL, record.getRequesterPlayerId(), excludePuzzleId);
+            // Create new match session with a fresh puzzle avoiding the previous puzzle, preserving game mode
+            GameMode targetMode = prevSession.getGameMode() != null ? prevSession.getGameMode() : GameMode.FRIEND_DUEL;
+            MatchSession newSession = matchSessionService.createMatchSession(targetMode, record.getRequesterPlayerId(), excludePuzzleId);
 
             for (MatchParticipant p : prevSession.getParticipants().values()) {
                 newSession.addParticipant(new MatchParticipant(

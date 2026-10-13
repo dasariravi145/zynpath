@@ -48,8 +48,9 @@ services:
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-2592000}
-      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-https://zynpath.com,https://api.zynpath.com}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://zynpath.com,https://api.zynpath.com}
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:?Error: BACKEND_BASE_URL must be provided}
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:?Error: WS_ALLOWED_ORIGINS must be provided}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Error: CORS_ALLOWED_ORIGINS must be provided}
     ports:
       - "8080:8080"
     healthcheck:

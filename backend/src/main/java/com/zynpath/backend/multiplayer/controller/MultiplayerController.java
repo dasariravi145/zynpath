@@ -357,6 +357,19 @@ public class MultiplayerController {
     }
 
     /**
+     * Cancel an active rematch request.
+     */
+    @PostMapping("/matches/{matchId}/rematch/cancel")
+    public ResponseEntity<MultiplayerDto.RematchStatusDto> cancelRematch(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable("matchId") String matchId
+    ) {
+        String playerId = authenticate(authHeader);
+        MultiplayerDto.RematchStatusDto status = friendDuelService.cancelRematch(matchId, playerId);
+        return ResponseEntity.ok(status);
+    }
+
+    /**
      * Retrieve status of rematch request for a match.
      */
     @GetMapping("/matches/{matchId}/rematch")
@@ -587,6 +600,16 @@ public class MultiplayerController {
         String playerId = authenticate(authHeader);
         friendsArenaService.forfeitMatch(matchId, playerId);
         return ResponseEntity.ok(Map.of("matchId", matchId, "status", "FORFEITED"));
+    }
+
+    @PostMapping("/friends-arena/rooms/{roomId}/ready")
+    public ResponseEntity<MultiplayerDto.FriendsArenaRoomDto> setFriendsArenaReady(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable("roomId") String roomId,
+            @RequestParam(value = "ready", defaultValue = "true") boolean ready
+    ) {
+        String playerId = authenticate(authHeader);
+        return ResponseEntity.ok(friendsArenaService.setReady(roomId, playerId, ready));
     }
 
     @PostMapping("/friends-arena/rooms/{roomId}/rematch")

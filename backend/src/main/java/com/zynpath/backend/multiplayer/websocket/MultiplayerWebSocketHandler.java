@@ -56,12 +56,37 @@ public class MultiplayerWebSocketHandler extends TextWebSocketHandler implements
 
     // Track active connection: socketId -> playerId
     private final Map<String, String> socketPlayerMap = new ConcurrentHashMap<>();
+    // Track active connection token: socketId -> token
+    private final Map<String, String> socketSessionTokenMap = new ConcurrentHashMap<>();
     // Track active player socket: playerId -> WebSocketSession
     private final Map<String, WebSocketSession> playerSocketMap = new ConcurrentHashMap<>();
     // Track player subscriptions: matchId -> Set of playerIds
     private final Map<String, ConcurrentHashMap.KeySetView<String, Boolean>> matchSubscribers = new ConcurrentHashMap<>();
     // Track Friends Arena room subscriptions: roomId -> Set of playerIds
     private final Map<String, ConcurrentHashMap.KeySetView<String, Boolean>> friendsArenaRoomSubscribers = new ConcurrentHashMap<>();
+
+    public static final java.util.Set<String> ALLOWED_REACTIONS = java.util.Set.of(
+            // 4 Emojis
+            "THUMBS_UP",
+            "LIGHTNING",
+            "FIRE",
+            "MIND_BLOWN",
+            // 8 Predefined Common Words
+            "HI",
+            "GOOD_LUCK",
+            "NICE_MOVE",
+            "WELL_PLAYED",
+            "GG",
+            "WOW",
+            "THANKS",
+            "REMATCH_Q",
+            // Legacy aliases
+            "NICE",
+            "AMAZING",
+            "REMATCH"
+    );
+
+    private final Map<String, Long> lastReactionSentTimes = new ConcurrentHashMap<>();
 
     public MultiplayerWebSocketHandler(
             SessionSecurityService sessionSecurityService,
@@ -122,6 +147,11 @@ public class MultiplayerWebSocketHandler extends TextWebSocketHandler implements
             JsonNode root = objectMapper.readTree(message.getPayload());
             String type = root.has("type") ? root.get("type").asText() : "";
             String playerId = socketPlayerMap.get(session.getId());
+
+            // Validate that active session has not expired or been revoked
+            if (!"AUTH".equals(type) && !assertActiveSession(session)) {
+                return;
+            }
 
             switch (type) {
                 case "AUTH" -> {
@@ -214,15 +244,42 @@ public class MultiplayerWebSocketHandler extends TextWebSocketHandler implements
                     if (!assertParticipant(session, matchId, playerId, "REACTION")) return;
                     String code = root.has("reactionCode") ? root.get("reactionCode").asText() : "";
 
-                    MatchSession match = matchSessionService.getSession(matchId);
-                    if (match != null && match.hasParticipant(playerId)) {
-                        long seq = match.nextSequenceNumber();
-                        dispatchToMatch(matchId, MultiplayerEventEnvelope.create(
-                                MultiplayerEventType.REACTION_EMITTED,
-                                matchId,
-                                seq,
-                                Map.of("playerId", playerId, "reactionCode", code)
-                        ));
+                    // Strict allowlist validation: prohibit arbitrary strings
+                    if (code.isBlank() || !ALLOWED_REACTIONS.contains(code.toUpperCase())) {
+                        sendError(session, "INVALID_REACTION", "Unrecognized or prohibited reaction token: " + code);
+                        return;
+                    }
+
+                    // Rate limit: prevent spamming other players (minimum 1 second between reactions)
+                    Long lastSent = lastReactionSentTimes.get(playerId);
+                    if (lastSent != null && (now - lastSent) < 1000L) {
+                        sendError(session, "RATE_LIMITED", "Reaction frequency exceeded. Please wait.");
+                        return;
+                    }
+                    lastReactionSentTimes.put(playerId, now);
+
+                    String cleanCode = code.toUpperCase();
+                    if (matchId.startsWith("famatch_")) {
+                        FriendsArenaMatch famatch = friendsArenaService.getMatchEntity(matchId);
+                        if (famatch != null && famatch.hasParticipant(playerId)) {
+                            dispatchToFriendsArenaRoom(famatch.getSourceRoomId(), MultiplayerEventEnvelope.create(
+                                    MultiplayerEventType.REACTION_EMITTED,
+                                    matchId,
+                                    famatch.incrementVersion(),
+                                    Map.of("playerId", playerId, "reactionCode", cleanCode)
+                            ));
+                        }
+                    } else {
+                        MatchSession match = matchSessionService.getSession(matchId);
+                        if (match != null && match.hasParticipant(playerId)) {
+                            long seq = match.nextSequenceNumber();
+                            dispatchToMatch(matchId, MultiplayerEventEnvelope.create(
+                                    MultiplayerEventType.REACTION_EMITTED,
+                                    matchId,
+                                    seq,
+                                    Map.of("playerId", playerId, "reactionCode", cleanCode)
+                            ));
+                        }
                     }
                 }
                 case "SEND_INVITATION" -> {
@@ -280,6 +337,25 @@ public class MultiplayerWebSocketHandler extends TextWebSocketHandler implements
                         sendError(session, "REMATCH_RESPONSE_FAILED", e.getMessage());
                     }
                 }
+                case "CANCEL_REMATCH" -> {
+                    if (playerId == null) return;
+                    String matchId = root.has("matchId") ? root.get("matchId").asText() : "";
+                    try {
+                        friendDuelService.cancelRematch(matchId, playerId);
+                    } catch (Exception e) {
+                        sendError(session, "CANCEL_REMATCH_FAILED", e.getMessage());
+                    }
+                }
+                case "FRIENDS_ARENA_SET_READY" -> {
+                    if (playerId == null) return;
+                    String roomId = root.has("roomId") ? root.get("roomId").asText() : "";
+                    boolean ready = !root.has("ready") || root.get("ready").asBoolean();
+                    try {
+                        friendsArenaService.setReady(roomId, playerId, ready);
+                    } catch (Exception e) {
+                        sendError(session, "SET_READY_FAILED", e.getMessage());
+                    }
+                }
                 case "SUBSCRIBE_ROOM", "SUBSCRIBE_FRIENDS_ARENA" -> {
                     if (playerId == null) {
                         sendError(session, "UNAUTHENTICATED", "Authenticate before subscribing to rooms");
@@ -300,6 +376,7 @@ public class MultiplayerWebSocketHandler extends TextWebSocketHandler implements
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         socketMessageCounts.remove(session.getId());
         socketWindowStarts.remove(session.getId());
+        socketSessionTokenMap.remove(session.getId());
         String playerId = socketPlayerMap.remove(session.getId());
         if (playerId != null) {
             playerSocketMap.remove(playerId);
@@ -333,6 +410,22 @@ public class MultiplayerWebSocketHandler extends TextWebSocketHandler implements
             sendError(session, "INVALID_MATCH_ID", "Match ID is required for action: " + action);
             return false;
         }
+        if (matchId.startsWith("famatch_")) {
+            FriendsArenaMatch famatch = friendsArenaService.getMatchEntity(matchId);
+            if (famatch == null || !famatch.hasParticipant(playerId)) {
+                sendError(session, "UNAUTHORIZED_ACTION", "You are not a participant in Friends Arena match: " + matchId);
+                auditLogger.recordEvent(
+                        com.zynpath.backend.security.audit.SecurityEventType.WEBSOCKET_UNAUTHORIZED,
+                        playerId,
+                        session.getRemoteAddress() != null ? session.getRemoteAddress().toString() : "unknown",
+                        "famatch:" + matchId,
+                        "DENIED",
+                        Map.of("action", action)
+                );
+                return false;
+            }
+            return true;
+        }
         MatchSession match = matchSessionService.getSession(matchId);
         if (match == null || !match.hasParticipant(playerId)) {
             sendError(session, "UNAUTHORIZED_ACTION", "You are not a participant in match: " + matchId);
@@ -362,6 +455,7 @@ public class MultiplayerWebSocketHandler extends TextWebSocketHandler implements
             }
 
             socketPlayerMap.put(session.getId(), playerId);
+            socketSessionTokenMap.put(session.getId(), token);
 
             sendEnvelope(session, MultiplayerEventEnvelope.create(
                     MultiplayerEventType.PLAYER_JOINED,
@@ -376,6 +470,24 @@ public class MultiplayerWebSocketHandler extends TextWebSocketHandler implements
             try {
                 session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Auth failed"));
             } catch (IOException ignored) {}
+        }
+    }
+
+    private boolean assertActiveSession(WebSocketSession session) {
+        String token = socketSessionTokenMap.get(session.getId());
+        if (token == null || token.isBlank()) {
+            sendError(session, "UNAUTHENTICATED", "Active session required");
+            return false;
+        }
+        try {
+            sessionSecurityService.validateSession("Bearer " + token);
+            return true;
+        } catch (Exception ex) {
+            sendError(session, "SESSION_EXPIRED", "Session has expired or been revoked");
+            try {
+                session.close(CloseStatus.POLICY_VIOLATION.withReason("Session expired or revoked"));
+            } catch (IOException ignored) {}
+            return false;
         }
     }
 

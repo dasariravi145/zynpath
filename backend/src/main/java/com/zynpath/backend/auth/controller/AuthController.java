@@ -148,11 +148,22 @@ public class AuthController {
     @PostMapping("/guest")
     @RequireAccess(EndpointAccessTier.PUBLIC)
     @RateLimited(RateLimitPolicy.AUTH)
-    public ResponseEntity<AuthResponse> createGuestSession(@RequestBody(required = false) GuestAuthRequest request) {
+    public ResponseEntity<AuthResponse> createGuestSession(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody(required = false) GuestAuthRequest request
+    ) {
         String guestUuid = request != null ? request.guestUuid() : null;
         String displayName = request != null ? request.displayName() : null;
 
-        PlayerAccount account = playerAccountService.getOrCreateGuestAccount(guestUuid, displayName);
+        String callerPlayerId = null;
+        if (authHeader != null && !authHeader.isBlank()) {
+            try {
+                PlayerSession session = sessionSecurityService.validateSession(authHeader);
+                callerPlayerId = session.playerId();
+            } catch (Exception ignored) {}
+        }
+
+        PlayerAccount account = playerAccountService.getOrCreateGuestAccount(guestUuid, displayName, callerPlayerId);
         PlayerSession session = sessionSecurityService.createSession(account.playerId());
 
         auditLogger.logEvent(SecurityEventType.LOGIN_SUCCESS, account.playerId(),
@@ -173,12 +184,24 @@ public class AuthController {
     /**
      * Links an existing guest identity to a third-party provider identity.
      * Preserves guest progress and fails gracefully with conflict error if the provider is already linked.
+     * Verifies ownership of both identities: Google/Facebook credential and active session for existing guest.
      */
     @PostMapping("/link")
     @RequireAccess(EndpointAccessTier.PUBLIC)
     @RateLimited(RateLimitPolicy.AUTH)
-    public ResponseEntity<AuthResponse> linkAccount(@Valid @RequestBody AuthLinkRequest request) {
+    public ResponseEntity<AuthResponse> linkAccount(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Valid @RequestBody AuthLinkRequest request
+    ) {
         log.info("Processing account link for provider={}, guestUuid={}", request.provider(), request.guestUuid());
+
+        String callerPlayerId = null;
+        if (authHeader != null && !authHeader.isBlank()) {
+            try {
+                PlayerSession session = sessionSecurityService.validateSession(authHeader);
+                callerPlayerId = session.playerId();
+            } catch (Exception ignored) {}
+        }
 
         // 1. Backend provider verification
         VerifiedProviderIdentity verifiedIdentity = tokenVerificationService.verifyProviderToken(
@@ -186,11 +209,12 @@ public class AuthController {
                 request.providerToken()
         );
 
-        // 2. Link account with uniqueness check
+        // 2. Link account with uniqueness and ownership check
         PlayerAccount account = playerAccountService.linkGuestAccount(
                 verifiedIdentity,
                 request.guestUuid(),
-                request.displayName()
+                request.displayName(),
+                callerPlayerId
         );
 
         // 3. Issue application session token

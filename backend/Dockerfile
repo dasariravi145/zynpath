@@ -1,8 +1,22 @@
 # =========================================================================
-# Multi-Stage Build Dockerfile for Zynpath Spring Boot Backend
+# Multi-Stage Build Dockerfile for Zynpath Spring Boot Backend v4
 # =========================================================================
 
-# Runtime base with maintained Eclipse Temurin 17 JRE
+# Stage 1: Build JAR using Maven
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+WORKDIR /build
+
+# Copy Maven descriptor
+COPY pom.xml .
+
+# Pre-fetch dependencies (cached layer)
+RUN mvn dependency:go-offline -B || true
+
+# Copy source tree and compile production artifact
+COPY src ./src
+RUN mvn clean package -DskipTests -B
+
+# Stage 2: Runtime base with maintained Eclipse Temurin 17 JRE
 FROM eclipse-temurin:17-jre-jammy AS runtime
 
 # Set operational environment flags
@@ -20,9 +34,8 @@ RUN groupadd -g 10001 zynpath && \
 
 WORKDIR /app
 
-# Copy executable jar produced by 'mvn clean package -DskipTests'
-ARG JAR_FILE=target/zynpath-backend-*.jar
-COPY ${JAR_FILE} app.jar
+# Copy executable jar produced by builder stage
+COPY --from=builder /build/target/zynpath-backend-*.jar app.jar
 
 # Enforce secure ownership
 RUN chown -R zynpath:zynpath /app
